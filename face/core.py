@@ -37,7 +37,7 @@ class Parser(object):
 
         self.subcmd_map = OrderedDict()
         self.flag_map = OrderedDict()
-
+        self.flagfile_flag = Flag('--flagfile', parse_as=str, on_duplicate='add')
         # for now, assume this will accept a string as well as None/bool,
         # for use as the display name
         self.pos_args = pos_args
@@ -91,7 +91,24 @@ class Parser(object):
                 if arg is None:
                     raise ValueError('unknown flag')
                 # TODO: flags with args
-                flag_map[flag.name.lstrip('-')] = True
+                flag_key = flag.name.lstrip('-')
+                flag_conv = flag.parse_as
+                # TODO: flag.on_duplicate
+                if callable(flag_conv):
+                    try:
+                        arg_text = argv[i + 1]
+                    except IndexError:
+                        raise ValueError('expected argument for flag %r' % arg)
+                    try:
+                        arg_val = flag_conv(arg_text)
+                    except Exception:
+                        raise ValueError('flag %s converter (%r) failed to parse argument: %r'
+                                         % (arg, flag_conv, arg_text))
+                    flag_map[flag_key] = arg_val
+                else:
+                    # e.g., True is effectively store_true, False is effectively store_false
+                    flag_map[flag_key] = flag_conv
+
             elif False:  # TODO: flagfile
                 pass
             else:
@@ -99,12 +116,13 @@ class Parser(object):
                     pos_args.extend(argv[i:])
                     break
         # TODO: check for required
+        # TODO: resolve dupes
         args = CommandArguments(cmd_path, flag_map, pos_args)
         return args
 
 
 class Flag(object):
-    def __init__(self, name, short_name=None, arg_type=None, required=False, display_name=None, on_duplicate=None):
+    def __init__(self, name, short_name=None, parse_as=True, required=False, display_name=None, on_duplicate=None):
         # None = no arg
         # 'int' = int, 'float' = float, 'str' = str
         # List(int, sep=',', trim=True)  # see below
@@ -112,10 +130,10 @@ class Flag(object):
         self.name = name
         self.short_name = short_name  # TODO: bother with this?
         self.display_name = display_name or name
-        self.arg_type = arg_type
+        self.parse_as = parse_as
         self.required = required
         # duplicates raise error by default
-        # also have convenience param value to accumulate/extend
+        # also have convenience param values: 'error'/'add'/'replace'
         # otherwise accept callable that takes argument + ArgResult
         self.on_duplicate = on_duplicate
 
@@ -133,6 +151,13 @@ class CommandArguments(object):
         self.args = tuple(pos_args or ())
 
     def __getattr__(self, name):
+        """TODO: how to provide easy access to flag values while also
+        providing access to "args" and "cmd" members. Could "_" prefix
+        them. Could treat them as reserved keywords. Could do
+        both. Could return three things from parse(), but still have
+        this issue when it comes to deciding what name to inject them
+        as. probably need to make a reserved keyword.
+        """
         return self.flags.get(name)
 
 

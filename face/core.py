@@ -24,10 +24,20 @@ def _get_default_name(frame_level=1):
     return mod_name
 
 
+def flag_to_attr_name(flag):
+    # flag should already be validated to only have letters, numbers,
+    # '-', and/or '_'. Only single/double leading dash allowed
+    # (-/--). No trailing dashes or underscores.
+    ret = flag.lstrip('-')
+    ret = ret.replace('-', '_')
+    ret = ret.lower()
+    return ret
+
+
 # TODO: CLISpec may be a better name for the top-level object
 class Parser(object):
     """
-    Parser parses, Command parses and dispatches.
+    Parser parses, Command parses with Parser, then dispatches.
     """
     def __init__(self, name=None, desc=None, pos_args=None):
         if name is None:
@@ -63,9 +73,17 @@ class Parser(object):
                 raise ValueError('expected Parser, Flag, or Flag parameters,'
                                  ' not: %r, %r' % (a, kw))
 
-        self.flag_map[flag.name] = flag
-        if flag.short_name:
-            self.flag_map[flag.short_name] = flag
+        flag_name = flag_to_attr_name(flag.name)
+        flag_short_name = flag_to_attr_name(flag.short_name) if flag.short_name else ''
+        if flag_name in self.flag_map:
+            raise ValueError('duplicate definition for flag name: %r' % flag_name)
+        if flag_short_name in self.flag_map:
+            raise ValueError('duplicate definition for flag short name: %r' % flag_short_name)
+
+        self.flag_map[flag_name] = flag
+        if flag_short_name:
+            self.flag_map[flag_short_name] = flag
+        return
 
     def parse(self, argv):
         if argv is None:
@@ -87,11 +105,12 @@ class Parser(object):
                 break
             elif arg[0] == '-':
                 # check presence in flag map, strip dashes
-                flag = self.flag_map.get(arg)
-                if arg is None:
-                    raise ValueError('unknown flag')
+                flag_key = flag_to_attr_name(arg)
+                flag = self.flag_map.get(flag_key)
+                if flag is None:
+                    raise ValueError('unknown flag: %s' % arg)
                 # TODO: flags with args
-                flag_key = flag.name.lstrip('-')
+
                 flag_conv = flag.parse_as
                 # TODO: flag.on_duplicate
                 if callable(flag_conv):
@@ -248,8 +267,16 @@ situations?
 
 x = 5
 
-"""
-A command cannot have positional arguments _and_ subcommands.
+"""A command cannot have positional arguments _and_ subcommands.
 
 Need to be able to set display name for pos_args
+
+Which is the best default behavior for a flag? single flag where
+presence=True (e.g., --verbose) or flag which accepts single string
+arg (e.g., --path /a/b/c)
+
+What to do if there appears to be flags after positional arguments?
+How to differentiate between a bad flag and a positional argument that
+starts with a dash?
+
 """

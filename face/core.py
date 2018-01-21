@@ -108,7 +108,12 @@ class Parser(object):
             # Copy in subcommands, checking for conflicts the name
             # comes from the parser, so if you want to add it as a
             # different name, make a copy of the parser.
+
+            # TODO: need to normalize and check for subcommand conflict
             self.subcmd_map[prs.name] = prs
+
+            # TODO: assume normalized, but need to check for conflicts
+            self.flag_map.update(prs.flag_map)
             return
 
         if isinstance(a[0], Flag):
@@ -145,7 +150,11 @@ class Parser(object):
         cmd_path = []
         flag_map = OMD()
         pos_args = []
+        _consumed_val = False
         for i, arg in enumerate(argv):
+            if _consumed_val:
+                _consumed_val = False
+                continue
             if not arg:
                 pass # is this possible?
             elif arg in self.subcmd_map:
@@ -153,7 +162,10 @@ class Parser(object):
                 subprs = self.subcmd_map[arg]
                 subcmd_args = subprs.parse(argv[i:])
                 cmd_path.extend(subcmd_args.cmd)
-                flag_map.update(subcmd_args.flags.items(multi=True))
+                print flag_map
+                print subcmd_args.flags.items()
+                flag_map.update_extend(subcmd_args.flags.items())
+                print flag_map
                 pos_args.extend(subcmd_args.args)
                 break
             elif arg[0] == '-':
@@ -177,6 +189,7 @@ class Parser(object):
                         raise ValueError('flag %s converter (%r) failed to parse argument: %r'
                                          % (arg, flag_conv, arg_text))
                     flag_map.add(flag_key, arg_val)
+                    _consumed_val = True
                 else:
                     # e.g., True is effectively store_true, False is effectively store_false
                     flag_map.add(flag_key, flag_conv)
@@ -186,9 +199,35 @@ class Parser(object):
                 if self.pos_args:
                     pos_args.extend(argv[i:])
                     break
-        # TODO: check for required
-        # TODO: resolve dupes
-        args = CommandArguments(cmd_path, flag_map, pos_args)
+
+        # resolve dupes and then...
+        ret_flag_map = OrderedDict()
+        for flag_name in flag_map:
+            flag = self.flag_map[flag_name]
+            arg_val_list = flag_map.getlist(flag_name)
+            on_dup = flag.on_duplicate
+            # TODO: move this logic into Flag.__init__
+            if not on_dup or on_dup == 'error':
+                if len(arg_val_list) > 1:
+                    raise ValueError('more than one value passed for flag %s: %r'
+                                     % (flag.name, arg_val_list))
+                ret_flag_map[flag_name] = arg_val_list[0]
+            elif on_dup == 'extend':
+                ret_flag_map[flag_name] = arg_val_list
+            elif on_dup == 'override':  # TODO: 'overwrite'?
+                ret_flag_map[flag_name] = arg_val_list[-1]
+            # TODO: ignore aka pick first, as opposed to override's pick last
+
+        # ... check requireds
+        missing_flags = []
+        for flag_name, flag in self.flag_map.items():
+            if flag.required and flag_name not in ret_flag_map:
+                missing_flags.append(flag.name)
+        if missing_flags:
+            raise ValueError('missing required arguments for flags: %s'
+                             % ', '.join(missing_flags))
+
+        args = CommandArguments(cmd_path, ret_flag_map, pos_args)
         return args
 
 
@@ -346,10 +385,24 @@ x = 6
 
 """"Face: the CLI framework that's friendly to your end-user."
 
+* Flag-first design that ensures flags stay consistent across all
+  subcommands, for a more coherent API, less likely to surprise, more
+  likely to delight.
+
 (Note: need to do some research re: non-unicode flags to see how much
 non-US CLI users care about em.)
 
 Case-sensitive flags are bad for business *except for*
 single-character flags (single-dash flags like -v vs -V).
+
+TODO: normalizing subcommands
+"""
+
+x = 7
+
+"""strata-minded thoughts:
+
+* will need to disable and handle flagfiles separately if provenance
+is going to be retained?
 
 """

@@ -31,6 +31,24 @@ like lash after lash against my poor CLI-loving flesh.
 
 Big challenge: helpful error messages
 
+# Help Design
+
+If there are subcommands, do zfs-style subcommand syntax, only showing
+required flags and pos args (by display name).
+
+If at a leaf command, print full options listing for that path, with
+argparse-style help.
+
+If at a non-leaf command, argparse-style options help at that level
+(and above) can go below the zfs-style subcommand summary.
+
+Square [brackets] for optional. Angle <brackets> for required.
+
+Boltons dependency can do basic pluralization/singularization for help
+displays.
+
+If a command has subcommands, then the automatic help should manifest
+as a subcommand. Otherwise, it should be a longform flag like --help.
 
 ## zfs-style help
 
@@ -38,6 +56,7 @@ zpool help is probably handwritten (as evidenced by multiple instances
 of subcommands like "import" and spacing between groups like
 add/remove), but we can probably get pretty close to this.
 
+```
 $ zpool --help
 usage: zpool command args ...
 where 'command' is one of the following:
@@ -87,11 +106,13 @@ events [-vHfc]
 
 get [-pH] <"all" | property[,...]> <pool> ...
 set <property=value> <pool>
+```
 
 ## youtube-dl help
 
-(argparse)
+argparse-based, lots of options
 
+```
 Usage: youtube-dl [OPTIONS] URL [URL...]
 
 Options:
@@ -322,3 +343,4 @@ Options:
     --exec CMD                       Execute a command on the file after downloading, similar to find's -exec syntax. Example: --exec
                                      'adb push {} /sdcard/Music/ && rm {}'
     --convert-subs FORMAT            Convert the subtitles to other format (currently supported: srt|ass|vtt|lrc)
+```

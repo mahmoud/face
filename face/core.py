@@ -1,5 +1,7 @@
 
+import re
 import sys
+import keyword
 
 from collections import OrderedDict
 
@@ -24,14 +26,53 @@ def _get_default_name(frame_level=1):
     return mod_name
 
 
+# keep it just to subset of valid python identifiers for now
+# TODO: switch [A-z] to [^\W\d_] for unicode support in future?
+_VALID_FLAG_RE = re.compile(r"^[A-z][-_A-z0-9]*\Z")
+
+
 def flag_to_attr_name(flag):
-    # flag should already be validated to only have letters, numbers,
-    # '-', and/or '_'. Only single/double leading dash allowed
-    # (-/--). No trailing dashes or underscores.
-    ret = flag.lstrip('-')
-    ret = ret.replace('-', '_')
-    ret = ret.lower()
-    return ret
+    # validate and canonicalize flag name. Basically, subset of valid
+    # Python variable identifiers.
+    #
+    # Only letters, numbers, '-', and/or '_'. Only single/double
+    # leading dash allowed (-/--). No trailing dashes or
+    # underscores. Must not be a Python keyword.
+    if not flag or not isinstance(flag, str):
+        raise ValueError('expected non-zero length string for flag, not: %r' % flag)
+    # TODO: possible exception, bare '--' used to separate args, but
+    # this should be a builtin
+    if flag.endswith('-') or flag.endswith('_'):
+        raise ValueError('expected flag without trailing dashes'
+                         ' or underscores, not: %r' % flag)
+
+    lstripped = flag.lstrip('-')
+    flag_match = _VALID_FLAG_RE.match(lstripped)
+    if not flag_match:
+        raise ValueError('valid flags must begin with one or two dashes, '
+                         ' followed by a letter, and consist only of'
+                         ' letters, digits, underscores, and dashes, not: %r'
+                         % flag)
+    len_diff = len(flag) - len(lstripped)
+    if len_diff == 0 or len_diff > 2:
+        raise ValueError('expected flag to start with "-" or "--", not: %r'
+                         % flag)
+    if len_diff == 1 and len(lstripped) > 1:
+        raise ValueError('expected single-dash flag to consist of a single'
+                         ' character, not: %r' % flag)
+
+    flag_name = _normalize_flag_name(flag)
+
+    if keyword.iskeyword(flag_name):
+        raise ValueError('valid flags must not be a Python keyword: %r'
+                         % flag)
+
+    return flag_name
+
+
+def _normalize_flag_name(flag):
+    return flag.lstrip('-').lower().replace('-', '_')
+
 
 
 # TODO: CLISpec may be a better name for the top-level object
@@ -69,20 +110,26 @@ class Parser(object):
         else:
             try:
                 flag = Flag(*a, **kw)
-            except TypeError:
+            except TypeError as te:
                 raise ValueError('expected Parser, Flag, or Flag parameters,'
-                                 ' not: %r, %r' % (a, kw))
+                                 ' not: %r, %r (got %r)' % (a, kw, te))
 
+        # first check there are no conflicts...
         flag_name = flag_to_attr_name(flag.name)
-        flag_short_name = flag_to_attr_name(flag.short_name) if flag.short_name else ''
         if flag_name in self.flag_map:
+            # TODO: need a better error message here, one that
+            # properly exposes the existing flag (same goes for
+            # aliases below)
             raise ValueError('duplicate definition for flag name: %r' % flag_name)
-        if flag_short_name in self.flag_map:
-            raise ValueError('duplicate definition for flag short name: %r' % flag_short_name)
+        for alias in flag.alias_list:
+            if flag_to_attr_name(alias) in self.flag_map:
+                raise ValueError('conflicting alias for flag %r: %r' % (flag_name, alias))
 
+        # ... then we add the flags
         self.flag_map[flag_name] = flag
-        if flag_short_name:
-            self.flag_map[flag_short_name] = flag
+        for alias in flag.alias_list:
+            self.flag_map[flag_to_attr_name(alias)] = flag
+
         return
 
     def parse(self, argv):
@@ -141,13 +188,17 @@ class Parser(object):
 
 
 class Flag(object):
-    def __init__(self, name, short_name=None, parse_as=True, required=False, display_name=None, on_duplicate=None):
+    def __init__(self, name, parse_as=True, required=False, alias=None, display_name=None, on_duplicate=None):
         # None = no arg
         # 'int' = int, 'float' = float, 'str' = str
         # List(int, sep=',', trim=True)  # see below
         # other = single callable
         self.name = name
-        self.short_name = short_name  # TODO: bother with this?
+        if not alias:
+            alias = []
+        elif isinstance(alias, str):
+            alias = [alias]
+        self.alias_list = list(alias)
         self.display_name = display_name or name
         self.parse_as = parse_as
         self.required = required
@@ -171,13 +222,17 @@ class CommandArguments(object):
 
     def __getattr__(self, name):
         """TODO: how to provide easy access to flag values while also
-        providing access to "args" and "cmd" members. Could "_" prefix
-        them. Could treat them as reserved keywords. Could do
-        both. Could return three things from parse(), but still have
+        providing access to "args" and "cmd" members. Could treat them
+        as reserved keywords. Could "_"-prefix them. Could "_"-suffix
+        them. Could "_"-suffix conflicting args so they'd still be
+        accessible.
+
+        Could return three things from parse(), but still have
         this issue when it comes to deciding what name to inject them
         as. probably need to make a reserved keyword.
+
         """
-        return self.flags.get(name)
+        return self.flags.get(_normalize_flag_name(name))
 
 
 """# Problems with argparse
@@ -279,4 +334,26 @@ What to do if there appears to be flags after positional arguments?
 How to differentiate between a bad flag and a positional argument that
 starts with a dash?
 
+"""
+
+x = 6
+
+"""help design
+
+If there are subcommands, do zfs-style subcommand syntax, only showing
+required flags and pos args (by display name).
+
+If at a leaf command, print full options listing for that path, with
+argparse-style help.
+
+If at a non-leaf command, argparse-style options help at that level
+(and above) can go below the zfs-style subcommand summary.
+
+Square [brackets] for optional. Angle <brackets> for required.
+
+Boltons dependency can do basic pluralization/singularization for help
+displays.
+
+If a command has subcommands, then the automatic help should manifest
+as a subcommand. Otherwise, it should be a longform flag like --help.
 """

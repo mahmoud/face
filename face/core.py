@@ -73,8 +73,12 @@ def flag_to_attr_name(flag):
 
 
 def _normalize_flag_name(flag):
-    return flag.lstrip('-').lower().replace('-', '_')
-
+    ret = flag.lstrip('-')
+    if (len(flag) - len(ret)) > 1:
+        # only single-character flags are considered case-sensitive (like an initial)
+        ret = ret.lower()
+    ret = ret.replace('-', '_')
+    return ret
 
 
 # TODO: CLISpec may be a better name for the top-level object
@@ -346,7 +350,6 @@ x = 6
 non-US CLI users care about em.)
 
 Case-sensitive flags are bad for business *except for*
-single-character flags (single-dash flags like -v vs -V). TODO: decide
-on this. Currently short flags case is normalized.
+single-character flags (single-dash flags like -v vs -V).
 
 """

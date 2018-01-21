@@ -5,6 +5,8 @@ import keyword
 
 from collections import OrderedDict
 
+from boltons.dictutils import OrderedMultiDict as OMD
+
 
 class Command(object):
     def __init__(self, name, desc, func):
@@ -137,7 +139,7 @@ class Parser(object):
             argv = sys.argv
 
         cmd_path = []
-        flag_map = OrderedDict()
+        flag_map = OMD()
         pos_args = []
         for i, arg in enumerate(argv):
             if not arg:
@@ -147,19 +149,19 @@ class Parser(object):
                 subprs = self.subcmd_map[arg]
                 subcmd_args = subprs.parse(argv[i:])
                 cmd_path.extend(subcmd_args.cmd)
-                flag_map.update(subcmd_args.flags.items())
+                flag_map.update(subcmd_args.flags.items(multi=True))
                 pos_args.extend(subcmd_args.args)
                 break
             elif arg[0] == '-':
                 # check presence in flag map, strip dashes
-                flag_key = flag_to_attr_name(arg)
-                flag = self.flag_map.get(flag_key)
+                # if arg == '-V':
+                #    import pdb;pdb.set_trace()
+                flag = self.flag_map.get(_normalize_flag_name(arg))
                 if flag is None:
                     raise ValueError('unknown flag: %s' % arg)
-                # TODO: flags with args
+                flag_key = _normalize_flag_name(flag.name)
 
                 flag_conv = flag.parse_as
-                # TODO: flag.on_duplicate
                 if callable(flag_conv):
                     try:
                         arg_text = argv[i + 1]
@@ -170,11 +172,10 @@ class Parser(object):
                     except Exception:
                         raise ValueError('flag %s converter (%r) failed to parse argument: %r'
                                          % (arg, flag_conv, arg_text))
-                    flag_map[flag_key] = arg_val
+                    flag_map.add(flag_key, arg_val)
                 else:
                     # e.g., True is effectively store_true, False is effectively store_false
-                    flag_map[flag_key] = flag_conv
-
+                    flag_map.add(flag_key, flag_conv)
             elif False:  # TODO: flagfile
                 pass
             else:
@@ -187,6 +188,7 @@ class Parser(object):
         return args
 
 
+# TODO: default
 class Flag(object):
     def __init__(self, name, parse_as=True, required=False, alias=None, display_name=None, on_duplicate=None):
         # None = no arg
@@ -338,22 +340,13 @@ starts with a dash?
 
 x = 6
 
-"""help design
+""""Face: the CLI framework that's friendly to your end-user."
 
-If there are subcommands, do zfs-style subcommand syntax, only showing
-required flags and pos args (by display name).
+(Note: need to do some research re: non-unicode flags to see how much
+non-US CLI users care about em.)
 
-If at a leaf command, print full options listing for that path, with
-argparse-style help.
+Case-sensitive flags are bad for business *except for*
+single-character flags (single-dash flags like -v vs -V). TODO: decide
+on this. Currently short flags case is normalized.
 
-If at a non-leaf command, argparse-style options help at that level
-(and above) can go below the zfs-style subcommand summary.
-
-Square [brackets] for optional. Angle <brackets> for required.
-
-Boltons dependency can do basic pluralization/singularization for help
-displays.
-
-If a command has subcommands, then the automatic help should manifest
-as a subcommand. Otherwise, it should be a longform flag like --help.
 """

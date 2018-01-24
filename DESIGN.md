@@ -31,6 +31,28 @@ like lash after lash against my poor CLI-loving flesh.
 
 Big challenge: helpful error messages
 
+/* TODO --key=val style arguments? */
+
+## Functionality
+
+By design, face supports command structure composed of five parts:
+
+1. The command
+2. The subcommand path
+3. Flags
+4. Positional arguments
+5. Passthrough arguments
+
+cmd subcmd subsubcmd subsubsubcmd --flags -v --flag-with-arg arg posarg1 posarg2       -- passarg1 passarg2
+--- ----------------------------- ------------------------------ ----------------------   -----------------
+command | subcommand path        | flags                        | positional arguments | passthrough arguments
+
+Note that only leaf subcommands support positional arguments.
+
+"command" is just a display name, as no parsing is required for sys.argv[0]
+
+Collapsing abbreviated flags is not supported
+
 # Help Design
 
 If there are subcommands, do zfs-style subcommand syntax, only showing
@@ -48,7 +70,10 @@ Boltons dependency can do basic pluralization/singularization for help
 displays.
 
 If a command has subcommands, then the automatic help should manifest
-as a subcommand. Otherwise, it should be a longform flag like --help.
+as a subcommand. Otherwise, it should be a longform flag like
+--help. In a subcommand setting, the short "usage" message that pops
+up when an invalid command is issued should recommend typing "cmd
+help" for more options.
 
 ## zfs-style help
 

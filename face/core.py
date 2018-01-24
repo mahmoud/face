@@ -17,6 +17,11 @@ class Command(object):
 
 
 def _get_default_name(frame_level=1):
+    # TODO: is this a good idea? What if multiple parsers are created
+    # in the same function for the sake of subparsers. This should
+    # probably only be used from a classmethod or maybe a util
+    # function.  TODO: what happens if a python module file contains a
+    # non-ascii character?
     frame = sys._getframe(frame_level + 1)
     mod_name = frame.f_globals.get('__name__')
     if mod_name is None:
@@ -72,6 +77,32 @@ def flag_to_attr_name(flag):
     return flag_name
 
 
+def process_subcmd_name(name):
+    # validate and canonicalize flag name. Basically, subset of valid
+    # Python variable identifiers.
+    #
+    # Only letters, numbers, '-', and/or '_'. Only single/double
+    # leading dash allowed (-/--). No trailing dashes or
+    # underscores. Must not be a Python keyword.
+    if not name or not isinstance(name, str):
+        raise ValueError('expected non-zero length string for subcommand name, not: %r' % name)
+    # TODO: possible exception, bare '--' used to separate args, but
+    # this should be a builtin
+    if name.endswith('-') or name.endswith('_'):
+        raise ValueError('expected subcommand name without trailing dashes'
+                         ' or underscores, not: %r' % name)
+
+    name_match = _VALID_FLAG_RE.match(name)
+    if not name_match:
+        raise ValueError('valid subcommand name must begin with a letter, and'
+                         'consist only of letters, digits, underscores, and'
+                         ' dashes, not: %r' % name)
+
+    subcmd_name = _normalize_flag_name(name)
+
+    return subcmd_name
+
+
 def _normalize_flag_name(flag):
     ret = flag.lstrip('-')
     if (len(flag) - len(ret)) > 1:
@@ -79,6 +110,10 @@ def _normalize_flag_name(flag):
         ret = ret.lower()
     ret = ret.replace('-', '_')
     return ret
+
+
+def _arg_to_subcmd(arg):
+    return arg.lower().replace('-', '_')
 
 
 # TODO: CLISpec may be a better name for the top-level object
@@ -89,31 +124,70 @@ class Parser(object):
     def __init__(self, name=None, desc=None, pos_args=None):
         if name is None:
             name = _get_default_name()
+        if not name or name[0] in ('-', '_'):
+            # TODO: more complete validation
+            raise ValueError('expected name beginning with ASCII letter, not: %r' % (name,))
         self.name = name
         self.desc = desc
-
-        self.subcmd_map = OrderedDict()
-        self.flag_map = OrderedDict()
-        self.flagfile_flag = Flag('--flagfile', parse_as=str, on_duplicate='add')
         # for now, assume this will accept a string as well as None/bool,
         # for use as the display name
         self.pos_args = pos_args
+        # other conveniences that pos_args could maybe support to
+        # reduce repetitive validation and error raising: min/max length
+        self.flagfile_flag = Flag('--flagfile', parse_as=str, on_duplicate='add', required=False)
+
+        self.subcmd_map = OrderedDict()
+        self.path_flag_map = OrderedDict()
+        self.path_flag_map[()] = OrderedDict()
+        # TODO: should flagfile and help flags be hidden by default?
+
+        if self.flagfile_flag:
+            self.add(self.flagfile_flag)
+        return
+
+    def _add_subparser(self, subprs):
+        # TODO: need to sort all conflict checking to the top
+        if self.pos_args:
+            raise ValueError('commands accepting positional arguments'
+                             ' cannot take subcommands')
+        # Copy in subcommands, checking for conflicts the name
+        # comes from the parser, so if you want to add it as a
+        # different name, make a copy of the parser.
+
+        subprs_name = process_subcmd_name(subprs.name)
+        for prs_path in self.subcmd_map:
+            if prs_path[0] == subprs_name:
+                raise ValueError('conflicting subcommand name: %r' % subprs_name)
+
+        for subprs_path in subprs.subcmd_map:
+            new_path = (subprs_name,) + subprs_path
+            self.subcmd_map[new_path] = subprs
+
+        self.subcmd_map[(subprs_name,)] = subprs
+
+        # Flags inherit down (a parent's flags are usable by the child)
+        # TODO: assume normalized, but need to check for conflicts
+        parent_flag_map = self.path_flag_map[()]
+        check_no_conflicts = lambda parent_flag_map, subcmd_path, subcmd_flags: True
+        for path, flags in subprs.path_flag_map.items():
+            if not check_no_conflicts(parent_flag_map, path, flags):
+                # TODO
+                raise ValueError('subcommand flags conflict with parent command: %r' % flags)
+        for path, flags in subprs.path_flag_map.items():
+            new_flags = parent_flag_map.copy()
+            new_flags.update(flags)
+            self.path_flag_map[(subprs_name,) + path] = new_flags
+
+        # If two flags have the same name, as long as the "parse_as"
+        # is the same, things should be ok. Need to watch for
+        # overlapping aliases, too. This may allow subcommands to
+        # further document help strings. Should the same be allowed
+        # for defaults?
 
     def add(self, *a, **kw):
         if isinstance(a[0], Parser):
-            prs = a[0]
-            if self.pos_args:
-                raise ValueError('commands accepting positional arguments'
-                                 ' cannot take subcommands')
-            # Copy in subcommands, checking for conflicts the name
-            # comes from the parser, so if you want to add it as a
-            # different name, make a copy of the parser.
-
-            # TODO: need to normalize and check for subcommand conflict
-            self.subcmd_map[prs.name] = prs
-
-            # TODO: assume normalized, but need to check for conflicts
-            self.flag_map.update(prs.flag_map)
+            subprs = a[0]
+            self._add_subparser(subprs)
             return
 
         if isinstance(a[0], Flag):
@@ -127,52 +201,65 @@ class Parser(object):
 
         # first check there are no conflicts...
         flag_name = flag_to_attr_name(flag.name)
-        if flag_name in self.flag_map:
+        flag_map = self.path_flag_map[()]
+        if flag_name in flag_map:
             # TODO: need a better error message here, one that
             # properly exposes the existing flag (same goes for
             # aliases below)
             raise ValueError('duplicate definition for flag name: %r' % flag_name)
         for alias in flag.alias_list:
-            if flag_to_attr_name(alias) in self.flag_map:
+            if flag_to_attr_name(alias) in flag_map:
                 raise ValueError('conflicting alias for flag %r: %r' % (flag_name, alias))
 
         # ... then we add the flags
-        self.flag_map[flag_name] = flag
+        flag_map[flag_name] = flag
         for alias in flag.alias_list:
-            self.flag_map[flag_to_attr_name(alias)] = flag
+            flag_map[flag_to_attr_name(alias)] = flag
 
         return
 
     def parse(self, argv):
         if argv is None:
             argv = sys.argv
+        argv = list(argv)[1:]
 
         cmd_path = []
         flag_map = OMD()
         pos_args = []
         _consumed_val = False
+        i = 0
+
+        # first figure out the subcommand path
         for i, arg in enumerate(argv):
+            if not arg:
+                continue # TODO: how bad of an idea is it to ignore this?
+            if arg[0] == '-':
+                break  # subcmd parsing complete
+
+            arg = _arg_to_subcmd(arg)
+            cmd_path.append(arg)
+            if tuple(cmd_path) not in self.subcmd_map:
+                # TODO "unknown subcommand 'subcmd', choose from 'a',
+                # 'b', 'c'." (also, did you mean...)
+                raise ValueError('unknown subcommand: %r' % arg)
+
+            break
+
+        cmd_flag_map = self.path_flag_map[tuple(cmd_path)]
+
+        for i, arg in enumerate(argv, i):
             if _consumed_val:
                 _consumed_val = False
                 continue
             if not arg:
-                pass # is this possible?
-            elif arg in self.subcmd_map:
-                cmd_path.append(arg)
-                subprs = self.subcmd_map[arg]
-                subcmd_args = subprs.parse(argv[i:])
-                cmd_path.extend(subcmd_args.cmd)
-                print flag_map
-                print subcmd_args.flags.items()
-                flag_map.update_extend(subcmd_args.flags.items())
-                print flag_map
-                pos_args.extend(subcmd_args.args)
-                break
+                # TODO
+                raise ValueError('unexpected empty arg between [...] and [...]')
+
             elif arg[0] == '-':
                 # check presence in flag map, strip dashes
                 # if arg == '-V':
                 #    import pdb;pdb.set_trace()
-                flag = self.flag_map.get(_normalize_flag_name(arg))
+                flag = cmd_flag_map.get(_normalize_flag_name(arg))
                 if flag is None:
                     raise ValueError('unknown flag: %s' % arg)
                 flag_key = _normalize_flag_name(flag.name)
@@ -203,7 +290,7 @@ class Parser(object):
         # resolve dupes and then...
         ret_flag_map = OrderedDict()
         for flag_name in flag_map:
-            flag = self.flag_map[flag_name]
+            flag = cmd_flag_map[flag_name]
             arg_val_list = flag_map.getlist(flag_name)
             on_dup = flag.on_duplicate
             # TODO: move this logic into Flag.__init__
@@ -216,11 +303,11 @@ class Parser(object):
                 ret_flag_map[flag_name] = arg_val_list
             elif on_dup == 'override':  # TODO: 'overwrite'?
                 ret_flag_map[flag_name] = arg_val_list[-1]
-            # TODO: ignore aka pick first, as opposed to override's pick last
+            # TODO: 'ignore' aka pick first, as opposed to override's pick last
 
         # ... check requireds
         missing_flags = []
-        for flag_name, flag in self.flag_map.items():
+        for flag_name, flag in cmd_flag_map.items():
             if flag.required and flag_name not in ret_flag_map:
                 missing_flags.append(flag.name)
         if missing_flags:
@@ -229,6 +316,9 @@ class Parser(object):
 
         args = CommandArguments(cmd_path, ret_flag_map, pos_args)
         return args
+
+    def _parse_flag(self, flag):
+        pass
 
 
 # TODO: default
@@ -252,11 +342,21 @@ class Flag(object):
         # otherwise accept callable that takes argument + ArgResult
         self.on_duplicate = on_duplicate
 
+    # TODO: __eq__ and copy
+
+
 
 class ListParam(object):
     def __init__(self, arg_type=str, sep=',', trim=True):
         "basically a CSV as a parameter"
         # trim = trim each parameter in the list before calling arg_type
+
+
+class FileValueParam(object):
+    # Basically a file with a single value in it, like a pidfile
+    # or a password file mounted in. Read in and treated like it
+    # was on the argv.
+    pass
 
 
 class CommandArguments(object):
@@ -396,6 +496,15 @@ Case-sensitive flags are bad for business *except for*
 single-character flags (single-dash flags like -v vs -V).
 
 TODO: normalizing subcommands
+
+Should parse_as=List() with on_duplicate=extend give one long list or
+a list of lists?
+
+Parser is unable to determine which subcommands are valid leaf
+commands, i.e., which ones can be handled as the last subcommand. The
+Command dispatcher will have to raise an error if a specific
+intermediary subcommand doesn't have a handler to dispatch to.
+
 """
 
 x = 7

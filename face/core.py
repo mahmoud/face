@@ -9,6 +9,16 @@ from boltons.iterutils import split
 from boltons.dictutils import OrderedMultiDict as OMD
 
 
+class ArgumentError(SystemExit):
+    def __init__(self, message, code=3):
+        super(ArgumentError, self).__init__(code)
+        self.message = message
+
+    def __str__(self):
+        cn = self.__class__.__name__
+        return '%s: %s (exit code %s)' % (cn, self.message, self.code)
+
+
 class Command(object):
     def __init__(self, name, desc, func):
         name = name if name is not None else _get_default_name()

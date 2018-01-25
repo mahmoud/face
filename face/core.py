@@ -96,7 +96,7 @@ def process_subcmd_name(name):
     name_match = _VALID_FLAG_RE.match(name)
     if not name_match:
         raise ValueError('valid subcommand name must begin with a letter, and'
-                         'consist only of letters, digits, underscores, and'
+                         ' consist only of letters, digits, underscores, and'
                          ' dashes, not: %r' % name)
 
     subcmd_name = _normalize_flag_name(name)
@@ -149,17 +149,18 @@ class Parser(object):
     def _add_subparser(self, subprs):
         """Process subcommand name, check for subcommand conflicts, check for
         subcommand flag conflicts, then finally add subcommand.
+
+        To add a command under a different name, simply make a copy of
+        that parser or command with a different name.
         """
-        # TODO: need to sort all conflict checking to the top
         if self.pos_args:
             raise ValueError('commands accepting positional arguments'
                              ' cannot take subcommands')
-        # Copy in subcommands, checking for conflicts the name
-        # comes from the parser, so if you want to add it as a
-        # different name, make a copy of the parser.
 
+        # validate that the subparser's name can be used as a subcommand
         subprs_name = process_subcmd_name(subprs.name)
-        # check for conflicts
+
+        # then, check for conflicts with existing subcommands and flags
         for prs_path in self.subcmd_map:
             if prs_path[0] == subprs_name:
                 raise ValueError('conflicting subcommand name: %r' % subprs_name)
@@ -170,7 +171,7 @@ class Parser(object):
                 # TODO
                 raise ValueError('subcommand flags conflict with parent command: %r' % flags)
 
-        # add parser and all subparsers
+        # with checks complete, add parser and all subparsers
         self.subcmd_map[(subprs_name,)] = subprs
         for subprs_path in subprs.subcmd_map:
             new_path = (subprs_name,) + subprs_path
@@ -189,6 +190,12 @@ class Parser(object):
         # for defaults?
 
     def add(self, *a, **kw):
+        """Add a flag or subparser. Unless the first argument is a Parser or
+        Flag object, the arguments are the same as the Flag
+        constructor, and will be used to create a new Flag instance to
+        be added.
+
+        """
         if isinstance(a[0], Parser):
             subprs = a[0]
             self._add_subparser(subprs)
@@ -231,7 +238,7 @@ class Parser(object):
         cmd_name, argv = argv[0], list(argv)[1:]
 
         # next, split out the trailing args, if there are any
-        trailing_args = None  # TODO: default to empty list?
+        trailing_args = None  # TODO: default to empty list? Rename to post_pos_args?
         if '--' in argv:
             argv, trailing_args = split(argv, '--', 1)
 

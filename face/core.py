@@ -255,7 +255,7 @@ class Parser(object):
         if pos_args and not self.pos_args:
             raise ValueError('extra arguments passed: %r' % pos_args)
 
-        ret = CommandArguments(cmd_name, subcmds, flag_map, pos_args, trailing_args)
+        ret = CommandParseResult(cmd_name, subcmds, flag_map, pos_args, trailing_args)
         return ret
 
     def _parse_subcmds(self, args):
@@ -301,6 +301,8 @@ class Parser(object):
                 # TODO
                 raise ValueError('unexpected empty arg between [...] and [...]')
             elif arg[0] != '-' or arg == '--':
+                # pos_args or trailing_args beginning
+                idx -= 1
                 break
 
             flag = cmd_flag_map.get(_normalize_flag_name(arg))
@@ -317,6 +319,8 @@ class Parser(object):
                 try:
                     arg_val = flag_conv(arg_text)
                 except Exception:
+                    # TODO: check for the possibility this is a flag
+                    # and add a warning to the error message.
                     raise ValueError('flag %s converter (%r) failed to parse argument: %r'
                                      % (arg, flag_conv, arg_text))
                 ret.add(flag_key, arg_val)
@@ -401,12 +405,12 @@ class FileValueParam(object):
     pass
 
 
-class CommandArguments(object):
-    def __init__(self, cmd_name, cmd_path, flag_map, pos_args, trailing_args):
-        self.cmd_name = cmd_name
-        self.cmd = tuple(cmd_path)
+class CommandParseResult(object):
+    def __init__(self, name, subcmds, flag_map, pos_args, trailing_args):
+        self.name = name
+        self.cmd = tuple(subcmds)
         self.flags = dict(flag_map)
-        self.args = tuple(pos_args or ())
+        self.pos_args = tuple(pos_args or ())
         self.trailing_args = trailing_args
 
     def __getattr__(self, name):
@@ -419,6 +423,15 @@ class CommandArguments(object):
         Could return three things from parse(), but still have
         this issue when it comes to deciding what name to inject them
         as. probably need to make a reserved keyword.
+
+        Even if this result object doesn't have the __getattr__
+        behavior, whatever does should have a better behavior than
+        just KeyError or AttributeError. Perhaps a new error
+        inheriting from those which also has a nice systemexit
+        behavior re: missing arguments.
+
+        This behavior could be keyed off of a private Source attribute
+        which keeps track of whether the arguments were sys.argv, even.
 
         """
         return self.flags.get(_normalize_flag_name(name))
@@ -548,6 +561,8 @@ Parser is unable to determine which subcommands are valid leaf
 commands, i.e., which ones can be handled as the last subcommand. The
 Command dispatcher will have to raise an error if a specific
 intermediary subcommand doesn't have a handler to dispatch to.
+
+TODO: Duplicate arguments passed at the command line with the same value = ok?
 
 """
 

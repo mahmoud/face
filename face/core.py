@@ -194,7 +194,6 @@ class Parser(object):
         Flag object, the arguments are the same as the Flag
         constructor, and will be used to create a new Flag instance to
         be added.
-
         """
         if isinstance(a[0], Parser):
             subprs = a[0]
@@ -212,20 +211,21 @@ class Parser(object):
 
         # first check there are no conflicts...
         flag_name = flag_to_attr_name(flag.name)
-        flag_map = self.path_flag_map[()]
-        if flag_name in flag_map:
-            # TODO: need a better error message here, one that
-            # properly exposes the existing flag (same goes for
-            # aliases below)
-            raise ValueError('duplicate definition for flag name: %r' % flag_name)
-        for alias in flag.alias_list:
-            if flag_to_attr_name(alias) in flag_map:
-                raise ValueError('conflicting alias for flag %r: %r' % (flag_name, alias))
+        for subcmds, flag_map in self.path_flag_map.items():
+            if flag_name in flag_map:
+                # TODO: need a better error message here, one that
+                # properly exposes the existing flag (same goes for
+                # aliases below)
+                raise ValueError('duplicate definition for flag name: %r' % flag_name)
+            for alias in flag.alias_list:
+                if flag_to_attr_name(alias) in flag_map:
+                    raise ValueError('conflicting alias for flag %r: %r' % (flag_name, alias))
 
         # ... then we add the flags
-        flag_map[flag_name] = flag
-        for alias in flag.alias_list:
-            flag_map[flag_to_attr_name(alias)] = flag
+        for flag_map in self.path_flag_map.values():
+            flag_map[flag_name] = flag
+            for alias in flag.alias_list:
+                flag_map[flag_to_attr_name(alias)] = flag
 
         return
 
@@ -234,110 +234,133 @@ class Parser(object):
             argv = sys.argv
         if not argv:
             raise ValueError('expected non-empty sequence of arguments, not: %r' % (argv,))
+
         # first snip off the first argument, the command itself
-        cmd_name, argv = argv[0], list(argv)[1:]
+        cmd_name, args = argv[0], list(argv)[1:]
 
-        # next, split out the trailing args, if there are any
+        # then figure out the subcommand path
+        subcmds, args = self._parse_subcmds(args)
+
+        # then look up the subcommand's supported flags
+        cmd_flag_map = self.path_flag_map[tuple(subcmds)]
+
+        # parse and validate the supported flags
+        flag_map, pos_args = self._parse_flags(cmd_flag_map, args)
+
+        # separate out any trailing arguments from normal positional arguments
         trailing_args = None  # TODO: default to empty list? Rename to post_pos_args?
-        if '--' in argv:
-            argv, trailing_args = split(argv, '--', 1)
+        if '--' in pos_args:
+            pos_args, trailing_args = split(pos_args, '--', 1)
 
-        cmd_path = []
-        flag_map = OMD()
-        pos_args = []
-        _consumed_val = False
-        i = 0
+        if pos_args and not self.pos_args:
+            raise ValueError('extra arguments passed: %r' % pos_args)
 
-        # first figure out the subcommand path
-        for i, arg in enumerate(argv):
+        ret = CommandArguments(cmd_name, subcmds, flag_map, pos_args, trailing_args)
+        return ret
+
+    def _parse_subcmds(self, args):
+        """Expects arguments after the initial command (i.e., argv[1:])
+
+        Returns a tuple of (list_of_subcmds, remaining_args).
+
+        Raises on unknown subcommands."""
+        ret = []
+
+        for arg in args:
             if not arg:
                 continue # TODO: how bad of an idea is it to ignore this?
             if arg[0] == '-':
                 break  # subcmd parsing complete
 
             arg = _arg_to_subcmd(arg)
-            cmd_path.append(arg)
-            if tuple(cmd_path) not in self.subcmd_map:
+            ret.append(arg)
+            if tuple(ret) not in self.subcmd_map:
                 # TODO "unknown subcommand 'subcmd', choose from 'a',
                 # 'b', 'c'." (also, did you mean...)
                 raise ValueError('unknown subcommand: %r' % arg)
 
-            break
+        return ret, args[len(ret):]
 
-        cmd_flag_map = self.path_flag_map[tuple(cmd_path)]
+    def _parse_flags(self, cmd_flag_map, args):
+        """Expects arguments after the initial command and subcommands (i.e.,
+        the second item returned from _parse_subcmds)
 
-        for i, arg in enumerate(argv, i):
+        Returns a tuple of (list_of_subcmds, remaining_args).
+
+        Raises on unknown subcommands.
+        """
+        ret, idx = OMD(), 0
+
+        _consumed_val = False
+        for i, arg in enumerate(args):
+            idx += 1
             if _consumed_val:
                 _consumed_val = False
                 continue
             if not arg:
                 # TODO
                 raise ValueError('unexpected empty arg between [...] and [...]')
+            elif arg[0] != '-' or arg == '--':
+                break
 
-            elif arg[0] == '-':
-                # check presence in flag map, strip dashes
-                # if arg == '-V':
-                #    import pdb;pdb.set_trace()
-                flag = cmd_flag_map.get(_normalize_flag_name(arg))
-                if flag is None:
-                    raise ValueError('unknown flag: %s' % arg)
-                flag_key = _normalize_flag_name(flag.name)
+            flag = cmd_flag_map.get(_normalize_flag_name(arg))
+            if flag is None:
+                raise ValueError('unknown flag: %s' % arg)
+            flag_key = _normalize_flag_name(flag.name)
 
-                flag_conv = flag.parse_as
-                if callable(flag_conv):
-                    try:
-                        arg_text = argv[i + 1]
-                    except IndexError:
-                        raise ValueError('expected argument for flag %r' % arg)
-                    try:
-                        arg_val = flag_conv(arg_text)
-                    except Exception:
-                        raise ValueError('flag %s converter (%r) failed to parse argument: %r'
-                                         % (arg, flag_conv, arg_text))
-                    flag_map.add(flag_key, arg_val)
-                    _consumed_val = True
-                else:
-                    # e.g., True is effectively store_true, False is effectively store_false
-                    flag_map.add(flag_key, flag_conv)
-            elif False:  # TODO: flagfile
-                pass
+            flag_conv = flag.parse_as
+            if callable(flag_conv):
+                try:
+                    arg_text = args[i + 1]
+                except IndexError:
+                    raise ValueError('expected argument for flag %r' % arg)
+                try:
+                    arg_val = flag_conv(arg_text)
+                except Exception:
+                    raise ValueError('flag %s converter (%r) failed to parse argument: %r'
+                                     % (arg, flag_conv, arg_text))
+                ret.add(flag_key, arg_val)
+                _consumed_val = True
             else:
-                if self.pos_args:
-                    pos_args.extend(argv[i:])
-                    break
+                # e.g., True is effectively store_true, False is effectively store_false
+                ret.add(flag_key, flag_conv)
 
+        # take care of dupes and check required flags
+        ret = self._resolve_flags(cmd_flag_map, ret)
+        return ret, args[idx:]
+
+    def _resolve_flags(self, cmd_flag_map, parsed_flag_map):
         # resolve dupes and then...
-        ret_flag_map = OrderedDict()
-        for flag_name in flag_map:
-            flag = cmd_flag_map[flag_name]
-            arg_val_list = flag_map.getlist(flag_name)
+        ret = OrderedDict()
+        cfm, pfm = cmd_flag_map, parsed_flag_map
+
+        for flag_name in pfm:
+            flag = cfm[flag_name]
+            arg_val_list = pfm.getlist(flag_name)
             on_dup = flag.on_duplicate
             # TODO: move this logic into Flag.__init__
             if not on_dup or on_dup == 'error':
                 if len(arg_val_list) > 1:
                     raise ValueError('more than one value passed for flag %s: %r'
                                      % (flag.name, arg_val_list))
-                ret_flag_map[flag_name] = arg_val_list[0]
+                ret[flag_name] = arg_val_list[0]
             elif on_dup == 'extend':
-                ret_flag_map[flag_name] = arg_val_list
+                ret[flag_name] = arg_val_list
             elif on_dup == 'override':  # TODO: 'overwrite'?
-                ret_flag_map[flag_name] = arg_val_list[-1]
+                ret[flag_name] = arg_val_list[-1]
             # TODO: 'ignore' aka pick first, as opposed to override's pick last
 
         # ... check requireds
         missing_flags = []
-        for flag_name, flag in cmd_flag_map.items():
-            if flag.required and flag_name not in ret_flag_map:
+        for flag_name, flag in cfm.items():
+            if flag.required and flag_name not in ret:
                 missing_flags.append(flag.name)
         if missing_flags:
             raise ValueError('missing required arguments for flags: %s'
                              % ', '.join(missing_flags))
+        return ret
 
-        args = CommandArguments(cmd_name, cmd_path, ret_flag_map, pos_args, trailing_args)
-        return args
 
-    def _parse_flag(self, flag):
-        pass
 
 
 # TODO: default

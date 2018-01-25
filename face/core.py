@@ -8,10 +8,17 @@ from collections import OrderedDict
 from boltons.iterutils import split
 from boltons.dictutils import OrderedMultiDict as OMD
 
+# Potential exceptions: UnknownFlag, InvalidFlagValue, UnexpectedPosArgs...
 
-class ArgumentError(SystemExit):
+class FaceException(Exception):
+    pass
+
+
+# Not inheriting from SystemExit here; the exiting behavior will be
+# handled by the Command dispatcher
+class ArgumentParseError(FaceException):
     def __init__(self, message, code=3):
-        super(ArgumentError, self).__init__(code)
+        super(ArgumentParseError, self).__init__(code)
         self.message = message
 
     def __str__(self):

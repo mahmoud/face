@@ -147,6 +147,9 @@ class Parser(object):
         return
 
     def _add_subparser(self, subprs):
+        """Process subcommand name, check for subcommand conflicts, check for
+        subcommand flag conflicts, then finally add subcommand.
+        """
         # TODO: need to sort all conflict checking to the top
         if self.pos_args:
             raise ValueError('commands accepting positional arguments'
@@ -156,24 +159,24 @@ class Parser(object):
         # different name, make a copy of the parser.
 
         subprs_name = process_subcmd_name(subprs.name)
+        # check for conflicts
         for prs_path in self.subcmd_map:
             if prs_path[0] == subprs_name:
                 raise ValueError('conflicting subcommand name: %r' % subprs_name)
-
-        for subprs_path in subprs.subcmd_map:
-            new_path = (subprs_name,) + subprs_path
-            self.subcmd_map[new_path] = subprs
-
-        self.subcmd_map[(subprs_name,)] = subprs
-
-        # Flags inherit down (a parent's flags are usable by the child)
-        # TODO: assume normalized, but need to check for conflicts
         parent_flag_map = self.path_flag_map[()]
         check_no_conflicts = lambda parent_flag_map, subcmd_path, subcmd_flags: True
         for path, flags in subprs.path_flag_map.items():
             if not check_no_conflicts(parent_flag_map, path, flags):
                 # TODO
                 raise ValueError('subcommand flags conflict with parent command: %r' % flags)
+
+        # add parser and all subparsers
+        self.subcmd_map[(subprs_name,)] = subprs
+        for subprs_path in subprs.subcmd_map:
+            new_path = (subprs_name,) + subprs_path
+            self.subcmd_map[new_path] = subprs
+
+        # Flags inherit down (a parent's flags are usable by the child)
         for path, flags in subprs.path_flag_map.items():
             new_flags = parent_flag_map.copy()
             new_flags.update(flags)

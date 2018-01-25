@@ -5,6 +5,7 @@ import keyword
 
 from collections import OrderedDict
 
+from boltons.iterutils import split
 from boltons.dictutils import OrderedMultiDict as OMD
 
 
@@ -221,7 +222,15 @@ class Parser(object):
     def parse(self, argv):
         if argv is None:
             argv = sys.argv
-        argv = list(argv)[1:]
+        if not argv:
+            raise ValueError('expected non-empty sequence of arguments, not: %r' % (argv,))
+        # first snip off the first argument, the command itself
+        cmd_name, argv = argv[0], list(argv)[1:]
+
+        # next, split out the trailing args, if there are any
+        trailing_args = None  # TODO: default to empty list?
+        if '--' in argv:
+            argv, trailing_args = split(argv, '--', 1)
 
         cmd_path = []
         flag_map = OMD()
@@ -314,7 +323,7 @@ class Parser(object):
             raise ValueError('missing required arguments for flags: %s'
                              % ', '.join(missing_flags))
 
-        args = CommandArguments(cmd_path, ret_flag_map, pos_args)
+        args = CommandArguments(cmd_name, cmd_path, ret_flag_map, pos_args, trailing_args)
         return args
 
     def _parse_flag(self, flag):
@@ -360,10 +369,12 @@ class FileValueParam(object):
 
 
 class CommandArguments(object):
-    def __init__(self, cmd_path, flag_map, pos_args):
+    def __init__(self, cmd_name, cmd_path, flag_map, pos_args, trailing_args):
+        self.cmd_name = cmd_name
         self.cmd = tuple(cmd_path)
         self.flags = dict(flag_map)
         self.args = tuple(pos_args or ())
+        self.trailing_args = trailing_args
 
     def __getattr__(self, name):
         """TODO: how to provide easy access to flag values while also

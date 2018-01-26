@@ -41,17 +41,20 @@ class Command(object):
     def func(self):
         return self.path_func_map[()]
 
+    @property
+    def parser(self):
+        return self._parser
+
     def add(self, *a, **kw):
         subcmd = a[0]
         if not isinstance(subcmd, Command) and callable(subcmd):
             subcmd = Command(*a, **kw)  # attempt to construct a new subcmd
         if isinstance(subcmd, Command):
-            old_paths = self._parser.subcmd_map.keys()
-            self._parser.add(subcmd._parser)
-            new_paths = IndexedSet(self._parser.subcmd_map.keys()) - IndexedSet(old_paths)
-            # TODO: need to handle the case when there are multiple subcommands
-            for subcmd_path in new_paths:
-                self.path_func_map[subcmd_path] = subcmd.func
+            self._parser.add(subcmd.parser)
+            # map in new functions
+            for path in self._parser.subcmd_map:
+                if path not in self.path_func_map:
+                    self.path_func_map[path] = subcmd.path_func_map[path[1:]]
             return
 
         flag = a[0]

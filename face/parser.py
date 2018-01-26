@@ -17,38 +17,7 @@ class FaceException(Exception):
 # Not inheriting from SystemExit here; the exiting behavior will be
 # handled by the Command dispatcher
 class ArgumentParseError(FaceException):
-    def __init__(self, message, code=3):
-        super(ArgumentParseError, self).__init__(code)
-        self.message = message
-
-    def __str__(self):
-        cn = self.__class__.__name__
-        return '%s: %s (exit code %s)' % (cn, self.message, self.code)
-
-
-class Command(object):
-    def __init__(self, name, desc, func):
-        name = name if name is not None else _get_default_name()
-        self._parser = Parser(name, desc)
-        # TODO: properties for name/desc/other parser things
-        self.func = func
-
-
-def _get_default_name(frame_level=1):
-    # TODO: is this a good idea? What if multiple parsers are created
-    # in the same function for the sake of subparsers. This should
-    # probably only be used from a classmethod or maybe a util
-    # function.  TODO: what happens if a python module file contains a
-    # non-ascii character?
-    frame = sys._getframe(frame_level + 1)
-    mod_name = frame.f_globals.get('__name__')
-    if mod_name is None:
-        return 'COMMAND'
-    module = sys.modules[mod_name]
-    if mod_name == '__main__':
-        return module.__file__
-    # TODO: reverse lookup entrypoint?
-    return mod_name
+    pass
 
 
 # keep it just to subset of valid python identifiers for now
@@ -139,9 +108,7 @@ class Parser(object):
     """
     Parser parses, Command parses with Parser, then dispatches.
     """
-    def __init__(self, name=None, desc=None, pos_args=None):
-        if name is None:
-            name = _get_default_name()
+    def __init__(self, name, desc=None, pos_args=None):
         if not name or name[0] in ('-', '_'):
             # TODO: more complete validation
             raise ValueError('expected name beginning with ASCII letter, not: %r' % (name,))
@@ -589,5 +556,13 @@ x = 7
 
 * will need to disable and handle flagfiles separately if provenance
 is going to be retained?
+
+
+clastic-related thoughts:
+
+* middleware seems unavoidable for setting up logs and generic
+  teardowns/exit messages
+* Might need an error map that maps various errors to exit codes for
+  convenience. Neat idea, sort a list of classes by class hierarchy.
 
 """

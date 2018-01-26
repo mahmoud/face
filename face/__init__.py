@@ -1,2 +1,3 @@
 
-from .core import Command, Parser
+from parser import Parser
+from command import Command

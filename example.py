@@ -26,7 +26,7 @@ def main():
     cmd.add('--verbose', alias='-V')
     cmd.add('--loop-count', parse_as=int)
 
-    cmd.run()  # execute
+    return cmd.run()  # execute
 
 
 if __name__ == '__main__':

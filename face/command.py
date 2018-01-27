@@ -2,8 +2,6 @@
 import sys
 from collections import OrderedDict
 
-from boltons.setutils import IndexedSet
-
 from parser import Parser, Flag
 
 

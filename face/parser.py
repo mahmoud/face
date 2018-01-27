@@ -114,11 +114,8 @@ class Parser(object):
             raise ValueError('expected name beginning with ASCII letter, not: %r' % (name,))
         self.name = name
         self.desc = desc
-        # for now, assume this will accept a string as well as None/bool,
-        # for use as the display name
-        self.pos_args = pos_args
-        # other conveniences that pos_args could maybe support to
-        # reduce repetitive validation and error raising: min/max length
+        self.pos_args = pos_args  # see PosArgSpec below
+
         self.flagfile_flag = Flag('--flagfile', parse_as=str, on_duplicate='add', required=False)
 
         self.subcmd_map = OrderedDict()
@@ -364,6 +361,7 @@ class Flag(object):
         elif isinstance(alias, str):
             alias = [alias]
         self.alias_list = list(alias)
+        # TODO: if display_name=False treat flag as hidden (for --help / --flagfile)
         self.display_name = display_name or name
         self.parse_as = parse_as
         self.required = required
@@ -419,6 +417,18 @@ class CommandParseResult(object):
 
         """
         return self.flags.get(_normalize_flag_name(name))
+
+
+class PosArgSpec(object):
+    def __init__(self, parse_as=None, min_count=None, max_count=None, display_name='arg'):
+        self.parse_as = parse_as
+        self.min_count = min_count
+        self.max_count = max_count
+        self.display_name = display_name
+        # display_name='arg', min_count = 2, max_count = 3 ->
+        # arg1 arg2 [arg3]
+
+        # TODO: default?
 
 
 """# Problems with argparse

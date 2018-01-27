@@ -103,6 +103,34 @@ def _arg_to_subcmd(arg):
     return arg.lower().replace('-', '_')
 
 
+class PosArgSpec(object):
+    def __init__(self, parse_as=None, min_count=None, max_count=None,
+                 display_name='arg', display_full=None):
+        self.parse_as = parse_as
+        self.min_count = int(min_count) if min_count else 0
+        self.max_count = int(max_count) if max_count else 0
+        self.display_name = display_name
+        self.display_full = display_full
+
+        if self.max_count and self.min_count > self.max_count:
+            raise ValueError('expected min_count > max_count, not: %r > %r'
+                             % (self.min_count, self.max_count))
+        if self.min_count < 0:
+            raise ValueError('expected min_count >= 0, not: %r' % self.min_count)
+        if self.max_count < 0:
+            raise ValueError('expected min_count >= 0, not: %r' % self.max_count)
+
+        # display_name='arg', min_count = 2, max_count = 3 ->
+        # arg1 arg2 [arg3]
+
+        # TODO: default? type check that it's a sequence matching min/max reqs
+
+
+
+
+POS_ARGS_ENABLED = PosArgSpec()
+
+
 # TODO: CLISpec may be a better name for the top-level object
 class Parser(object):
     """
@@ -114,7 +142,12 @@ class Parser(object):
             raise ValueError('expected name beginning with ASCII letter, not: %r' % (name,))
         self.name = name
         self.desc = desc
-        self.pos_args = pos_args  # see PosArgSpec below
+        if pos_args is True:
+            pos_args = POS_ARGS_ENABLED
+        if pos_args and not isinstance(pos_args, PosArgSpec):
+            raise ValueError('expected pos_args as True, False,'
+                             ' or instance of PosArgSpec, not: %r' % pos_args)
+        self.pos_args = pos_args
 
         self.flagfile_flag = Flag('--flagfile', parse_as=str, on_duplicate='add', required=False)
 
@@ -221,6 +254,7 @@ class Parser(object):
 
         # then figure out the subcommand path
         subcmds, args = self._parse_subcmds(args)
+        prs = self.subcmd_map[tuple(subcmds)]
 
         # then look up the subcommand's supported flags
         cmd_flag_map = self.path_flag_map[tuple(subcmds)]
@@ -233,8 +267,10 @@ class Parser(object):
         if '--' in pos_args:
             pos_args, trailing_args = split(pos_args, '--', 1)
 
-        if pos_args and not self.pos_args:
-            raise ValueError('extra arguments passed: %r' % pos_args)
+        if pos_args:
+            if not prs.pos_args:
+                raise ValueError('extra arguments passed: %r' % pos_args)
+            pos_args = [prs.pos_args.parse_as(pa) for pa in pos_args]
 
         ret = CommandParseResult(cmd_name, subcmds, flag_map, pos_args, trailing_args)
         return ret
@@ -256,6 +292,9 @@ class Parser(object):
             arg = _arg_to_subcmd(arg)
             ret.append(arg)
             if tuple(ret) not in self.subcmd_map:
+                if self.subcmd_map[tuple(ret)[:-1]].pos_args:
+                    ret = ret[:-1]
+                    break
                 # TODO "unknown subcommand 'subcmd', choose from 'a',
                 # 'b', 'c'." (also, did you mean...)
                 raise ValueError('unknown subcommand: %r' % arg)
@@ -417,18 +456,6 @@ class CommandParseResult(object):
 
         """
         return self.flags.get(_normalize_flag_name(name))
-
-
-class PosArgSpec(object):
-    def __init__(self, parse_as=None, min_count=None, max_count=None, display_name='arg'):
-        self.parse_as = parse_as
-        self.min_count = min_count
-        self.max_count = max_count
-        self.display_name = display_name
-        # display_name='arg', min_count = 2, max_count = 3 ->
-        # arg1 arg2 [arg3]
-
-        # TODO: default?
 
 
 """# Problems with argparse

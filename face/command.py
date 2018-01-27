@@ -23,9 +23,9 @@ def _get_default_name(frame_level=1):
 
 
 class Command(object):
-    def __init__(self, func, name, desc):
+    def __init__(self, func, name, desc, pos_args=False):
         name = name if name is not None else _get_default_name()
-        self._parser = Parser(name, desc)
+        self._parser = Parser(name, desc, pos_args=pos_args)
         # TODO: properties for name/desc/other parser things
 
         self.path_func_map = OrderedDict()
@@ -63,6 +63,7 @@ class Command(object):
         return
 
     def run(self, argv=None):
+        # TODO: turn parse exceptions into nice error messages
         prs_res = self._parser.parse(argv=argv)
         func = self.path_func_map[prs_res.cmd]
         return func(prs_res)
@@ -91,5 +92,12 @@ would be useful. I think it's better to build up from the leaves than
 to allow mutability that could trigger rechecks and failures across
 the whole subcommand tree. Better instead to make copies of
 subparsers/subcommands/flags and treat them as internal state.
+
+
+TODO:
+
+In addition to the existing function-as-first-arg interface, Command
+should take a list of add()-ables as the first argument. This allows
+easy composition from subcommands and common flags.
 
 """

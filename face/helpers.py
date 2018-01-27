@@ -5,7 +5,8 @@ class AutoHelpBuilder(object):
         'subcmd_section_heading': 'Subcommands: ',
         'flags_section_heading': 'Flags: ',
         'section_break': '\n\n',
-        'group_break': '\n'
+        'group_break': '\n',
+        'subcmd_example': 'subcommand',
     }
 
     def __init__(self, cmd, ctx=None):
@@ -31,18 +32,62 @@ class AutoHelpBuilder(object):
         if subcmd_example:
             append(subcmd_example)
 
+        pos_args_example = self.get_usage_pos_arg_example()
+        if pos_args_example:
+            append(pos_args_example)
+
         return ' '.join(parts)
 
-    def get_usage_subcmd_example(self):
-        subcmds_count = max([len(subcmd_path) for subcmd_path in self.cmd.path_func_map])
+    def _get_subcmd_depth(self):
+        return max([len(subcmd_path) for subcmd_path in self.cmd.path_func_map])
 
-        if not subcmds_count:
+    def get_usage_subcmd_example(self):
+        if not self._get_subcmd_depth():
             return ''
 
         if self.cmd.func:
             return '[' + self.ctx['subcmd_example'] + ']'
 
-        return '<' + self.ctx['subcmd_example'] + '>'
+        return self.ctx['subcmd_example']
+        # try without angle brackets at first, see if it's
+        # sufficiently indicative of "required" return '<' +
+        # self.ctx['subcmd_example'] + '>'
+
+    def get_usage_pos_arg_example(self):
+        pos_args = self.cmd.parser.pos_args
+        if not pos_args:
+            return ''
+
+        if pos_args.display_full:
+            return pos_args.display_full
+        if not pos_args.display_name:
+            return ''  # a way of hiding that the command accepts pos args
+
+        display_name = pos_args.display_name
+        min_count, max_count = pos_args.min_count, pos_args.max_count
+
+        if not min_count and not max_count:
+            return '[' + display_name + ' ...]'
+
+        # generate arg names
+        parts, i = [], 0
+        for i in range(min_count):
+            parts.append('%s%s' % (display_name, i + 1))
+        if len(parts) > 4:
+            parts = parts[:2] + ['...'] + parts[-1:]
+        if i < max_count:
+            max_parts = []
+            if (max_count - i) <= 2:
+                max_parts.extend(['%s%s' % (display_name, x + 1)
+                                  for x in range(i, max_count)])
+            else:
+                max_parts.append('...')
+                max_parts.append('%s%s' (display_name, max_count))
+            max_part = '[%s]' % ''.join(max_parts)
+            parts.append(max_part)
+
+        return ' '.join(parts)
+        # replace everything from the second to the last with a single '...'
 
 
 
@@ -64,6 +109,7 @@ Flag help notes:
 * Also need to indicate required and mutual exclusion ("not with")
 * Maybe experimental / deprecated support
 * Need to respect display_name=False
+* General flag listing should also include flags up the chain
 
 Subcommand listing styles:
 
@@ -89,5 +135,13 @@ insertion order.
 
 Subcommands without handlers should not be displayed in help. Also,
 their implicit handler prints the help.
+
+Subcommand groups could be Commands with name='', and they can only be
+added to other commands, where they would embed as siblings instead of
+as subcommands. Similar to how clastic subapplications can be mounted
+without necessarily adding to the path.
+
+Is it better to delegate representations out or keep them all within
+the help builder?
 
 """

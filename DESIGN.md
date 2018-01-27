@@ -369,3 +369,41 @@ Options:
                                      'adb push {} /sdcard/Music/ && rm {}'
     --convert-subs FORMAT            Convert the subtitles to other format (currently supported: srt|ass|vtt|lrc)
 ```
+
+
+## PocketProtector v0.1 help
+
+modified argparse
+
+```
+$ pprotect --help
+usage: pprotect [COMMANDS]
+
+Commands:
+  add-domain            add a new domain to the protected
+  add-key-custodian     add a new key custodian to the protected
+  add-owner             add a key custodian as owner of a domain
+  add-secret            add a secret to a specified domain
+  decrypt-domain        decrypt and display JSON-formatted cleartext for a
+                        domain
+  init                  create a new pocket-protected file
+  list-all-secrets      display all secrets, with a list of domains the key is
+                        present in
+  list-audit-log        display a chronological list of audit log entries
+                        representing file activity
+  list-domain-secrets   display a list of secrets under a specific domain
+  list-domains          display a list of available domains
+  list-user-secrets     similar to list-all-secrets, but filtered by a given
+                        user
+  rm-domain             remove a domain from the protected
+  rm-owner              remove an owner's privileges on a specified domain
+  rm-secret             remove a secret from a specified domain
+  rotate-domain-keys    rotate the internal keys for a particular domain (must
+                        be owner)
+  set-key-custodian-passphrase
+                        change a key custodian passphrase
+  update-secret         update an existing secret in a specified domain
+
+Options:
+  -h, --help            show this help message and exit
+```

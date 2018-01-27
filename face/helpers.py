@@ -1,7 +1,7 @@
 
 class AutoHelpBuilder(object):
     default_context = {
-        'usage_label': 'Usage: ',
+        'usage_label': 'Usage:',
         'subcmd_section_heading': 'Subcommands: ',
         'flags_section_heading': 'Flags: ',
         'section_break': '\n\n',
@@ -81,8 +81,8 @@ class AutoHelpBuilder(object):
                 max_parts.extend(['%s%s' % (display_name, x + 1)
                                   for x in range(i, max_count)])
             else:
-                max_parts.append('...')
-                max_parts.append('%s%s' (display_name, max_count))
+                max_parts.append('... ')
+                max_parts.append('%s%s' % (display_name, max_count))
             max_part = '[%s]' % ''.join(max_parts)
             parts.append(max_part)
 

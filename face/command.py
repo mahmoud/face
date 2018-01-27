@@ -68,3 +68,30 @@ class Command(object):
         prs_res = self._parser.parse(argv=argv)
         func = self.path_func_map[prs_res.cmd]
         return func(prs_res)
+
+
+"""Middleware thoughts:
+
+* Clastic-like, but single function
+* Mark with a @middleware(provides=()) decorator for provides
+
+* Keywords (ParseResult members) end with _ (e.g., flags_), leaving
+  injection namespace wide open for flags. With clastic, argument
+  names are primarily internal, like a path parameter's name is not
+  exposed to the user. With face, the flag names are part of the
+  exposed API, and we don't want to reserve keywords or have
+  excessively long prefixes.
+
+* add() supports @middleware decorated middleware
+
+* add_middleware() exists for non-decorated middleware functions, and
+  just conveniently calls middleware decorator for you (decorator only
+  necessary for provides)
+
+Also Kurt says an easy way to access the subcommands to tweak them
+would be useful. I think it's better to build up from the leaves than
+to allow mutability that could trigger rechecks and failures across
+the whole subcommand tree. Better instead to make copies of
+subparsers/subcommands/flags and treat them as internal state.
+
+"""

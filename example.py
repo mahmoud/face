@@ -35,7 +35,7 @@ def main():
     sum_subcmd.add('--num', int, on_duplicate='extend')
     cmd.add(sum_subcmd)
 
-    pas = PosArgSpec(parse_as=int, min_count=5, max_count=7, display_name='num')
+    pas = PosArgSpec(parse_as=int, max_count=2, display_name='num')
     subt_subcmd = Command(subtract_func, 'subtract', '', pos_args=pas)
     cmd.add(subt_subcmd)
 

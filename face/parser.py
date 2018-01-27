@@ -401,7 +401,7 @@ class Flag(object):
             alias = [alias]
         self.alias_list = list(alias)
         # TODO: if display_name=False treat flag as hidden (for --help / --flagfile)
-        self.display_name = display_name or name
+        self._display_name = display_name
         self.parse_as = parse_as
         self.required = required
         # duplicates raise error by default
@@ -411,6 +411,16 @@ class Flag(object):
 
     # TODO: __eq__ and copy
 
+    @property
+    def display_name(self):
+        orig_dn = self._display_name
+        if orig_dn is False:
+            return ''
+        if orig_dn:
+            return orig_dn
+        if len(self.name) == 1:
+            return '-' + self.name
+        return '--' + self.name.replace('_', '-')
 
 
 class ListParam(object):

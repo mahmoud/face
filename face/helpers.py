@@ -28,13 +28,53 @@ class AutoHelpBuilder(object):
 
         append(cmd.name)
 
+        if len(cmd.path_func_map) > 1:
+            append('subcommand')
+
+        flags = cmd.parser.path_flag_map[()]
+        shown_flags = [f for f in flags.values() if f.display_name is not False]
+        required_flags = [f for f in shown_flags if f.required]  # TODO: really allow required flags that are hidden?
+        optional_flags = [f for f in shown_flags if not f.required]
+
+        for rf in required_flags:
+            append(rf.display_name)
+            if callable(rf.parse_as):
+                append('VALUE')
+
+        if optional_flags:
+            append('[FLAGS]')
+
+        if cmd.parser.pos_args:
+            if cmd.parser.pos_args.display_full:
+                append(cmd.parser.pos_args.display_full)
+            elif cmd.parser.pos_args.min_count:
+                append('args ...')
+            else:
+                append('[args ...]')
+
+        return ' '.join(parts)
+
+
+class SimpleUsageLineBuilder(object):
+    def __init__(self, cmd, ctx):
+        self.cmd = cmd
+        self.ctx = ctx
+
+
+class FullUsageLineBuilder(object):
+    def __init__(self, cmd, ctx):
+        self.cmd = cmd
+        self.ctx = ctx
+
+    def get_usage_line(self):
+        parts = []
         subcmd_example = self.get_usage_subcmd_example()
         if subcmd_example:
-            append(subcmd_example)
+            parts.append(subcmd_example)
 
         pos_args_example = self.get_usage_pos_arg_example()
         if pos_args_example:
-            append(pos_args_example)
+            parts.append(pos_args_example)
 
         return ' '.join(parts)
 
@@ -81,15 +121,12 @@ class AutoHelpBuilder(object):
                 max_parts.extend(['%s%s' % (display_name, x + 1)
                                   for x in range(i, max_count)])
             else:
-                max_parts.append('... ')
+                max_parts.append('...')
                 max_parts.append('%s%s' % (display_name, max_count))
-            max_part = '[%s]' % ''.join(max_parts)
+            max_part = '[%s]' % ' '.join(max_parts)
             parts.append(max_part)
 
         return ' '.join(parts)
-        # replace everything from the second to the last with a single '...'
-
-
 
 
 

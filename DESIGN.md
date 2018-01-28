@@ -407,3 +407,17 @@ Commands:
 Options:
   -h, --help            show this help message and exit
 ```
+
+# git error messages
+
+```
+$ git lol
+git: 'lol' is not a git command. See 'git --help'.
+
+Did you mean this?
+    log
+```
+
+Pretty nice, draws attention to itself by being bigger, recommends
+help. The "did you mean" should include the command itself, i.e., "git
+log" instead of just "log" for easy copy and pastability.

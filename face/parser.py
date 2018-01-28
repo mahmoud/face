@@ -9,8 +9,6 @@ from boltons.iterutils import split, unique
 from boltons.typeutils import make_sentinel
 from boltons.dictutils import OrderedMultiDict as OMD
 
-# TODO: need to support '-' pos arg for stdin
-
 _UNSET = make_sentinel('_UNSET')
 # Potential exceptions: UnknownFlag, InvalidFlagValue, UnexpectedPosArgs...
 
@@ -172,7 +170,7 @@ def _arg_to_subcmd(arg):
 class PosArgSpec(object):
     def __init__(self, parse_as=None, min_count=None, max_count=None,
                  display_name='arg', display_full=None):
-        self.parse_as = parse_as
+        self.parse_as = parse_as or str
         self.min_count = int(min_count) if min_count else 0
         self.max_count = int(max_count) if max_count else 0
         self.display_name = display_name
@@ -387,8 +385,9 @@ class Parser(object):
             if not arg:
                 # TODO
                 raise ArgumentParseError('unexpected empty arg between [...] and [...]')
-            elif arg[0] != '-' or arg == '--':
-                # pos_args or trailing_args beginning
+            elif arg[0] != '-' or arg == '-' or arg == '--':
+                # pos_args or trailing_args beginning ('-' is a
+                # conventional pos arg for stdin)
                 idx -= 1
                 break
 

@@ -29,6 +29,13 @@ def subtract_func(args):
     print 'complete'
 
 
+def print_args(args):
+    if args.verbose:
+        print 'starting in verbose mode'
+    print args.flags, args.pos_args, args.trailing_args
+    print 'complete'
+
+
 def main():
     cmd = Command(busy_loop, 'cmd', '')
     sum_subcmd = Command(sum_func, 'sum', '')
@@ -38,6 +45,8 @@ def main():
     pas = PosArgSpec(parse_as=int, max_count=2, display_name='num')
     subt_subcmd = Command(subtract_func, 'subtract', '', pos_args=pas)
     cmd.add(subt_subcmd)
+
+    cmd.add(print_args, 'print', '', pos_args=True)
 
     cmd.add('--verbose', alias='-V', default=False)
     cmd.add('--loop-count', parse_as=int)

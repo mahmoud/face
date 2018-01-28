@@ -149,7 +149,7 @@ class Parser(object):
                              ' or instance of PosArgSpec, not: %r' % pos_args)
         self.pos_args = pos_args
 
-        self.flagfile_flag = Flag('--flagfile', parse_as=str, on_duplicate='add', required=False)
+        self.flagfile_flag = Flag('--flagfile', parse_as=str, on_duplicate='extend', required=False)
 
         self.subcmd_map = OrderedDict()
         self.path_flag_map = OrderedDict()
@@ -254,7 +254,7 @@ class Parser(object):
 
         # then figure out the subcommand path
         subcmds, args = self._parse_subcmds(args)
-        prs = self.subcmd_map[tuple(subcmds)]
+        prs = self.subcmd_map[tuple(subcmds)] if subcmds else self
 
         # then look up the subcommand's supported flags
         cmd_flag_map = self.path_flag_map[tuple(subcmds)]
@@ -361,18 +361,7 @@ class Parser(object):
         for flag_name in pfm:
             flag = cfm[flag_name]
             arg_val_list = pfm.getlist(flag_name)
-            on_dup = flag.on_duplicate
-            # TODO: move this logic into Flag.__init__
-            if not on_dup or on_dup == 'error':
-                if len(arg_val_list) > 1:
-                    raise ValueError('more than one value passed for flag %s: %r'
-                                     % (flag.name, arg_val_list))
-                ret[flag_name] = arg_val_list[0]
-            elif on_dup == 'extend':
-                ret[flag_name] = arg_val_list
-            elif on_dup == 'override':  # TODO: 'overwrite'?
-                ret[flag_name] = arg_val_list[-1]
-            # TODO: 'ignore' aka pick first, as opposed to override's pick last
+            ret[flag_name] = flag.on_duplicate(flag, arg_val_list)
 
         # ... check requireds
         missing_flags = []
@@ -385,11 +374,30 @@ class Parser(object):
         return ret
 
 
+def _on_dup_error(flag, arg_val_list):
+    if len(arg_val_list) > 1:
+        raise ValueError('more than one value passed for flag %s: %r'
+                         % (flag.name, arg_val_list))
+    return arg_val_list[0]
+
+
+def _on_dup_extend(flag, arg_val_list):
+    return arg_val_list
+
+
+def _on_dup_override(flag, arg_val_list):
+    return arg_val_list[-1]
+
+# TODO: _on_dup_ignore?
+
+_ON_DUP_SHORTCUTS = {'error': _on_dup_error,
+                     'extend': _on_dup_extend,
+                     'override': _on_dup_override}
 
 
 # TODO: default
 class Flag(object):
-    def __init__(self, name, parse_as=True, required=False, alias=None, display_name=None, on_duplicate=None):
+    def __init__(self, name, parse_as=True, required=False, alias=None, display_name=None, on_duplicate='error'):
         # None = no arg
         # 'int' = int, 'float' = float, 'str' = str
         # List(int, sep=',', trim=True)  # see below
@@ -403,10 +411,14 @@ class Flag(object):
         self._display_name = display_name
         self.parse_as = parse_as
         self.required = required
-        # duplicates raise error by default
-        # also have convenience param values: 'error'/'add'/'replace'
-        # otherwise accept callable that takes argument + ArgResult
-        self.on_duplicate = on_duplicate
+
+        if callable(on_duplicate):
+            self.on_duplicate = on_duplicate
+        elif on_duplicate in _ON_DUP_SHORTCUTS:
+            self.on_duplicate = _ON_DUP_SHORTCUTS[on_duplicate]
+        else:
+            raise ValueError('on_duplicate expected callable or one of %r, not: %r'
+                             % (list(_ON_DUP_SHORTCUTS.keys()), on_duplicate))
 
     # TODO: __eq__ and copy
 

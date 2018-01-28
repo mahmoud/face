@@ -400,7 +400,6 @@ class Flag(object):
         elif isinstance(alias, str):
             alias = [alias]
         self.alias_list = list(alias)
-        # TODO: if display_name=False treat flag as hidden (for --help / --flagfile)
         self._display_name = display_name
         self.parse_as = parse_as
         self.required = required

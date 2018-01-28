@@ -152,7 +152,7 @@ class Parser(object):
 
         self.flagfile_flag = Flag('--flagfile', parse_as=str, on_duplicate='extend', required=False)
 
-        self.subcmd_map = OrderedDict()
+        self.subprs_map = OrderedDict()
         self.path_flag_map = OrderedDict()
         self.path_flag_map[()] = OrderedDict()
         # TODO: should flagfile and help flags be hidden by default?
@@ -176,7 +176,7 @@ class Parser(object):
         subprs_name = process_subcmd_name(subprs.name)
 
         # then, check for conflicts with existing subcommands and flags
-        for prs_path in self.subcmd_map:
+        for prs_path in self.subprs_map:
             if prs_path[0] == subprs_name:
                 raise ValueError('conflicting subcommand name: %r' % subprs_name)
         parent_flag_map = self.path_flag_map[()]
@@ -187,10 +187,10 @@ class Parser(object):
                 raise ValueError('subcommand flags conflict with parent command: %r' % flags)
 
         # with checks complete, add parser and all subparsers
-        self.subcmd_map[(subprs_name,)] = subprs
-        for subprs_path in subprs.subcmd_map:
+        self.subprs_map[(subprs_name,)] = subprs
+        for subprs_path in subprs.subprs_map:
             new_path = (subprs_name,) + subprs_path
-            self.subcmd_map[new_path] = subprs
+            self.subprs_map[new_path] = subprs
 
         # Flags inherit down (a parent's flags are usable by the child)
         for path, flags in subprs.path_flag_map.items():
@@ -255,7 +255,7 @@ class Parser(object):
 
         # then figure out the subcommand path
         subcmds, args = self._parse_subcmds(args)
-        prs = self.subcmd_map[tuple(subcmds)] if subcmds else self
+        prs = self.subprs_map[tuple(subcmds)] if subcmds else self
 
         # then look up the subcommand's supported flags
         cmd_flag_map = self.path_flag_map[tuple(subcmds)]
@@ -292,8 +292,8 @@ class Parser(object):
 
             arg = _arg_to_subcmd(arg)
             ret.append(arg)
-            if tuple(ret) not in self.subcmd_map:
-                if self.subcmd_map[tuple(ret)[:-1]].pos_args:
+            if tuple(ret) not in self.subprs_map:
+                if self.subprs_map[tuple(ret)[:-1]].pos_args:
                     ret = ret[:-1]
                     break
                 # TODO "unknown subcommand 'subcmd', choose from 'a',

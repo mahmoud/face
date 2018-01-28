@@ -50,7 +50,7 @@ class Command(object):
         if isinstance(subcmd, Command):
             self._parser.add(subcmd.parser)
             # map in new functions
-            for path in self._parser.subcmd_map:
+            for path in self._parser.subprs_map:
                 if path not in self.path_func_map:
                     self.path_func_map[path] = subcmd.path_func_map[path[1:]]
             return

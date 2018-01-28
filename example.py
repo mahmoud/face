@@ -39,7 +39,7 @@ def main():
     subt_subcmd = Command(subtract_func, 'subtract', '', pos_args=pas)
     cmd.add(subt_subcmd)
 
-    cmd.add('--verbose', alias='-V')
+    cmd.add('--verbose', alias='-V', default=False)
     cmd.add('--loop-count', parse_as=int)
 
     ahb = AutoHelpBuilder(subt_subcmd)

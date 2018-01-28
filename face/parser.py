@@ -6,8 +6,10 @@ import keyword
 from collections import OrderedDict
 
 from boltons.iterutils import split
+from boltons.typeutils import make_sentinel
 from boltons.dictutils import OrderedMultiDict as OMD
 
+_UNSET = make_sentinel('_UNSET')
 # Potential exceptions: UnknownFlag, InvalidFlagValue, UnexpectedPosArgs...
 
 class FaceException(Exception):
@@ -131,7 +133,6 @@ class PosArgSpec(object):
 POS_ARGS_ENABLED = PosArgSpec()
 
 
-# TODO: CLISpec may be a better name for the top-level object
 class Parser(object):
     """
     Parser parses, Command parses with Parser, then dispatches.
@@ -363,7 +364,7 @@ class Parser(object):
             arg_val_list = pfm.getlist(flag_name)
             ret[flag_name] = flag.on_duplicate(flag, arg_val_list)
 
-        # ... check requireds
+        # ... check requireds and then ...
         missing_flags = []
         for flag_name, flag in cfm.items():
             if flag.required and flag_name not in ret:
@@ -371,6 +372,11 @@ class Parser(object):
         if missing_flags:
             raise ValueError('missing required arguments for flags: %s'
                              % ', '.join(missing_flags))
+
+        # ... finally check defaults.
+        for flag_name, flag in cfm.items():
+            if flag.default is not _UNSET and flag_name not in ret:
+                ret[flag_name] = flag.default
         return ret
 
 
@@ -397,20 +403,17 @@ _ON_DUP_SHORTCUTS = {'error': _on_dup_error,
 
 # TODO: default
 class Flag(object):
-    def __init__(self, name, parse_as=True, required=False, alias=None, display_name=None, on_duplicate='error'):
-        # None = no arg
-        # 'int' = int, 'float' = float, 'str' = str
-        # List(int, sep=',', trim=True)  # see below
-        # other = single callable
+    def __init__(self, name, parse_as=True, required=False, default=_UNSET, alias=None, display_name=None, on_duplicate='error'):
         self.name = name
+        self.parse_as = parse_as
+        self.required = required
+        self.default = default
         if not alias:
             alias = []
         elif isinstance(alias, str):
             alias = [alias]
         self.alias_list = list(alias)
         self._display_name = display_name
-        self.parse_as = parse_as
-        self.required = required
 
         if callable(on_duplicate):
             self.on_duplicate = on_duplicate

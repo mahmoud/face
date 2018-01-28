@@ -10,7 +10,6 @@ from boltons.typeutils import make_sentinel
 from boltons.dictutils import OrderedMultiDict as OMD
 
 _UNSET = make_sentinel('_UNSET')
-# Potential exceptions: UnknownFlag, InvalidFlagValue, UnexpectedPosArgs...
 
 class FaceException(Exception):
     pass
@@ -462,9 +461,10 @@ _ON_DUP_SHORTCUTS = {'error': _on_dup_error,
                      'override': _on_dup_override}
 
 
-# TODO: default
+
 class Flag(object):
-    def __init__(self, name, parse_as=True, required=False, default=_UNSET, alias=None, display_name=None, on_duplicate='error'):
+    def __init__(self, name, parse_as=True, required=False, default=_UNSET,
+                 alias=None, display_name=None, on_duplicate='error'):
         self.name = name
         self.parse_as = parse_as
         self.required = required

@@ -135,7 +135,8 @@ def process_subcmd_name(name):
     #
     # Only letters, numbers, '-', and/or '_'. Only single/double
     # leading dash allowed (-/--). No trailing dashes or
-    # underscores. Must not be a Python keyword.
+    # underscores. Python keywords are allowed, as subcommands are
+    # never used in injection.
     if not name or not isinstance(name, str):
         raise ValueError('expected non-zero length string for subcommand name, not: %r' % name)
 

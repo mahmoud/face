@@ -6,6 +6,9 @@ from face.helpers import AutoHelpBuilder
 
 
 def busy_loop(args):
+    """
+    does a bit of busy work. No sweat.
+    """
     if args.verbose:
         print 'starting in verbose mode'
     for i in range(args.flags.get('loop_count', 3)):
@@ -37,8 +40,9 @@ def print_args(args):
 
 
 def main():
-    cmd = Command(busy_loop, 'cmd', '')
-    sum_subcmd = Command(sum_func, 'sum', '')
+    cmd = Command(busy_loop, 'cmd')
+    print cmd.parser.desc
+    sum_subcmd = Command(sum_func, 'sum')
     sum_subcmd.add('--num', int, on_duplicate='extend')
     cmd.add(sum_subcmd)
 

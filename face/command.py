@@ -2,6 +2,7 @@
 import sys
 from collections import OrderedDict
 
+from utils import unwrap_text
 from parser import Parser, Flag, ArgumentParseError, FaceException
 
 
@@ -26,9 +27,28 @@ def _get_default_name(frame_level=1):
     return mod_name
 
 
+def _docstring_to_desc(func):
+    doc = func.__doc__
+    if not doc:
+        return ''
+
+    unwrapped = unwrap_text(doc)
+    try:
+        first_graf = [g for g in unwrapped.splitlines() if g][0]
+    except IndexError:
+        return ''
+
+    ret = first_graf[:first_graf.find('.')][:80]
+    return ret
+
+
 class Command(object):
-    def __init__(self, func, name, desc, pos_args=False):
+    def __init__(self, func, name=None, desc=None, pos_args=False):
         name = name if name is not None else _get_default_name()
+
+        if desc is None:
+            desc = _docstring_to_desc(func)
+
         self._parser = Parser(name, desc, pos_args=pos_args)
         # TODO: properties for name/desc/other parser things
 

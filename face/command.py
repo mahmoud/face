@@ -2,7 +2,7 @@
 import sys
 from collections import OrderedDict
 
-from parser import Parser, Flag
+from parser import Parser, Flag, ArgumentParseError
 
 
 def _get_default_name(frame_level=1):
@@ -64,7 +64,11 @@ class Command(object):
 
     def run(self, argv=None):
         # TODO: turn parse exceptions into nice error messages
-        prs_res = self._parser.parse(argv=argv)
+        try:
+            prs_res = self._parser.parse(argv=argv)
+        except ArgumentParseError as ape:
+            raise
+
         func = self.path_func_map[prs_res.cmd]
         return func(prs_res)
 

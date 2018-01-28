@@ -5,9 +5,11 @@ import keyword
 
 from collections import OrderedDict
 
-from boltons.iterutils import split
+from boltons.iterutils import split, unique
 from boltons.typeutils import make_sentinel
 from boltons.dictutils import OrderedMultiDict as OMD
+
+# TODO: need to support '-' pos arg for stdin
 
 _UNSET = make_sentinel('_UNSET')
 # Potential exceptions: UnknownFlag, InvalidFlagValue, UnexpectedPosArgs...
@@ -20,6 +22,70 @@ class FaceException(Exception):
 # handled by the Command dispatcher
 class ArgumentParseError(FaceException):
     pass
+
+
+class UnexpectedArgs(ArgumentParseError):
+    pass
+
+
+class InvalidSubcommand(ArgumentParseError):
+    @classmethod
+    def from_parse(cls, prs, subcmd_name):
+        # TODO: add edit distance calculation
+        valid_subcmds = unique([path[:1][0] for path in prs.subprs_map.keys()])
+        msg = ('unknown subcommand "%s", choose from: %s'
+               % (subcmd_name, ', '.join(valid_subcmds)))
+        return cls(msg)
+
+
+class UnknownFlag(ArgumentParseError):
+    @classmethod
+    def from_parse(cls, cmd_flag_map, flag_name):
+        # TODO: add edit distance calculation
+        valid_flags = [flag.display_name for flag in
+                       cmd_flag_map.values() if flag.display_name]
+        msg = ('unknown flag "%s", choose from: %s'
+               % (flag_name, ', '.join(valid_flags)))
+        return cls(msg)
+
+
+FRIENDLY_TYPE_NAMES = {int: 'integer',
+                       float: 'decimal'}
+
+
+class InvalidFlagArgument(ArgumentParseError):
+    @classmethod
+    def from_parse(cls, cmd_flag_map, flag, arg):
+        if arg is None:
+            return cls('expected argument for flag %s' % flag.name)
+
+        val_parser = flag.parse_as
+        vp_label = getattr(val_parser, 'display_name', FRIENDLY_TYPE_NAMES.get(val_parser))
+        if vp_label is None:
+            tmpl = 'flag %s converter (%r) failed to parse value: %r'
+        else:
+            tmpl = 'flag %s expected a valid %s value, not %r'
+        msg = tmpl % (flag.name, vp_label, arg)
+
+        if arg.startswith('-'):
+            msg += '. Did you forget to pass an argument?'
+
+        return cls(msg)
+
+
+class MissingRequiredFlags(ArgumentParseError):
+    @classmethod
+    def from_parse(cls, cmd_flag_map, parsed_flag_map, missing_flag_names):
+        msg = ('missing required arguments for flags: %s'
+               % ', '.join(missing_flag_names))
+        return cls(msg)
+
+
+class DuplicateFlagValue(ArgumentParseError):
+    @classmethod
+    def from_parse(cls, flag, arg_val_list):
+        return cls('more than one value passed for flag %s: %r'
+                   % (flag.name, arg_val_list))
 
 
 # keep it just to subset of valid python identifiers for now
@@ -36,8 +102,7 @@ def flag_to_attr_name(flag):
     # underscores. Must not be a Python keyword.
     if not flag or not isinstance(flag, str):
         raise ValueError('expected non-zero length string for flag, not: %r' % flag)
-    # TODO: possible exception, bare '--' used to separate args, but
-    # this should be a builtin
+
     if flag.endswith('-') or flag.endswith('_'):
         raise ValueError('expected flag without trailing dashes'
                          ' or underscores, not: %r' % flag)
@@ -75,8 +140,7 @@ def process_subcmd_name(name):
     # underscores. Must not be a Python keyword.
     if not name or not isinstance(name, str):
         raise ValueError('expected non-zero length string for subcommand name, not: %r' % name)
-    # TODO: possible exception, bare '--' used to separate args, but
-    # this should be a builtin
+
     if name.endswith('-') or name.endswith('_'):
         raise ValueError('expected subcommand name without trailing dashes'
                          ' or underscores, not: %r' % name)
@@ -128,8 +192,6 @@ class PosArgSpec(object):
         # TODO: default? type check that it's a sequence matching min/max reqs
 
 
-
-
 POS_ARGS_ENABLED = PosArgSpec()
 
 
@@ -151,11 +213,11 @@ class Parser(object):
         self.pos_args = pos_args
 
         self.flagfile_flag = Flag('--flagfile', parse_as=str, on_duplicate='extend', required=False)
+        # TODO: should flagfile and help flags be hidden by default?
 
         self.subprs_map = OrderedDict()
         self.path_flag_map = OrderedDict()
         self.path_flag_map[()] = OrderedDict()
-        # TODO: should flagfile and help flags be hidden by default?
 
         if self.flagfile_flag:
             self.add(self.flagfile_flag)
@@ -180,6 +242,7 @@ class Parser(object):
             if prs_path[0] == subprs_name:
                 raise ValueError('conflicting subcommand name: %r' % subprs_name)
         parent_flag_map = self.path_flag_map[()]
+
         check_no_conflicts = lambda parent_flag_map, subcmd_path, subcmd_flags: True
         for path, flags in subprs.path_flag_map.items():
             if not check_no_conflicts(parent_flag_map, path, flags):
@@ -248,7 +311,7 @@ class Parser(object):
         if argv is None:
             argv = sys.argv
         if not argv:
-            raise ValueError('expected non-empty sequence of arguments, not: %r' % (argv,))
+            raise ArgumentParseError('expected non-empty sequence of arguments, not: %r' % (argv,))
 
         # first snip off the first argument, the command itself
         cmd_name, args = argv[0], list(argv)[1:]
@@ -270,7 +333,7 @@ class Parser(object):
 
         if pos_args:
             if not prs.pos_args:
-                raise ValueError('extra arguments passed: %r' % pos_args)
+                raise UnexpectedArgs('extra arguments passed: %r' % pos_args)
             pos_args = [prs.pos_args.parse_as(pa) for pa in pos_args]
 
         ret = CommandParseResult(cmd_name, subcmds, flag_map, pos_args, trailing_args)
@@ -291,14 +354,12 @@ class Parser(object):
                 break  # subcmd parsing complete
 
             arg = _arg_to_subcmd(arg)
-            ret.append(arg)
-            if tuple(ret) not in self.subprs_map:
-                if self.subprs_map[tuple(ret)[:-1]].pos_args:
-                    ret = ret[:-1]
+            if tuple(ret + [arg]) not in self.subprs_map:
+                prs = self.subprs_map[tuple(ret)] if ret else self
+                if prs.pos_args:
                     break
-                # TODO "unknown subcommand 'subcmd', choose from 'a',
-                # 'b', 'c'." (also, did you mean...)
-                raise ValueError('unknown subcommand: %r' % arg)
+                raise InvalidSubcommand.from_parse(prs, arg)
+            ret.append(arg)
 
         return ret, args[len(ret):]
 
@@ -320,7 +381,7 @@ class Parser(object):
                 continue
             if not arg:
                 # TODO
-                raise ValueError('unexpected empty arg between [...] and [...]')
+                raise ArgumentParseError('unexpected empty arg between [...] and [...]')
             elif arg[0] != '-' or arg == '--':
                 # pos_args or trailing_args beginning
                 idx -= 1
@@ -328,27 +389,24 @@ class Parser(object):
 
             flag = cmd_flag_map.get(_normalize_flag_name(arg))
             if flag is None:
-                raise ValueError('unknown flag: %s' % arg)
+                raise UnknownFlag.from_parse(cmd_flag_map, arg)
             flag_key = _normalize_flag_name(flag.name)
 
             flag_conv = flag.parse_as
-            if callable(flag_conv):
-                try:
-                    arg_text = args[i + 1]
-                except IndexError:
-                    raise ValueError('expected argument for flag %r' % arg)
-                try:
-                    arg_val = flag_conv(arg_text)
-                except Exception:
-                    # TODO: check for the possibility this is a flag
-                    # and add a warning to the error message.
-                    raise ValueError('flag %s converter (%r) failed to parse argument: %r'
-                                     % (arg, flag_conv, arg_text))
-                ret.add(flag_key, arg_val)
-                _consumed_val = True
-            else:
+            if not callable(flag_conv):
                 # e.g., True is effectively store_true, False is effectively store_false
                 ret.add(flag_key, flag_conv)
+                continue
+            try:
+                arg_text = args[i + 1]
+            except IndexError:
+                raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg=None)
+            try:
+                arg_val = flag_conv(arg_text)
+            except Exception:
+                raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg)
+            ret.add(flag_key, arg_val)
+            _consumed_val = True
 
         # take care of dupes and check required flags
         ret = self._resolve_flags(cmd_flag_map, ret)
@@ -370,8 +428,7 @@ class Parser(object):
             if flag.required and flag_name not in ret:
                 missing_flags.append(flag.name)
         if missing_flags:
-            raise ValueError('missing required arguments for flags: %s'
-                             % ', '.join(missing_flags))
+            raise MissingRequiredFlags(cfm, pfm, missing_flags)
 
         # ... finally check defaults.
         for flag_name, flag in cfm.items():
@@ -382,8 +439,7 @@ class Parser(object):
 
 def _on_dup_error(flag, arg_val_list):
     if len(arg_val_list) > 1:
-        raise ValueError('more than one value passed for flag %s: %r'
-                         % (flag.name, arg_val_list))
+        raise DuplicateFlagValue.from_parse(flag, arg_val_list)
     return arg_val_list[0]
 
 
@@ -434,7 +490,7 @@ class Flag(object):
             return orig_dn
         if len(self.name) == 1:
             return '-' + self.name
-        return '--' + self.name.replace('_', '-')
+        return self.name.replace('_', '-')
 
 
 class ListParam(object):
@@ -625,5 +681,29 @@ clastic-related thoughts:
   teardowns/exit messages
 * Might need an error map that maps various errors to exit codes for
   convenience. Neat idea, sort a list of classes by class hierarchy.
+
+"""
+
+x = 8
+
+"""There are certain parse errors, such as the omission of a value
+that takes a string argument which can semi-silently pass. For instance:
+
+copy --dest --verbose /a/b/c
+
+In this terrible CLI, --verbose could be absorbed as --dest's value
+and now there's a file called --verbose on the filesystem. Here are a
+few ideas to improve the situation:
+
+1. Raise an exception for all flags' string arguments which start with
+   a "-". Create a separate syntax for passing these args such as
+   --flag=--dashedarg.
+2. Similar to the above, but only raise exceptions on known
+   flags. This creates a bit of a moving API, as a new flag could cause
+   old values to fail.
+3. Let particularly bad APIs like the above fail, but keep closer
+   track of state to help identify missing arguments earlier in the line.
+
+
 
 """

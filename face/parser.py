@@ -60,6 +60,7 @@ class InvalidFlagArgument(ArgumentParseError):
         val_parser = flag.parse_as
         vp_label = getattr(val_parser, 'display_name', FRIENDLY_TYPE_NAMES.get(val_parser))
         if vp_label is None:
+            vp_label = repr(val_parser)
             tmpl = 'flag %s converter (%r) failed to parse value: %r'
         else:
             tmpl = 'flag %s expected a valid %s value, not %r'

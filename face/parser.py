@@ -435,9 +435,9 @@ class Parser(object):
             raise MissingRequiredFlags(cfm, pfm, missing_flags)
 
         # ... finally check defaults.
-        for flag_name, flag in cfm.items():
-            if flag.default is not _UNSET and flag_name not in ret:
-                ret[flag_name] = flag.default
+        for flag in unique(cfm.values()):
+            if flag.default is not _UNSET and flag.name not in ret:
+                ret[flag.name] = flag.default
         return ret
 
 

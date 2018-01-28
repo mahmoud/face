@@ -2,7 +2,11 @@
 import sys
 from collections import OrderedDict
 
-from parser import Parser, Flag, ArgumentParseError
+from parser import Parser, Flag, ArgumentParseError, FaceException
+
+
+class CommandLineError(FaceException, SystemExit):
+    pass
 
 
 def _get_default_name(frame_level=1):
@@ -67,7 +71,13 @@ class Command(object):
         try:
             prs_res = self._parser.parse(argv=argv)
         except ArgumentParseError as ape:
-            raise
+            msg = 'error: ' + self.name
+            if getattr(ape, 'subcmds', None):
+                msg += ' ' + ' '.join(ape.subcmds or ())
+            msg += ': ' + ape.message
+            cle = CommandLineError(msg)
+            print msg
+            raise cle
 
         func = self.path_func_map[prs_res.cmd]
         return func(prs_res)

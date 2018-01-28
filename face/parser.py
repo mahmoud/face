@@ -42,8 +42,8 @@ class UnknownFlag(ArgumentParseError):
     @classmethod
     def from_parse(cls, cmd_flag_map, flag_name):
         # TODO: add edit distance calculation
-        valid_flags = [flag.display_name for flag in
-                       cmd_flag_map.values() if flag.display_name]
+        valid_flags = unique([flag.display_name for flag in
+                              cmd_flag_map.values() if flag.display_name])
         msg = ('unknown flag "%s", choose from: %s'
                % (flag_name, ', '.join(valid_flags)))
         return cls(msg)
@@ -68,7 +68,7 @@ class InvalidFlagArgument(ArgumentParseError):
         msg = tmpl % (flag.name, vp_label, arg)
 
         if arg.startswith('-'):
-            msg += '. Did you forget to pass an argument?'
+            msg += '. (Did you forget to pass an argument?)'
 
         return cls(msg)
 
@@ -320,21 +320,26 @@ class Parser(object):
         subcmds, args = self._parse_subcmds(args)
         prs = self.subprs_map[tuple(subcmds)] if subcmds else self
 
-        # then look up the subcommand's supported flags
-        cmd_flag_map = self.path_flag_map[tuple(subcmds)]
+        try:
+            # then look up the subcommand's supported flags
+            cmd_flag_map = self.path_flag_map[tuple(subcmds)]
 
-        # parse and validate the supported flags
-        flag_map, pos_args = self._parse_flags(cmd_flag_map, args)
+            # parse and validate the supported flags
+            flag_map, pos_args = self._parse_flags(cmd_flag_map, args)
 
-        # separate out any trailing arguments from normal positional arguments
-        trailing_args = None  # TODO: default to empty list? Rename to post_pos_args?
-        if '--' in pos_args:
-            pos_args, trailing_args = split(pos_args, '--', 1)
+            # separate out any trailing arguments from normal positional arguments
+            trailing_args = None  # TODO: default to empty list? Rename to post_pos_args?
+            if '--' in pos_args:
+                pos_args, trailing_args = split(pos_args, '--', 1)
 
-        if pos_args:
-            if not prs.pos_args:
-                raise UnexpectedArgs('extra arguments passed: %r' % pos_args)
-            pos_args = [prs.pos_args.parse_as(pa) for pa in pos_args]
+            if pos_args:
+                if not prs.pos_args:
+                    raise UnexpectedArgs('extra arguments passed: %r' % pos_args)
+                pos_args = [prs.pos_args.parse_as(pa) for pa in pos_args]
+        except ArgumentParseError as ape:
+            ape.parser = prs
+            ape.subcmds = subcmds
+            raise
 
         ret = CommandParseResult(cmd_name, subcmds, flag_map, pos_args, trailing_args)
         return ret

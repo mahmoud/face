@@ -4,13 +4,7 @@ from collections import OrderedDict
 
 from utils import unwrap_text
 from parser import Parser, Flag, ArgumentParseError, FaceException
-from middleware import make_middleware_chain, check_middleware, face_middleware, inject
-
-
-# TODO: might need to make pos_args_ nicer
-_BUILTIN_PROVIDES = ['next_', 'args_', 'cmd_', 'subcmds_',
-                     'flag_map_', 'pos_args_', 'trailing_args_',
-                     'command_', 'parser_']
+from middleware import make_middleware_chain, check_middleware, face_middleware, inject, _BUILTIN_PROVIDES
 
 
 class CommandLineError(FaceException, SystemExit):
@@ -110,11 +104,19 @@ class Command(object):
         if not getattr(mw, 'is_face_middleware', None):
             mw = face_middleware(mw)
         check_middleware(mw)
+        _res = []
+        # make sure all wrapping succeeds before making changes to the
+        # local object
         for path, func in self.path_func_map.items():
             cur_mws = self.path_mw_map[path]
             new_mws = [mw] + cur_mws
             wrapped = make_middleware_chain(new_mws, func, _BUILTIN_PROVIDES)
+            _res.append((path, new_mws, wrapped))
+
+        for path, new_mws, wrapped in _res:
+            self.path_mw_map[path] = new_mws
             self._path_wrapped_map[path] = wrapped
+
         return
 
     def run(self, argv=None):
@@ -127,7 +129,7 @@ class Command(object):
                 msg += ' ' + ' '.join(ape.subcmds or ())
             msg += ': ' + ape.message
             cle = CommandLineError(msg)
-            print msg
+            print msg  # stderr
             raise cle
 
         func = self.path_func_map[prs_res.cmd]

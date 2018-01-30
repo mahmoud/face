@@ -25,8 +25,8 @@ def getargspec(f):
     ret = inspect.getargspec(f)
 
     if not all([isinstance(a, basestring) for a in ret.args]):
-        raise TypeError('does not support anonymous tuple arguments '
-                        'or any other strange args for that matter.')
+        raise TypeError('does not support anonymous tuple arguments'
+                        ' or any other strange args for that matter.')
     if isinstance(f, types.MethodType):
         ret = ret._replace(args=ret.args[1:])  # throw away "self"
     return ret

@@ -5,6 +5,7 @@ from face.parser import PosArgSpec
 from face.helpers import AutoHelpBuilder
 
 
+@face_middleware
 def my_first_mw(next_):
     print 'hi'
     ret = next_()

@@ -1,46 +1,53 @@
 
 import sys
-from face import Parser, Command
+from face import Parser, Command, face_middleware
 from face.parser import PosArgSpec
 from face.helpers import AutoHelpBuilder
 
 
-def busy_loop(args):
+def my_first_mw(next_):
+    print 'hi'
+    ret = next_()
+    print 'bye'
+    return ret
+
+
+def busy_loop(args_):
     """
     does a bit of busy work. No sweat.
     """
-    if args.verbose:
+    if args_.verbose:
         print 'starting in verbose mode'
-    for i in range(args.flags.get('loop_count', 3)):
+    for i in range(args_.flags.get('loop_count', 3)):
         print 'work', i + 1
     print 'complete'
 
 
-def sum_func(args):
-    if args.verbose:
+def sum_func(args_):
+    if args_.verbose:
         print 'starting in verbose mode'
-    print sum(args.num)
+    print sum(args_.num)
     print 'complete'
 
 
-def subtract_func(args):
-    if args.verbose:
+def subtract_func(args_):
+    if args_.verbose:
         print 'starting in verbose mode'
-    pos_args = args.pos_args
-    summable = [pos_args[0]] + [-a for a in pos_args[1:]]
+    pos_args_ = args_.pos_args
+    summable = [pos_args_[0]] + [-a for a in pos_args_[1:]]
     print sum(summable)
     print 'complete'
 
 
-def print_args(args):
-    if args.verbose:
+def print_args(args_):
+    if args_.verbose:
         print 'starting in verbose mode'
-    print args.flags, args.pos_args, args.trailing_args
+    print args_.flags, args_.pos_args, args_.trailing_args
     print 'complete'
 
 
 def main():
-    cmd = Command(busy_loop, 'cmd')
+    cmd = Command(busy_loop, 'cmd', middlewares=[my_first_mw])
     print cmd.parser.desc
     sum_subcmd = Command(sum_func, 'sum')
     sum_subcmd.add('--num', int, on_duplicate='extend')

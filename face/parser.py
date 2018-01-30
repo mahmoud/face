@@ -168,6 +168,62 @@ def _arg_to_subcmd(arg):
     return arg.lower().replace('-', '_')
 
 
+def _on_dup_error(flag, arg_val_list):
+    if len(arg_val_list) > 1:
+        raise DuplicateFlagValue.from_parse(flag, arg_val_list)
+    return arg_val_list[0]
+
+
+def _on_dup_extend(flag, arg_val_list):
+    return arg_val_list
+
+
+def _on_dup_override(flag, arg_val_list):
+    return arg_val_list[-1]
+
+# TODO: _on_dup_ignore?
+
+_ON_DUP_SHORTCUTS = {'error': _on_dup_error,
+                     'extend': _on_dup_extend,
+                     'override': _on_dup_override}
+
+
+class Flag(object):
+    def __init__(self, name, parse_as=True, required=False, default=_UNSET,
+                 alias=None, display_name=None, on_duplicate='error'):
+        self.name = name
+        self.parse_as = parse_as
+        self.required = required
+        self.default = default
+        if not alias:
+            alias = []
+        elif isinstance(alias, str):
+            alias = [alias]
+        self.alias_list = list(alias)
+        self._display_name = display_name
+
+        if callable(on_duplicate):
+            self.on_duplicate = on_duplicate
+        elif on_duplicate in _ON_DUP_SHORTCUTS:
+            self.on_duplicate = _ON_DUP_SHORTCUTS[on_duplicate]
+        else:
+            raise ValueError('on_duplicate expected callable or one of %r, not: %r'
+                             % (list(_ON_DUP_SHORTCUTS.keys()), on_duplicate))
+
+    # TODO: __eq__ and copy
+
+    @property
+    def display_name(self):
+        orig_dn = self._display_name
+        if orig_dn is False:
+            return ''
+        if orig_dn:
+            return orig_dn
+        if len(self.name) == 1:
+            return '-' + self.name
+        return self.name.replace('_', '-')
+
+
 class PosArgSpec(object):
     def __init__(self, parse_as=None, min_count=None, max_count=None,
                  display_name='arg', display_full=None):
@@ -192,7 +248,7 @@ class PosArgSpec(object):
 
 
 POS_ARGS_ENABLED = PosArgSpec()
-
+FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, on_duplicate='extend', required=False, display_name='')
 
 class Parser(object):
     """
@@ -211,7 +267,7 @@ class Parser(object):
                              ' or instance of PosArgSpec, not: %r' % pos_args)
         self.pos_args = pos_args
 
-        self.flagfile_flag = Flag('--flagfile', parse_as=str, on_duplicate='extend', required=False)
+        self.flagfile_flag = FLAG_FILE_ENABLED
         # TODO: should flagfile and help flags be hidden by default?
 
         self.subprs_map = OrderedDict()
@@ -441,62 +497,6 @@ class Parser(object):
                 ret[flag.name] = flag.default
         return ret
 
-
-def _on_dup_error(flag, arg_val_list):
-    if len(arg_val_list) > 1:
-        raise DuplicateFlagValue.from_parse(flag, arg_val_list)
-    return arg_val_list[0]
-
-
-def _on_dup_extend(flag, arg_val_list):
-    return arg_val_list
-
-
-def _on_dup_override(flag, arg_val_list):
-    return arg_val_list[-1]
-
-# TODO: _on_dup_ignore?
-
-_ON_DUP_SHORTCUTS = {'error': _on_dup_error,
-                     'extend': _on_dup_extend,
-                     'override': _on_dup_override}
-
-
-
-class Flag(object):
-    def __init__(self, name, parse_as=True, required=False, default=_UNSET,
-                 alias=None, display_name=None, on_duplicate='error'):
-        self.name = name
-        self.parse_as = parse_as
-        self.required = required
-        self.default = default
-        if not alias:
-            alias = []
-        elif isinstance(alias, str):
-            alias = [alias]
-        self.alias_list = list(alias)
-        self._display_name = display_name
-
-        if callable(on_duplicate):
-            self.on_duplicate = on_duplicate
-        elif on_duplicate in _ON_DUP_SHORTCUTS:
-            self.on_duplicate = _ON_DUP_SHORTCUTS[on_duplicate]
-        else:
-            raise ValueError('on_duplicate expected callable or one of %r, not: %r'
-                             % (list(_ON_DUP_SHORTCUTS.keys()), on_duplicate))
-
-    # TODO: __eq__ and copy
-
-    @property
-    def display_name(self):
-        orig_dn = self._display_name
-        if orig_dn is False:
-            return ''
-        if orig_dn:
-            return orig_dn
-        if len(self.name) == 1:
-            return '-' + self.name
-        return self.name.replace('_', '-')
 
 
 class ListParam(object):

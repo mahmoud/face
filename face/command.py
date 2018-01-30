@@ -4,6 +4,13 @@ from collections import OrderedDict
 
 from utils import unwrap_text
 from parser import Parser, Flag, ArgumentParseError, FaceException
+from middleware import make_middleware_chain, check_middleware, face_middleware, inject
+
+
+# TODO: might need to make pos_args_ nicer
+_BUILTIN_PROVIDES = ['next_', 'args_', 'cmd_', 'subcmds_',
+                     'flag_map_', 'pos_args_', 'trailing_args_',
+                     'command_', 'parser_']
 
 
 class CommandLineError(FaceException, SystemExit):
@@ -43,7 +50,7 @@ def _docstring_to_desc(func):
 
 
 class Command(object):
-    def __init__(self, func, name=None, desc=None, pos_args=False):
+    def __init__(self, func, name=None, desc=None, pos_args=False, middlewares=None):
         name = name if name is not None else _get_default_name()
 
         if desc is None:
@@ -54,6 +61,15 @@ class Command(object):
 
         self.path_func_map = OrderedDict()
         self.path_func_map[()] = func
+
+        middlewares = list(middlewares or [])
+        self.path_mw_map = OrderedDict()
+        self.path_mw_map[()] = []
+        self._path_wrapped_map = OrderedDict()
+        self._path_wrapped_map[()] = func
+        for mw in middlewares:
+            self.add_middleware(mw)
+        return
 
     @property
     def name(self):
@@ -72,18 +88,33 @@ class Command(object):
         if not isinstance(subcmd, Command) and callable(subcmd):
             subcmd = Command(*a, **kw)  # attempt to construct a new subcmd
         if isinstance(subcmd, Command):
-            self._parser.add(subcmd.parser)
-            # map in new functions
-            for path in self._parser.subprs_map:
-                if path not in self.path_func_map:
-                    self.path_func_map[path] = subcmd.path_func_map[path[1:]]
-            return
-
+            self.add_command(subcmd)
+            return subcmd
         flag = a[0]
         if not isinstance(flag, Flag):
             flag = Flag(*a, **kw)  # attempt to construct a Flag from arguments
         self._parser.add(flag)
 
+        return flag
+
+    def add_command(self, subcmd):
+        self._parser.add(subcmd.parser)
+        # map in new functions
+        for path in self._parser.subprs_map:
+            if path not in self.path_func_map:
+                self.path_func_map[path] = subcmd.path_func_map[path[1:]]
+                self.path_mw_map[path] = subcmd.path_mw_map[path[1:]]
+        return
+
+    def add_middleware(self, mw):
+        if not getattr(mw, 'is_face_middleware', None):
+            mw = face_middleware(mw)
+        check_middleware(mw)
+        for path, func in self.path_func_map.items():
+            cur_mws = self.path_mw_map[path]
+            new_mws = [mw] + cur_mws
+            wrapped = make_middleware_chain(new_mws, func, _BUILTIN_PROVIDES)
+            self._path_wrapped_map[path] = wrapped
         return
 
     def run(self, argv=None):
@@ -100,7 +131,8 @@ class Command(object):
             raise cle
 
         func = self.path_func_map[prs_res.cmd]
-        return func(prs_res)
+        wrapped = self._path_wrapped_map.get(prs_res.cmd, func)
+        return wrapped(prs_res)
 
 
 """Middleware thoughts:
@@ -134,4 +166,19 @@ In addition to the existing function-as-first-arg interface, Command
 should take a list of add()-ables as the first argument. This allows
 easy composition from subcommands and common flags.
 
+# What goes in a bound command?
+
+* name
+* description
+* handler func
+* list of middlewares
+* parser (currently contains the following)
+    * flag map
+    * PosArgSpecs for pos_args, trailing_args
+    * flagfile flag
+    * help flag (or help subcommand)
+
+TODO: allow user to configure the message for CommandLineErrors
+TODO: should Command take resources?
+TODO: should version_ be a built-in/injectable?
 """

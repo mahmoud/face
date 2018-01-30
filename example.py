@@ -5,10 +5,10 @@ from face.parser import PosArgSpec
 from face.helpers import AutoHelpBuilder
 
 
-@face_middleware
+@face_middleware(provides=['lol'])
 def my_first_mw(next_):
     print 'hi'
-    ret = next_()
+    ret = next_(lol='lol')
     print 'bye'
     return ret
 

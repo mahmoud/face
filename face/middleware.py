@@ -3,21 +3,43 @@ import itertools
 from sinter import make_chain, get_arg_names, getargspec, inject, get_func_name
 
 
-INNER_NAME='next_'
+INNER_NAME = 'next_'
 # TODO: might need to make pos_args_ nicer
 _BUILTIN_PROVIDES = ['next_', 'args_', 'cmd_', 'subcmds_',
                      'flag_map_', 'pos_args_', 'trailing_args_',
                      'command_', 'parser_']
 
 
-def face_middleware(func):
-    # TODO (needs provides arg)
-    provides = []
-    check_middleware(func, provides=provides)
+def face_middleware(*args, **kwargs):
+    """Mark a function as face middleware, which wraps execution of a
+    subcommand handler function.
 
-    func.is_face_middleware = True
-    func._face_provides = provides
-    return func
+    The first argument of a middleware function must be named
+    "next_". This argument is a function, representing the next
+    function in, toward execution of the endpoint.
+
+    Use the provides keyword argument to specify a list of arguments
+    this function can inject for the handler function and other
+    middlewares.
+
+    """
+    provides = kwargs.pop('provides', [])
+    if isinstance(provides, basestring):
+        provides = [provides]
+
+    if kwargs:
+        raise TypeError('unexpected keyword arguments: %r' % kwargs.keys())
+
+    def decorate_face_middleware(func):
+        check_middleware(func, provides=provides)
+        func.is_face_middleware = True
+        func._face_provides = provides
+        return func
+
+    if args and callable(args[0]):
+        return decorate_face_middleware(args[0])
+
+    return decorate_face_middleware
 
 
 def make_middleware_chain(middlewares, innermost, preprovided):

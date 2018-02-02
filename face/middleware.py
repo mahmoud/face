@@ -5,7 +5,7 @@ from sinter import make_chain, get_arg_names, getargspec, inject, get_func_name
 
 INNER_NAME = 'next_'
 # TODO: might need to make pos_args_ nicer
-_BUILTIN_PROVIDES = ['next_', 'args_', 'cmd_', 'subcmds_',
+_BUILTIN_PROVIDES = [INNER_NAME, 'args_', 'cmd_', 'subcmds_',
                      'flag_map_', 'pos_args_', 'trailing_args_',
                      'command_', 'parser_']
 

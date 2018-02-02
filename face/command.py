@@ -183,4 +183,20 @@ easy composition from subcommands and common flags.
 TODO: allow user to configure the message for CommandLineErrors
 TODO: should Command take resources?
 TODO: should version_ be a built-in/injectable?
+
+Need to split up the checks. Basic verification of middleware
+structure OK. Can check for redefinitions of provides and
+conflicts. Need a final .check() method that checks that all
+subcommands have their requirements fulfilled. Technically a .run()
+only needs to run one specific subcommand, only thta one needs to get
+its middleware chain built. .check() would have to build/check them
+all.
+
+Different error message for when the command's handler function is
+unfulfilled vs middlewares.
+
+DisplayOptions/DisplaySpec class? (display name and hidden)
+
+Should Commands have resources like clastic?
+
 """

@@ -711,6 +711,18 @@ few ideas to improve the situation:
 3. Let particularly bad APIs like the above fail, but keep closer
    track of state to help identify missing arguments earlier in the line.
 
+"""
 
+x = 9
+
+"""One big difference between Clastic and Face is that with Face, you
+typically know your first and only request at startup time. With
+Clastic, you create an Application and have to wait for some remote
+user to issue a request.
+
+This translates to a different default behavior. With Clastic, all
+routes are checked for dependency satisfaction at Application
+creation. With Face, this check is performed on-demand, and only the
+single subcommand being executed is checked.
 
 """

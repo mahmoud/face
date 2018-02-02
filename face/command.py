@@ -4,7 +4,12 @@ from collections import OrderedDict
 
 from utils import unwrap_text
 from parser import Parser, Flag, ArgumentParseError, FaceException
-from middleware import make_middleware_chain, check_middleware, face_middleware, inject, _BUILTIN_PROVIDES
+from middleware import (inject,
+                        is_middleware,
+                        face_middleware,
+                        check_middleware,
+                        make_middleware_chain,
+                        _BUILTIN_PROVIDES)
 
 
 class CommandLineError(FaceException, SystemExit):
@@ -81,7 +86,7 @@ class Command(object):
         subcmd = a[0]
 
         if not isinstance(subcmd, Command) and callable(subcmd):
-            if getattr(subcmd, 'is_face_middleware', False):
+            if is_middleware(subcmd):
                 return self.add_middleware(subcmd)
 
             subcmd = Command(*a, **kw)  # attempt to construct a new subcmd
@@ -105,7 +110,7 @@ class Command(object):
         return
 
     def add_middleware(self, mw):
-        if not getattr(mw, 'is_face_middleware', None):
+        if not is_middleware(mw):
             mw = face_middleware(mw)
         check_middleware(mw)
 

@@ -10,6 +10,12 @@ _BUILTIN_PROVIDES = [INNER_NAME, 'args_', 'cmd_', 'subcmds_',
                      'command_', 'parser_']
 
 
+def is_middleware(target):
+    if callable(target) and getattr(target, 'is_face_middleware', None):
+        return True
+    return False
+
+
 def face_middleware(*args, **kwargs):
     """Mark a function as face middleware, which wraps execution of a
     subcommand handler function.

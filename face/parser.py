@@ -516,7 +516,7 @@ class CommandParseResult(object):
     # TODO: add parser + argv
     def __init__(self, name, subcmds, flag_map, pos_args, trailing_args):
         self.name = name
-        self.cmd = tuple(subcmds)
+        self.subcmds = tuple(subcmds)
         self.flags = dict(flag_map)
         self.pos_args = tuple(pos_args or ())
         self.trailing_args = trailing_args

@@ -1,5 +1,4 @@
 
-import itertools
 from sinter import make_chain, get_arg_names, getargspec, inject, get_func_name
 
 

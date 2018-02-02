@@ -131,7 +131,8 @@ class Command(object):
 
         return
 
-    def run(self, argv=None):
+    def run(self, argv=None, extras=None):
+        kwargs = dict(extras) if extras else {}
         # TODO: turn parse exceptions into nice error messages
         try:
             prs_res = self._parser.parse(argv=argv)
@@ -147,9 +148,20 @@ class Command(object):
         self.prepare(paths=[prs_res.subcmds])
 
         # default in case no middlewares have been installed
-        func = self.path_func_map[prs_res.cmd]
-        wrapped = self._path_wrapped_map.get(prs_res.cmd, func)
-        return wrapped(prs_res)
+        func = self.path_func_map[prs_res.subcmds]
+        wrapped = self._path_wrapped_map.get(prs_res.subcmds, func)
+
+        kwargs.update({'args_': prs_res,
+                       'cmd_': self,  # TODO: see also command_, should this be prs_res.name, or argv[0]?
+                       'subcmds_': prs_res.subcmds,
+                       'flag_map_': prs_res.flags,
+                       'pos_args_': prs_res.pos_args,
+                       'trailing_args_': prs_res.trailing_args,
+                       'command_': self,
+                       'parser_': self._parser})  # TODO: parser necessary?
+
+
+        return inject(wrapped, kwargs)
 
 
 """Middleware thoughts:

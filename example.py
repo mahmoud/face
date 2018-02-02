@@ -34,11 +34,10 @@ def sum_func(args_):
     print('complete')
 
 
-def subtract_func(args_):
+def subtract_func(pos_args_, args_):
     if args_.verbose:
         print('starting in verbose mode')
-    pos_args_ = args_.pos_args
-    summable = [pos_args_[0]] + [-a for a in pos_args_[1:]]
+    summable = [float(pos_args_[0])] + [-float(a) for a in pos_args_[1:]]
     print(sum(summable))
     print('complete')
 

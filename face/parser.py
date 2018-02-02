@@ -71,6 +71,18 @@ class InvalidFlagArgument(ArgumentParseError):
         return cls(msg)
 
 
+class InvalidPositionalArgument(ArgumentParseError):
+    @classmethod
+    def from_parse(cls, posargspec, arg, exc):
+        parse_as = posargspec.parse_as
+        # TODO: type name if type, function name if function
+        # TODO: "parse as" if type, "parse with" if function
+        # TODO: do we need the underlying error message?
+        friendly_name = FRIENDLY_TYPE_NAMES.get(parse_as, parse_as)
+        return cls('positional argument failed to parse as'
+                   ' %s: %r (got error: %r)' % (friendly_name, arg, exc))
+
+
 class MissingRequiredFlags(ArgumentParseError):
     @classmethod
     def from_parse(cls, cmd_flag_map, parsed_flag_map, missing_flag_names):
@@ -392,6 +404,11 @@ class Parser(object):
                 if not prs.pos_args:
                     raise UnexpectedArgs('extra arguments passed: %r' % pos_args)
                 # TODO: wrap the following and raise CLE
+                for pa in pos_args:
+                    try:
+                        val = prs.pos_args.parse_as(pa)
+                    except Exception as exc:
+                        raise InvalidPositionalArgument.from_parse(prs.pos_args, pa, exc)
                 pos_args = [prs.pos_args.parse_as(pa) for pa in pos_args]
         except ArgumentParseError as ape:
             ape.parser = prs

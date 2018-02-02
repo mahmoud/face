@@ -127,7 +127,9 @@ class Command(object):
 
         for path, func in self.path_func_map.items():
             mws = self.path_mw_map[path]
-            wrapped = make_middleware_chain(mws, func, _BUILTIN_PROVIDES)
+            flag_names = self.parser.path_flag_map[path].keys()
+            provides = _BUILTIN_PROVIDES + flag_names
+            wrapped = make_middleware_chain(mws, func, provides)
 
             self._path_wrapped_map[path] = wrapped
 
@@ -161,7 +163,8 @@ class Command(object):
                        'trailing_args_': prs_res.trailing_args,
                        'command_': self,
                        'parser_': self._parser})  # TODO: parser necessary?
-
+        print prs_res.flags
+        kwargs.update(prs_res.flags)
 
         return inject(wrapped, kwargs)
 

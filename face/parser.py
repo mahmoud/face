@@ -344,6 +344,7 @@ class Parser(object):
 
         # first check there are no conflicts...
         flag_name = flag_to_attr_name(flag.name)
+
         for subcmds, flag_map in self.path_flag_map.items():
             if flag_name in flag_map:
                 # TODO: need a better error message here, one that
@@ -390,6 +391,7 @@ class Parser(object):
             if pos_args:
                 if not prs.pos_args:
                     raise UnexpectedArgs('extra arguments passed: %r' % pos_args)
+                # TODO: wrap the following and raise CLE
                 pos_args = [prs.pos_args.parse_as(pa) for pa in pos_args]
         except ArgumentParseError as ape:
             ape.parser = prs
@@ -493,8 +495,9 @@ class Parser(object):
 
         # ... finally check defaults.
         for flag in unique(cfm.values()):
-            if flag.default is not _UNSET and flag.name not in ret:
-                ret[flag.name] = flag.default
+            flag_name = _normalize_flag_name(flag.name)
+            if flag.default is not _UNSET and flag_name not in ret:
+                ret[flag_name] = flag.default
         return ret
 
 
@@ -521,7 +524,7 @@ class CommandParseResult(object):
         self.pos_args = tuple(pos_args or ())
         self.trailing_args = trailing_args
 
-    def __getattr__(self, name):
+    def __getattr__TODO(self, name):
         """TODO: how to provide easy access to flag values while also
         providing access to "args" and "cmd" members. Could treat them
         as reserved keywords. Could "_"-prefix them. Could "_"-suffix

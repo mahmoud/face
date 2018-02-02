@@ -79,7 +79,11 @@ class Command(object):
 
     def add(self, *a, **kw):
         subcmd = a[0]
+
         if not isinstance(subcmd, Command) and callable(subcmd):
+            if getattr(subcmd, 'is_face_middleware', False):
+                return self.add_middleware(subcmd)
+
             subcmd = Command(*a, **kw)  # attempt to construct a new subcmd
         if isinstance(subcmd, Command):
             self.add_command(subcmd)
@@ -104,17 +108,20 @@ class Command(object):
         if not getattr(mw, 'is_face_middleware', None):
             mw = face_middleware(mw)
         check_middleware(mw)
-        _res = []
-        # make sure all wrapping succeeds before making changes to the
-        # local object
-        for path, func in self.path_func_map.items():
-            cur_mws = self.path_mw_map[path]
-            new_mws = [mw] + cur_mws
-            wrapped = make_middleware_chain(new_mws, func, _BUILTIN_PROVIDES)
-            _res.append((path, new_mws, wrapped))
 
-        for path, new_mws, wrapped in _res:
-            self.path_mw_map[path] = new_mws
+        for path, mws in self.path_mw_map.items():
+            self.path_mw_map[path] = [mw] + mws
+
+        return
+
+    def prepare(self, paths=None):
+        if paths is None:
+            paths = self.path_func_map.keys()
+
+        for path, func in self.path_func_map.items():
+            mws = self.path_mw_map[path]
+            wrapped = make_middleware_chain(mws, func, _BUILTIN_PROVIDES)
+
             self._path_wrapped_map[path] = wrapped
 
         return
@@ -132,6 +139,9 @@ class Command(object):
             print msg  # stderr
             raise cle
 
+        self.prepare(paths=[prs_res.subcmds])
+
+        # default in case no middlewares have been installed
         func = self.path_func_map[prs_res.cmd]
         wrapped = self._path_wrapped_map.get(prs_res.cmd, func)
         return wrapped(prs_res)

@@ -101,12 +101,14 @@ class Command(object):
         return flag
 
     def add_command(self, subcmd):
+        self_mw = self.path_mw_map[()]
         self._parser.add(subcmd.parser)
         # map in new functions
         for path in self._parser.subprs_map:
             if path not in self.path_func_map:
                 self.path_func_map[path] = subcmd.path_func_map[path[1:]]
-                self.path_mw_map[path] = subcmd.path_mw_map[path[1:]]
+                sub_mw = subcmd.path_mw_map[path[1:]]
+                self.path_mw_map[path] = self_mw + sub_mw  # TODO: check for conflicts
         return
 
     def add_middleware(self, mw):

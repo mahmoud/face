@@ -9,11 +9,8 @@ from boltons.iterutils import split, unique
 from boltons.typeutils import make_sentinel
 from boltons.dictutils import OrderedMultiDict as OMD
 
-_UNSET = make_sentinel('_UNSET')
 ERROR = make_sentinel('ERROR')
 
-
-# TODO: display_name -> display
 
 class FaceException(Exception):
     pass
@@ -399,14 +396,13 @@ class Parser(object):
             flag_map, posargs = self._parse_flags(cmd_flag_map, args)
 
             # separate out any trailing arguments from normal positional arguments
-            trailing_args = None  # TODO: default to empty list? Rename to post_posargs?
+            post_posargs = None  # TODO: default to empty list? Rename to post_posargs?
             if '--' in posargs:
-                posargs, trailing_args = split(posargs, '--', 1)
+                posargs, post_posargs = split(posargs, '--', 1)
 
             if posargs:
                 if not prs.posargs:
                     raise UnexpectedArgs('extra arguments passed: %r' % posargs)
-                # TODO: wrap the following and raise CLE
                 for pa in posargs:
                     try:
                         val = prs.posargs.parse_as(pa)
@@ -418,7 +414,7 @@ class Parser(object):
             ape.subcmds = subcmds
             raise
 
-        ret = CommandParseResult(cmd_name, subcmds, flag_map, posargs, trailing_args)
+        ret = CommandParseResult(cmd_name, subcmds, flag_map, posargs, post_posargs)
         return ret
 
     def _parse_subcmds(self, args):
@@ -465,7 +461,7 @@ class Parser(object):
                 # TODO
                 raise ArgumentParseError('unexpected empty arg between [...] and [...]')
             elif arg[0] != '-' or arg == '-' or arg == '--':
-                # posargs or trailing_args beginning ('-' is a
+                # posargs or post_posargs beginning ('-' is a
                 # conventional pos arg for stdin)
                 idx -= 1
                 break
@@ -536,12 +532,12 @@ class FileValueParam(object):
 
 class CommandParseResult(object):
     # TODO: add parser + argv
-    def __init__(self, name, subcmds, flag_map, posargs, trailing_args):
+    def __init__(self, name, subcmds, flag_map, posargs, post_posargs):
         self.name = name
         self.subcmds = tuple(subcmds)
         self.flags = dict(flag_map)
         self.posargs = tuple(posargs or ())
-        self.trailing_args = trailing_args
+        self.post_posargs = tuple(post_posargs or ())
 
     def __getattr__TODO(self, name):
         """TODO: how to provide easy access to flag values while also
@@ -636,23 +632,7 @@ x = 3
 
 """
 
-x = 4
-
-"""TODO: thought experiment
-
-What about instead of requiring an explicit dependence up front,
-provider functions had access to the current state and could raise a
-special exception that simply said "wait". As long as we didn't
-complete a full round of "waits", we'd be making progress.
-
-There will of course be exceptions for stop/failure/errors.
-
-Is this a bad design, or does it help with nuanced dependency
-situations?
-
-"""
-
-x = 5
+4
 
 """A command cannot have positional arguments _and_ subcommands.
 

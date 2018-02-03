@@ -8,23 +8,8 @@ from __future__ import print_function
 
 import sys
 
-from face import Parser, Command, face_middleware
+from face import Command, face_middleware
 from face.parser import PosArgSpec
-from face.helpers import AutoHelpBuilder
-
-@face_middleware
-def verbose_mw(next_, verbose):
-    if verbose:
-        print('starting in verbose mode')
-    ret = next_()
-    if verbose:
-        print('complete')
-    return ret
-
-
-@face_middleware(provides=['stdout', 'stderr'])
-def output_streams_mw(next_):
-    return next_(stdout=sys.stdout, stderr=sys.stderr)
 
 
 def busy_loop(loop_count, stdout):
@@ -46,7 +31,7 @@ def subtract_func(posargs_):
 
 
 def print_args(args_):
-    print(args_.flags, args_.posargs, args_.trailing_args)
+    print(args_.flags, args_.posargs, args_.post_posargs)
 
 
 def main():
@@ -69,6 +54,22 @@ def main():
     cmd.add('--loop-count', parse_as=int)
 
     return cmd.run()  # execute
+
+
+@face_middleware
+def verbose_mw(next_, verbose):
+    if verbose:
+        print('starting in verbose mode')
+    ret = next_()
+    if verbose:
+        print('complete')
+    return ret
+
+
+@face_middleware(provides=['stdout', 'stderr'])
+def output_streams_mw(next_):
+    return next_(stdout=sys.stdout, stderr=sys.stderr)
+
 
 
 if __name__ == '__main__':

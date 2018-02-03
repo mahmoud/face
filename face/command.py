@@ -160,7 +160,7 @@ class Command(object):
                        'subcmds_': prs_res.subcmds,
                        'flag_map_': prs_res.flags,
                        'posargs_': prs_res.posargs,
-                       'trailing_args_': prs_res.trailing_args,
+                       'post_posargs_': prs_res.post_posargs,
                        'command_': self,
                        'parser_': self._parser})  # TODO: parser necessary?
         kwargs.update(prs_res.flags)

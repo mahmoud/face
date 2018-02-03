@@ -1,4 +1,9 @@
+"""The CLI application below is a motley assortment of subcommands
+just for the purposes of showing off some face features.
 
+( -- ._> -- )
+
+"""
 from __future__ import print_function
 
 import sys
@@ -6,7 +11,6 @@ import sys
 from face import Parser, Command, face_middleware
 from face.parser import PosArgSpec
 from face.helpers import AutoHelpBuilder
-
 
 @face_middleware
 def verbose_mw(next_, verbose):
@@ -18,7 +22,6 @@ def verbose_mw(next_, verbose):
     return ret
 
 
-# TODO: need to check for provides names + flag names conflict
 @face_middleware(provides=['stdout', 'stderr'])
 def output_streams_mw(next_):
     return next_(stdout=sys.stdout, stderr=sys.stderr)
@@ -48,10 +51,11 @@ def print_args(args_):
 
 def main():
     cmd = Command(busy_loop, 'cmd', middlewares=[output_streams_mw])
-    print(cmd.parser.desc)
+
     sum_subcmd = Command(sum_func, 'sum')
     sum_subcmd.add('--num', parse_as=int, on_duplicate='extend')
     cmd.add(sum_subcmd)
+
 
     cmd.add(verbose_mw)
 
@@ -63,11 +67,6 @@ def main():
 
     cmd.add('--verbose', alias='-V', parse_as=True)
     cmd.add('--loop-count', parse_as=int)
-
-    ahb = AutoHelpBuilder(subt_subcmd)
-    print(ahb.get_text())
-
-    # return 0
 
     return cmd.run()  # execute
 

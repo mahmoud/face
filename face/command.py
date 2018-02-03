@@ -230,4 +230,7 @@ DisplayOptions/DisplaySpec class? (display name and hidden)
 
 Should Commands have resources like clastic?
 
+# TODO: need to check for middleware provides names + flag names
+# conflict
+
 """

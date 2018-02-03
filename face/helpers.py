@@ -35,16 +35,8 @@ class AutoHelpBuilder(object):
 
         flags = cmd.parser.path_flag_map[()]
         shown_flags = [f for f in flags.values() if f.display_name is not False]
-        # TODO: really allow required flags that are hidden?
-        required_flags = [f for f in shown_flags if f.missing is ERROR]
-        optional_flags = [f for f in shown_flags if f.missing is not ERROR]
 
-        for rf in required_flags:
-            append(rf.display_name)
-            if callable(rf.parse_as):
-                append('VALUE')
-
-        if optional_flags:
+        if shown_flags:
             append('[FLAGS]')
 
         if cmd.parser.posargs:

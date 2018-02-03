@@ -149,6 +149,12 @@ class Command(object):
             print msg  # stderr
             raise cle
 
+        if self._parser.help_flag and prs_res.flags.get(self._parser.help_flag.attr_name):
+            # TODO: should the "help" path go through middlewares of any sort?
+            print 'help!'
+            # argparse exits 0 on help
+            sys.exit(0)
+
         self.prepare(paths=[prs_res.subcmds])
 
         # default in case no middlewares have been installed

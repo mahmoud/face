@@ -225,6 +225,10 @@ class Flag(object):
     # TODO: __eq__ and copy
 
     @property
+    def attr_name(self):
+        return _normalize_flag_name(self.name)
+
+    @property
     def display_name(self):
         orig_dn = self._display_name
         if orig_dn is False:
@@ -261,6 +265,8 @@ class PosArgSpec(object):
 
 POSARGS_ENABLED = PosArgSpec()
 FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, on_duplicate='extend', missing=None, display_name='')
+HELP_FLAG_ENABLED = Flag('--help', parse_as=True, alias='-h')
+
 
 class Parser(object):
     """
@@ -279,6 +285,7 @@ class Parser(object):
                              ' or instance of PosArgSpec, not: %r' % posargs)
         self.posargs = posargs
 
+        self.help_flag = HELP_FLAG_ENABLED
         self.flagfile_flag = FLAG_FILE_ENABLED
         # TODO: should flagfile and help flags be hidden by default?
 
@@ -288,6 +295,8 @@ class Parser(object):
 
         if self.flagfile_flag:
             self.add(self.flagfile_flag)
+        if self.help_flag:
+            self.add(self.help_flag)
         return
 
     def _add_subparser(self, subprs):
@@ -469,7 +478,7 @@ class Parser(object):
             flag = cmd_flag_map.get(_normalize_flag_name(arg))
             if flag is None:
                 raise UnknownFlag.from_parse(cmd_flag_map, arg)
-            flag_key = _normalize_flag_name(flag.name)
+            flag_key = flag.attr_name
 
             flag_conv = flag.parse_as
             if not callable(flag_conv):

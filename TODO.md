@@ -41,4 +41,5 @@ Related:
 
 ## Compatibility
 
+* Check up on how cpython decodes argv (locale stuff)
 * Check sinter against new argspecs

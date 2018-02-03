@@ -3,10 +3,10 @@ from sinter import make_chain, get_arg_names, getargspec, inject, get_func_name
 
 
 INNER_NAME = 'next_'
-# TODO: might need to make pos_args_ nicer
+
 _BUILTIN_PROVIDES = [INNER_NAME, 'args_', 'cmd_', 'subcmds_',
-                     'flag_map_', 'pos_args_', 'trailing_args_',
-                     'command_', 'parser_']
+                     'flags_', 'posargs_', 'post_posargs_',
+                     'command_']
 
 
 def is_middleware(target):
@@ -38,7 +38,7 @@ def face_middleware(*args, **kwargs):
     def decorate_face_middleware(func):
         check_middleware(func, provides=provides)
         func.is_face_middleware = True
-        func._face_provides = provides
+        func._face_provides = list(provides)
         return func
 
     if args and callable(args[0]):

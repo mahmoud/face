@@ -10,6 +10,10 @@ from boltons.typeutils import make_sentinel
 from boltons.dictutils import OrderedMultiDict as OMD
 
 _UNSET = make_sentinel('_UNSET')
+ERROR = make_sentinel('ERROR')
+
+
+# TODO: display_name -> display
 
 class FaceException(Exception):
     pass
@@ -201,12 +205,11 @@ _ON_DUP_SHORTCUTS = {'error': _on_dup_error,
 
 
 class Flag(object):
-    def __init__(self, name, parse_as=True, required=False, default=_UNSET,
-                 alias=None, display_name=None, on_duplicate='error'):
+    def __init__(self, name, parse_as=True, missing=None, alias=None,
+                 display_name=None, on_duplicate='error'):
         self.name = name
         self.parse_as = parse_as
-        self.required = required
-        self.default = default
+        self.missing = missing
         if not alias:
             alias = []
         elif isinstance(alias, str):
@@ -259,25 +262,25 @@ class PosArgSpec(object):
         # TODO: default? type check that it's a sequence matching min/max reqs
 
 
-POS_ARGS_ENABLED = PosArgSpec()
-FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, on_duplicate='extend', required=False, display_name='')
+POSARGS_ENABLED = PosArgSpec()
+FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, on_duplicate='extend', missing=None, display_name='')
 
 class Parser(object):
     """
     Parser parses, Command parses with Parser, then dispatches.
     """
-    def __init__(self, name, desc=None, pos_args=None):
+    def __init__(self, name, desc=None, posargs=None):
         if not name or name[0] in ('-', '_'):
             # TODO: more complete validation
             raise ValueError('expected name beginning with ASCII letter, not: %r' % (name,))
         self.name = name
         self.desc = desc
-        if pos_args is True:
-            pos_args = POS_ARGS_ENABLED
-        if pos_args and not isinstance(pos_args, PosArgSpec):
-            raise ValueError('expected pos_args as True, False,'
-                             ' or instance of PosArgSpec, not: %r' % pos_args)
-        self.pos_args = pos_args
+        if posargs is True:
+            posargs = POSARGS_ENABLED
+        if posargs and not isinstance(posargs, PosArgSpec):
+            raise ValueError('expected posargs as True, False,'
+                             ' or instance of PosArgSpec, not: %r' % posargs)
+        self.posargs = posargs
 
         self.flagfile_flag = FLAG_FILE_ENABLED
         # TODO: should flagfile and help flags be hidden by default?
@@ -297,7 +300,7 @@ class Parser(object):
         To add a command under a different name, simply make a copy of
         that parser or command with a different name.
         """
-        if self.pos_args:
+        if self.posargs:
             raise ValueError('commands accepting positional arguments'
                              ' cannot take subcommands')
 
@@ -393,29 +396,29 @@ class Parser(object):
             cmd_flag_map = self.path_flag_map[tuple(subcmds)]
 
             # parse and validate the supported flags
-            flag_map, pos_args = self._parse_flags(cmd_flag_map, args)
+            flag_map, posargs = self._parse_flags(cmd_flag_map, args)
 
             # separate out any trailing arguments from normal positional arguments
-            trailing_args = None  # TODO: default to empty list? Rename to post_pos_args?
-            if '--' in pos_args:
-                pos_args, trailing_args = split(pos_args, '--', 1)
+            trailing_args = None  # TODO: default to empty list? Rename to post_posargs?
+            if '--' in posargs:
+                posargs, trailing_args = split(posargs, '--', 1)
 
-            if pos_args:
-                if not prs.pos_args:
-                    raise UnexpectedArgs('extra arguments passed: %r' % pos_args)
+            if posargs:
+                if not prs.posargs:
+                    raise UnexpectedArgs('extra arguments passed: %r' % posargs)
                 # TODO: wrap the following and raise CLE
-                for pa in pos_args:
+                for pa in posargs:
                     try:
-                        val = prs.pos_args.parse_as(pa)
+                        val = prs.posargs.parse_as(pa)
                     except Exception as exc:
-                        raise InvalidPositionalArgument.from_parse(prs.pos_args, pa, exc)
-                pos_args = [prs.pos_args.parse_as(pa) for pa in pos_args]
+                        raise InvalidPositionalArgument.from_parse(prs.posargs, pa, exc)
+                posargs = [prs.posargs.parse_as(pa) for pa in posargs]
         except ArgumentParseError as ape:
             ape.parser = prs
             ape.subcmds = subcmds
             raise
 
-        ret = CommandParseResult(cmd_name, subcmds, flag_map, pos_args, trailing_args)
+        ret = CommandParseResult(cmd_name, subcmds, flag_map, posargs, trailing_args)
         return ret
 
     def _parse_subcmds(self, args):
@@ -435,7 +438,7 @@ class Parser(object):
             arg = _arg_to_subcmd(arg)
             if tuple(ret + [arg]) not in self.subprs_map:
                 prs = self.subprs_map[tuple(ret)] if ret else self
-                if prs.pos_args:
+                if prs.posargs:
                     break
                 raise InvalidSubcommand.from_parse(prs, arg)
             ret.append(arg)
@@ -462,7 +465,7 @@ class Parser(object):
                 # TODO
                 raise ArgumentParseError('unexpected empty arg between [...] and [...]')
             elif arg[0] != '-' or arg == '-' or arg == '--':
-                # pos_args or trailing_args beginning ('-' is a
+                # posargs or trailing_args beginning ('-' is a
                 # conventional pos arg for stdin)
                 idx -= 1
                 break
@@ -502,19 +505,18 @@ class Parser(object):
             arg_val_list = pfm.getlist(flag_name)
             ret[flag_name] = flag.on_duplicate(flag, arg_val_list)
 
-        # ... check requireds and then ...
+        # ... check requireds and set defaults.
         missing_flags = []
         for flag_name, flag in cfm.items():
-            if flag.required and flag_name not in ret:
+            if flag_name in ret:
+                continue
+            if flag.missing is ERROR:
                 missing_flags.append(flag.name)
+            else:
+                ret[flag_name] = flag.missing
         if missing_flags:
             raise MissingRequiredFlags(cfm, pfm, missing_flags)
 
-        # ... finally check defaults.
-        for flag in unique(cfm.values()):
-            flag_name = _normalize_flag_name(flag.name)
-            if flag.default is not _UNSET and flag_name not in ret:
-                ret[flag_name] = flag.default
         return ret
 
 
@@ -534,11 +536,11 @@ class FileValueParam(object):
 
 class CommandParseResult(object):
     # TODO: add parser + argv
-    def __init__(self, name, subcmds, flag_map, pos_args, trailing_args):
+    def __init__(self, name, subcmds, flag_map, posargs, trailing_args):
         self.name = name
         self.subcmds = tuple(subcmds)
         self.flags = dict(flag_map)
-        self.pos_args = tuple(pos_args or ())
+        self.posargs = tuple(posargs or ())
         self.trailing_args = trailing_args
 
     def __getattr__TODO(self, name):
@@ -654,7 +656,7 @@ x = 5
 
 """A command cannot have positional arguments _and_ subcommands.
 
-Need to be able to set display name for pos_args
+Need to be able to set display name for posargs
 
 Which is the best default behavior for a flag? single flag where
 presence=True (e.g., --verbose) or flag which accepts single string

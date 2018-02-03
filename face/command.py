@@ -49,13 +49,13 @@ def _docstring_to_desc(func):
 
 
 class Command(object):
-    def __init__(self, func, name=None, desc=None, pos_args=False, middlewares=None):
+    def __init__(self, func, name=None, desc=None, posargs=False, middlewares=None):
         name = name if name is not None else _get_default_name()
 
         if desc is None:
             desc = _docstring_to_desc(func)
 
-        self._parser = Parser(name, desc, pos_args=pos_args)
+        self._parser = Parser(name, desc, posargs=posargs)
         # TODO: properties for name/desc/other parser things
 
         self.path_func_map = OrderedDict()
@@ -159,11 +159,10 @@ class Command(object):
                        'cmd_': self,  # TODO: see also command_, should this be prs_res.name, or argv[0]?
                        'subcmds_': prs_res.subcmds,
                        'flag_map_': prs_res.flags,
-                       'pos_args_': prs_res.pos_args,
+                       'posargs_': prs_res.posargs,
                        'trailing_args_': prs_res.trailing_args,
                        'command_': self,
                        'parser_': self._parser})  # TODO: parser necessary?
-        print prs_res.flags
         kwargs.update(prs_res.flags)
 
         return inject(wrapped, kwargs)
@@ -208,7 +207,7 @@ easy composition from subcommands and common flags.
 * list of middlewares
 * parser (currently contains the following)
     * flag map
-    * PosArgSpecs for pos_args, trailing_args
+    * PosArgSpecs for posargs, post_posargs
     * flagfile flag
     * help flag (or help subcommand)
 

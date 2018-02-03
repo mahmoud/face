@@ -1,4 +1,6 @@
 
+from parser import ERROR
+
 class AutoHelpBuilder(object):
     default_context = {
         'usage_label': 'Usage:',
@@ -33,8 +35,9 @@ class AutoHelpBuilder(object):
 
         flags = cmd.parser.path_flag_map[()]
         shown_flags = [f for f in flags.values() if f.display_name is not False]
-        required_flags = [f for f in shown_flags if f.required]  # TODO: really allow required flags that are hidden?
-        optional_flags = [f for f in shown_flags if not f.required]
+        # TODO: really allow required flags that are hidden?
+        required_flags = [f for f in shown_flags if f.missing is ERROR]
+        optional_flags = [f for f in shown_flags if f.missing is not ERROR]
 
         for rf in required_flags:
             append(rf.display_name)
@@ -44,10 +47,10 @@ class AutoHelpBuilder(object):
         if optional_flags:
             append('[FLAGS]')
 
-        if cmd.parser.pos_args:
-            if cmd.parser.pos_args.display_full:
-                append(cmd.parser.pos_args.display_full)
-            elif cmd.parser.pos_args.min_count:
+        if cmd.parser.posargs:
+            if cmd.parser.posargs.display_full:
+                append(cmd.parser.posargs.display_full)
+            elif cmd.parser.posargs.min_count:
                 append('args ...')
             else:
                 append('[args ...]')
@@ -72,9 +75,9 @@ class FullUsageLineBuilder(object):
         if subcmd_example:
             parts.append(subcmd_example)
 
-        pos_args_example = self.get_usage_pos_arg_example()
-        if pos_args_example:
-            parts.append(pos_args_example)
+        posargs_example = self.get_usage_pos_arg_example()
+        if posargs_example:
+            parts.append(posargs_example)
 
         return ' '.join(parts)
 
@@ -94,17 +97,17 @@ class FullUsageLineBuilder(object):
         # self.ctx['subcmd_example'] + '>'
 
     def get_usage_pos_arg_example(self):
-        pos_args = self.cmd.parser.pos_args
-        if not pos_args:
+        posargs = self.cmd.parser.posargs
+        if not posargs:
             return ''
 
-        if pos_args.display_full:
-            return pos_args.display_full
-        if not pos_args.display_name:
+        if posargs.display_full:
+            return posargs.display_full
+        if not posargs.display_name:
             return ''  # a way of hiding that the command accepts pos args
 
-        display_name = pos_args.display_name
-        min_count, max_count = pos_args.min_count, pos_args.max_count
+        display_name = posargs.display_name
+        min_count, max_count = posargs.min_count, posargs.max_count
 
         if not min_count and not max_count:
             return '[' + display_name + ' ...]'

@@ -2,14 +2,14 @@
 import sys
 from collections import OrderedDict
 
-from utils import unwrap_text
-from parser import Parser, Flag, ArgumentParseError, FaceException
-from middleware import (inject,
-                        is_middleware,
-                        face_middleware,
-                        check_middleware,
-                        make_middleware_chain,
-                        _BUILTIN_PROVIDES)
+from face.utils import unwrap_text
+from face.parser import Parser, Flag, ArgumentParseError, FaceException
+from face.middleware import (inject,
+                             is_middleware,
+                             face_middleware,
+                             check_middleware,
+                             make_middleware_chain,
+                             _BUILTIN_PROVIDES)
 
 
 class CommandLineError(FaceException, SystemExit):

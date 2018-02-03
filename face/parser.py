@@ -9,6 +9,7 @@ from boltons.iterutils import split, unique
 from boltons.typeutils import make_sentinel
 from boltons.dictutils import OrderedMultiDict as OMD
 
+
 ERROR = make_sentinel('ERROR')
 
 

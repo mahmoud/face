@@ -1,5 +1,5 @@
 
-from sinter import make_chain, get_arg_names, getargspec, inject, get_func_name
+from face.sinter import make_chain, get_arg_names, getargspec, inject, get_func_name
 
 
 INNER_NAME = 'next_'

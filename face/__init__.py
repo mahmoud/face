@@ -1,4 +1,4 @@
 
-from parser import Parser
-from command import Command
-from middleware import face_middleware
+from face.parser import Parser, Flag, PosArgSpec
+from face.command import Command
+from face.middleware import face_middleware

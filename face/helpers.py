@@ -1,5 +1,5 @@
 
-from parser import ERROR
+from face.parser import ERROR
 
 class AutoHelpBuilder(object):
     default_context = {

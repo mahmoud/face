@@ -210,10 +210,6 @@ class HelpHandler(object):
         'subcmd_example': 'subcommand',
     }
 
-    def default_help_func(self, cmd_):
-        print(self.get_help_text(cmd_.parser))
-        sys.exit(0)
-
     def __init__(self, flag=('--help', '-h'), func=None, **kwargs):
         ctx = {}
         for key, val in self.default_context.items():
@@ -225,10 +221,18 @@ class HelpHandler(object):
         if not callable(self.func):
             raise TypeError('expected func to be callable, not %r' % func)
 
+    def default_help_func(self, cmd_, subcmds_):
+        print(self.get_help_text(cmd_.parser, subcmds=subcmds_))
+        sys.exit(0)
+
     def get_help_text(self, parser, subcmds=()):
         ctx = self.ctx
-        ret = [self.get_usage_line(parser)]
+
+        ret = [self.get_usage_line(parser, subcmds=subcmds)]
         append = ret.append
+
+        if subcmds:
+            parser = parser.subprs_map[subcmds]
 
         append(ctx['section_break'])
 
@@ -262,10 +266,13 @@ class HelpHandler(object):
 
         append(' '.join((parser.name,) + subcmds))
 
-        if parser.subprs_map:
+        # TODO: put () in subprs_map to handle some of this sorta thing
+        if not subcmds and parser.subprs_map:
+            append('subcommand')
+        elif subcmds and parser.subprs_map[subcmds].subprs_map:
             append('subcommand')
 
-        flags = parser.path_flag_map[()]
+        flags = parser.path_flag_map[subcmds]
         shown_flags = [f for f in flags.values() if f.display_name is not False]
 
         if shown_flags:

@@ -22,6 +22,7 @@ def busy_loop(loop_count, stdout):
 
 
 def sum_func(num):
+    "Just a lil fun in the sum."
     print(sum(num))
 
 

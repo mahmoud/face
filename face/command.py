@@ -149,27 +149,27 @@ class Command(object):
             print msg  # stderr
             raise cle
 
+        kwargs.update({'args_': prs_res,
+                       'cmd_': self,  # TODO: see also command_, should this be prs_res.name, or argv[0]?
+                       'subcmds_': prs_res.subcmds,
+                       'flags_': prs_res.flags,
+                       'posargs_': prs_res.posargs,
+                       'post_posargs_': prs_res.post_posargs,
+                       'command_': self,
+                       'parser_': self._parser})  # TODO: parser necessary?
+        kwargs.update(prs_res.flags)
+
         if self._parser.help_flag and prs_res.flags.get(self._parser.help_flag.attr_name):
             # TODO: should the "help" path go through middlewares of any sort?
-            print 'help!'
-            # argparse exits 0 on help
-            sys.exit(0)
+            from face.helpers import HelpHandler
+            hh = HelpHandler()
+            return inject(hh.func, kwargs)
 
         self.prepare(paths=[prs_res.subcmds])
 
         # default in case no middlewares have been installed
         func = self.path_func_map[prs_res.subcmds]
         wrapped = self._path_wrapped_map.get(prs_res.subcmds, func)
-
-        kwargs.update({'args_': prs_res,
-                       'cmd_': self,  # TODO: see also command_, should this be prs_res.name, or argv[0]?
-                       'subcmds_': prs_res.subcmds,
-                       'flag_map_': prs_res.flags,
-                       'posargs_': prs_res.posargs,
-                       'post_posargs_': prs_res.post_posargs,
-                       'command_': self,
-                       'parser_': self._parser})  # TODO: parser necessary?
-        kwargs.update(prs_res.flags)
 
         return inject(wrapped, kwargs)
 

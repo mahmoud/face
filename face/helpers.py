@@ -1,5 +1,5 @@
 
-from face.parser import ERROR
+from face.parser import ERROR, Flag
 
 class AutoHelpBuilder(object):
     default_context = {
@@ -176,4 +176,107 @@ without necessarily adding to the path.
 Is it better to delegate representations out or keep them all within
 the help builder?
 
+---
+
+Help needs: a flag (and a way to disable it), as well as a renderer.
+
+Usage: ...
+
+Description
+
+Subcommands:
+
+...   ...
+
+Flags:
+
+...
+
+Postamble
+
 """
+
+import sys
+
+from boltons.iterutils import unique
+
+class HelpHandler(object):
+    default_context = {
+        'usage_label': 'Usage:',
+        'subcmd_section_heading': 'Subcommands: ',
+        'flags_section_heading': 'Flags: ',
+        'section_break': '\n',
+        'group_break': '',
+        'subcmd_example': 'subcommand',
+    }
+
+    def default_help_func(self, cmd_):
+        print(self.get_help_text(cmd_.parser))
+        sys.exit(0)
+
+    def __init__(self, flag=('--help', '-h'), func=None, **kwargs):
+        ctx = {}
+        for key, val in self.default_context.items():
+            ctx[key] = kwargs.pop(key, val)
+        if kwargs:
+            raise TypeError('unexpected keyword arguments: %r' % list(kwargs.keys()))
+        self.ctx = ctx
+        self.func = func if func is not None else self.default_help_func
+        if not callable(self.func):
+            raise TypeError('expected func to be callable, not %r' % func)
+
+    def get_help_text(self, parser, subcmds=()):
+        ctx = self.ctx
+        ret = [self.get_usage_line(parser)]
+        append = ret.append
+
+        append(ctx['section_break'])
+
+        if parser.desc:
+            append(parser.desc)
+            append(ctx['section_break'])
+
+        if parser.subprs_map:
+            append(ctx['subcmd_section_heading'])
+            append(ctx['group_break'])
+            for sub_name in unique([sp[0] for sp in parser.subprs_map if sp]):
+                subprs = parser.subprs_map[(sub_name,)]
+                append(sub_name + '   ' + subprs.desc)
+            append(ctx['section_break'])
+
+        flags = parser.path_flag_map[()]
+        shown_flags = [f for f in flags.values() if f.display_name is not False]
+        if shown_flags:
+            append(ctx['flags_section_heading'])
+            append(ctx['group_break'])
+            for flag in unique(shown_flags):
+                append(flag.name)
+
+        return '\n'.join(ret)
+
+    def get_usage_line(self, parser, subcmds=()):
+        ctx = self.ctx
+        subcmds = tuple(subcmds or ())
+        parts = [ctx['usage_label']] if ctx['usage_label'] else []
+        append = parts.append
+
+        append(' '.join((parser.name,) + subcmds))
+
+        if parser.subprs_map:
+            append('subcommand')
+
+        flags = parser.path_flag_map[()]
+        shown_flags = [f for f in flags.values() if f.display_name is not False]
+
+        if shown_flags:
+            append('[FLAGS]')
+
+        if parser.posargs:
+            if parser.posargs.display_full:
+                append(parser.posargs.display_full)
+            elif parser.posargs.min_count:
+                append('args ...')
+            else:
+                append('[args ...]')
+
+        return ' '.join(parts)

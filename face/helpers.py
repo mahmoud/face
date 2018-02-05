@@ -254,7 +254,11 @@ class HelpHandler(object):
             append(ctx['flags_section_heading'])
             append(ctx['group_break'])
             for flag in unique(shown_flags):
-                append(flag.name)
+                entry_name = ' / '.join([flag.name] + flag.alias_list)
+                # TODO: move this into display options
+                if callable(flag.parse_as):
+                    entry_name += ' ' + flag.attr_name.upper()
+                append(entry_name)
 
         return '\n'.join(ret)
 

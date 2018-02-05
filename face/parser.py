@@ -208,6 +208,9 @@ class Flag(object):
         self.name = name
         self.parse_as = parse_as
         self.missing = missing
+        # TODO: parse_as=scalar + missing=ERROR seems like an invalid
+        # case (a flag whose presence is always required? what's the
+        # point?)
         if not alias:
             alias = []
         elif isinstance(alias, str):

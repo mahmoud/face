@@ -6,6 +6,7 @@
 * Tests
 * Calculator example
 * Docs
+* Autocompletion
 
 ## API
 
@@ -22,16 +23,33 @@
 
 ### DisplayOptions
 
-* Group
-* Sort order
-* Display name
-* Display name singular
-* Value display name
-* Hidden (suggestability?)
+Some form of object acting as partial rendering context for instances
+of Command, Flag, PosArgSpec.
+
+#### Command
+
+* Group (same as flags below)
+* Sort order (same as flags below)
+* Hidden? (doesn't make sense to customize label as with flags)
+
+#### Flag
+
+* Group (default 0, unlabeled groups if integer, labeled group if string)
+* Sort order (default 0. first sorted by this number then
+  alphabetical. sorting only happens within groups.)
+* Name (--canonical-name) (does it make sense to customize this?)
+* Label (--canonical-name / --alias / -C VALUE) (hide if empty/falsy, probably)
+* Value Label (name_of_the_flag.upper())
+* "parse_as" label (see parser._get_type_desc)
 
 Related:
 
 * Behavior on error (e.g., display usage)
+
+#### PosArgSpec
+
+* Description suffix (takes up to 2 integer args, takes 1-4 float args, etc.)
+* Usage line display (args ...)
 
 ## Error messages
 

@@ -225,7 +225,9 @@ class HelpHandler(object):
         print(self.get_help_text(cmd_.parser, subcmds=subcmds_))
         sys.exit(0)
 
-    def get_help_text(self, parser, subcmds=()):
+    def get_help_text(self, parser, subcmds=(), flags=None):
+        # TODO: filter by actually-used flags (note that help_flag and
+        # flagfile_flag are semi-built-in, thus used by all subcommands)
         ctx = self.ctx
 
         ret = [self.get_usage_line(parser, subcmds=subcmds)]
@@ -236,8 +238,8 @@ class HelpHandler(object):
 
         append(ctx['section_break'])
 
-        if parser.desc:
-            append(parser.desc)
+        if parser.doc:
+            append(parser.doc)
             append(ctx['section_break'])
 
         if parser.subprs_map:
@@ -245,7 +247,7 @@ class HelpHandler(object):
             append(ctx['group_break'])
             for sub_name in unique([sp[0] for sp in parser.subprs_map if sp]):
                 subprs = parser.subprs_map[(sub_name,)]
-                append(sub_name + '   ' + subprs.desc)
+                append(sub_name + '   ' + subprs.doc)
             append(ctx['section_break'])
 
         flags = parser.path_flag_map[()]
@@ -255,10 +257,17 @@ class HelpHandler(object):
             append(ctx['group_break'])
             for flag in unique(shown_flags):
                 entry_name = ' / '.join([flag.name] + flag.alias_list)
+                doc_parts = [] if not flag.doc else flag.doc
                 # TODO: move this into display options
                 if callable(flag.parse_as):
                     entry_name += ' ' + flag.attr_name.upper()
-                append(entry_name)
+                    doc_parts.append(repr(flag.parse_as))
+                    if flag.missing is ERROR:
+                        doc_parts.append('(required)')
+                    else:
+                        doc_parts.append('(defaults to %r)' % flag.missing)
+                append(entry_name + '  ' + ' '.join(doc_parts))
+
 
         return '\n'.join(ret)
 

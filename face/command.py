@@ -33,7 +33,7 @@ def _get_default_name(frame_level=1):
     return mod_name
 
 
-def _docstring_to_desc(func):
+def _docstring_to_doc(func):
     doc = func.__doc__
     if not doc:
         return ''
@@ -49,14 +49,14 @@ def _docstring_to_desc(func):
 
 
 class Command(object):
-    def __init__(self, func, name=None, desc=None, posargs=False, middlewares=None):
+    def __init__(self, func, name=None, doc=None, posargs=False, middlewares=None):
         name = name if name is not None else _get_default_name()
 
-        if desc is None:
-            desc = _docstring_to_desc(func)
+        if doc is None:
+            doc = _docstring_to_doc(func)
 
-        self._parser = Parser(name, desc, posargs=posargs)
-        # TODO: properties for name/desc/other parser things
+        self._parser = Parser(name, doc, posargs=posargs)
+        # TODO: properties for name/doc/other parser things
 
         self.path_func_map = OrderedDict()
         self.path_func_map[()] = func
@@ -208,7 +208,7 @@ easy composition from subcommands and common flags.
 # What goes in a bound command?
 
 * name
-* description
+* doc
 * handler func
 * list of middlewares
 * parser (currently contains the following)

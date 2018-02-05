@@ -73,16 +73,34 @@ class InvalidFlagArgument(ArgumentParseError):
         return cls(msg)
 
 
+def _get_type_desc(parse_as):
+    if not callable(parse_as):
+        raise TypeError('expected parse_as to be callable, not %r' % parse_as)
+    try:
+        return 'as', FRIENDLY_TYPE_NAMES[parse_as]
+    except KeyError:
+        pass
+    try:
+        # return the type name if it looks like a type
+        return 'as', parse_as.__name__
+    except AttributeError:
+        pass
+    try:
+        # return the func name if it looks like a function
+        return 'with', parse_as.func_name
+    except AttributeError:
+        pass
+    # if all else fails
+    return 'with', repr(parse_as)
+
+
+
 class InvalidPositionalArgument(ArgumentParseError):
     @classmethod
     def from_parse(cls, posargspec, arg, exc):
-        parse_as = posargspec.parse_as
-        # TODO: type name if type, function name if function
-        # TODO: "parse as" if type, "parse with" if function
-        # TODO: do we need the underlying error message?
-        friendly_name = FRIENDLY_TYPE_NAMES.get(parse_as, parse_as)
-        return cls('positional argument failed to parse as'
-                   ' %s: %r (got error: %r)' % (friendly_name, arg, exc))
+        prep, type_desc = _get_type_desc(posargspec.parse_as)
+        return cls('positional argument failed to parse %s'
+                   ' %s: %r (got error: %r)' % (prep, type_desc, arg, exc))
 
 
 class MissingRequiredFlags(ArgumentParseError):
@@ -202,10 +220,13 @@ _ON_DUP_SHORTCUTS = {'error': _on_dup_error,
                      'override': _on_dup_override}
 
 
+# TODO: allow name="--flag / -F" and do the split for automatic
+# aliasing?
 class Flag(object):
-    def __init__(self, name, parse_as=True, missing=None, alias=None,
+    def __init__(self, name, parse_as=True, missing=None, doc=None, alias=None,
                  display_name=None, on_duplicate='error'):
         self.name = name
+        self.doc = doc
         self.parse_as = parse_as
         self.missing = missing
         # TODO: parse_as=scalar + missing=ERROR seems like an invalid
@@ -276,12 +297,12 @@ class Parser(object):
     """
     Parser parses, Command parses with Parser, then dispatches.
     """
-    def __init__(self, name, desc=None, posargs=None):
+    def __init__(self, name, doc=None, posargs=None):
         if not name or name[0] in ('-', '_'):
             # TODO: more complete validation
             raise ValueError('expected name beginning with ASCII letter, not: %r' % (name,))
         self.name = name
-        self.desc = desc
+        self.doc = doc
         if posargs is True:
             posargs = POSARGS_ENABLED
         if posargs and not isinstance(posargs, PosArgSpec):
@@ -574,6 +595,12 @@ class CommandParseResult(object):
 
         """
         return self.flags.get(_normalize_flag_name(name))
+
+
+# TODO
+class DisplayOptions(object):
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
 
 
 """# Problems with argparse

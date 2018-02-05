@@ -517,7 +517,7 @@ class Parser(object):
             try:
                 arg_val = flag_conv(arg_text)
             except Exception:
-                raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg)
+                raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg_text)
             ret.add(flag_key, arg_val)
             _consumed_val = True
 

@@ -26,11 +26,13 @@
 Some form of object acting as partial rendering context for instances
 of Command, Flag, PosArgSpec.
 
-#### Command
+#### Parser / Command
 
 * Group (same as flags below)
 * Sort order (same as flags below)
 * Hidden? (doesn't make sense to customize label as with flags)
+* Doc (text between the usage line and the subcommands/flags)
+* Post-doc (text that comes after flags and subcommands)
 
 #### Flag
 

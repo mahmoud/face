@@ -607,26 +607,26 @@ class Parser(object):
         return ret, args[idx:]
 
     def _resolve_flags(self, cmd_flag_map, parsed_flag_map):
-        # resolve dupes and then...
         ret = OrderedDict()
         cfm, pfm = cmd_flag_map, parsed_flag_map
 
-        for flag_name in pfm:
-            flag = cfm[flag_name]
-            arg_val_list = pfm.getlist(flag_name)
-            ret[flag_name] = flag.on_duplicate(flag, arg_val_list)
-
-        # ... check requireds and set defaults.
+        # check requireds and set defaults and then...
         missing_flags = []
         for flag_name, flag in cfm.items():
-            if flag_name in ret:
+            if flag_name in pfm:
                 continue
             if flag.missing is ERROR:
                 missing_flags.append(flag.name)
             else:
-                ret[flag_name] = flag.missing
+                pfm[flag_name] = flag.missing
         if missing_flags:
             raise MissingRequiredFlags(cfm, pfm, missing_flags)
+
+        # ... resolve dupes
+        for flag_name in pfm:
+            flag = cfm[flag_name]
+            arg_val_list = pfm.getlist(flag_name)
+            ret[flag_name] = flag.on_duplicate(flag, arg_val_list)
 
         return ret
 

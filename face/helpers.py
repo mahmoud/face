@@ -180,9 +180,9 @@ the help builder?
 
 Help needs: a flag (and a way to disable it), as well as a renderer.
 
-Usage: ...
+Usage:
 
-Description
+Doc
 
 Subcommands:
 
@@ -192,7 +192,35 @@ Flags:
 
 ...
 
-Postamble
+Postdoc
+
+
+{usage_label} {cmd_name} {subcmd_path} {subcmd_blank} {flags_blank} {posargs_label}
+
+{cmd.doc}
+
+{subcmd_heading}
+
+  {subcmd.name}   {subcmd.doc} {subcmd.post_doc}
+
+{flags_heading}
+
+  {group_name}:
+
+    {flag_label}   {flag.doc} {flag.post_doc}
+
+{cmd.post_doc}
+
+
+def default_fmt_flag_label(self, flag):
+   ret = ' / '.join([flag.name] + flag.alias_list)
+   if callable(flag.parse_as):
+      ret += ' ' + (self.flag_value_name or self.flag.attr_name.upper())
+   return ret
+
+
+
+
 
 """
 
@@ -251,21 +279,14 @@ class HelpHandler(object):
             append(ctx['section_break'])
 
         flags = parser.path_flag_map[()]
-        shown_flags = [f for f in flags.values() if f.display_name is not False]
+        shown_flags = [f for f in flags.values() if not f.display.hidden]
         if shown_flags:
             append(ctx['flags_section_heading'])
             append(ctx['group_break'])
             for flag in unique(shown_flags):
-                entry_name = ' / '.join([flag.name] + flag.alias_list)
-                doc_parts = [] if not flag.doc else flag.doc
-                # TODO: move this into display options
-                if callable(flag.parse_as):
-                    entry_name += ' ' + flag.attr_name.upper()
-                    doc_parts.append(repr(flag.parse_as))
-                    if flag.missing is ERROR:
-                        doc_parts.append('(required)')
-                    else:
-                        doc_parts.append('(defaults to %r)' % flag.missing)
+                entry_name = flag.display.label
+                doc_parts = [] if not flag.doc else [flag.doc]
+                doc_parts.append(flag.display.post_doc)
                 append(entry_name + '  ' + ' '.join(doc_parts))
 
 

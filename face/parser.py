@@ -12,6 +12,10 @@ from boltons.dictutils import OrderedMultiDict as OMD
 
 ERROR = make_sentinel('ERROR')
 
+# TODO: FaceExit, with message and exit code, handled inside
+# Command.run(), prints message and exits with code. Q: Inherit from
+# SystemExit? Might interfere with tests, no real advantage otherwise?
+
 
 class FaceException(Exception):
     pass
@@ -224,7 +228,7 @@ _ON_DUP_SHORTCUTS = {'error': _on_dup_error,
 # aliasing?
 class Flag(object):
     def __init__(self, name, parse_as=True, missing=None, doc=None, alias=None,
-                 display_name=None, on_duplicate='error'):
+                 display=None, on_duplicate='error'):
         self.name = name
         self.doc = doc
         self.parse_as = parse_as
@@ -237,7 +241,6 @@ class Flag(object):
         elif isinstance(alias, str):
             alias = [alias]
         self.alias_list = list(alias)
-        self._display_name = display_name
 
         if callable(on_duplicate):
             self.on_duplicate = on_duplicate
@@ -247,6 +250,16 @@ class Flag(object):
             raise ValueError('on_duplicate expected callable or one of %r, not: %r'
                              % (list(_ON_DUP_SHORTCUTS.keys()), on_duplicate))
 
+        if display is None:
+            display = {}
+        elif isinstance(display, bool):
+            display = {'hidden': not display}
+        elif isinstance(display, str):
+            display = {'name': display}
+        if isinstance(display, dict):
+            display = FlagDisplay(self, **display)
+        self.display = display
+
     # TODO: __eq__ and copy
 
     @property
@@ -255,7 +268,7 @@ class Flag(object):
 
     @property
     def display_name(self):
-        orig_dn = self._display_name
+        orig_dn = self.display.name
         if orig_dn is False:
             return ''
         if orig_dn:
@@ -263,6 +276,74 @@ class Flag(object):
         if len(self.name) == 1:
             return '-' + self.name
         return self.name.replace('_', '-')
+
+
+class FlagDisplay(object):
+    # TODO: support None for label to disable? or explicit hidden?
+    def __init__(self, flag, **kw):
+        self.flag = flag
+        self.name = kw.pop('name', flag.name)
+        self._label = kw.pop('label', None)
+        self.format_label = kw.pop('format_label', self.default_format_label)
+
+        self.doc = flag.doc
+        if not self.doc and callable(flag.parse_as):
+            _prep, desc = _get_type_desc(flag.parse_as)
+            self.doc = 'Parsed with ' + desc
+            if _prep == 'as':
+                self.doc = desc
+
+        self._post_doc = kw.pop('post_doc', None)
+        self.format_post_doc = kw.pop('format_post_doc', self.default_format_post_doc)
+
+        self.value_name = ''
+        if callable(flag.parse_as):
+            self.value_name = kw.pop('value_name', None) or self.flag.attr_name.upper()
+
+        self.group = kw.pop('group', 0)   # int or str
+        self.hidden = kw.pop('hidden', False)  # bool
+        self.sort_key = kw.pop('sort_key', 0)  # int or str
+
+    @property
+    def label(self):
+        if self._label is not None:
+            return self._label
+        return self.format_label()
+
+    @label.setter
+    def _set_label(self, val):
+        self._label = val
+
+    def default_format_label(self):
+        ret = ' / '.join([self.flag.name] + self.flag.alias_list)
+        if self.value_name:
+            ret += ' ' + self.value_name
+        return ret
+
+    @property
+    def post_doc(self):
+        if self._post_doc is not None:
+            return self._post_doc
+        return self.format_post_doc()
+
+    @post_doc.setter
+    def _set_post_doc(self, val):
+        self._post_doc = val
+
+    def default_format_post_doc(self):
+        if not self.value_name:
+            return ''
+        if self.flag.missing is ERROR:
+            return '(required)'
+        if repr(self.flag.missing) == object.__repr__(self.flag.missing):
+            # avoid displaying unhelpful defaults
+            return '(optional)'
+        return '(defaults to %r)' % self.flag.missing
+
+
+class PosArgDisplay(object):
+    def __init__(self, name, doc=None, post_doc=None, label=None):
+        pass
 
 
 class PosArgSpec(object):
@@ -274,13 +355,13 @@ class PosArgSpec(object):
         self.display_name = display_name
         self.display_full = display_full
 
-        if self.max_count and self.min_count > self.max_count:
-            raise ValueError('expected min_count > max_count, not: %r > %r'
-                             % (self.min_count, self.max_count))
         if self.min_count < 0:
             raise ValueError('expected min_count >= 0, not: %r' % self.min_count)
         if self.max_count < 0:
-            raise ValueError('expected min_count >= 0, not: %r' % self.max_count)
+            raise ValueError('expected max_count >= 0, not: %r' % self.max_count)
+        if self.max_count and self.min_count > self.max_count:
+            raise ValueError('expected min_count > max_count, not: %r > %r'
+                             % (self.min_count, self.max_count))
 
         # display_name='arg', min_count = 2, max_count = 3 ->
         # arg1 arg2 [arg3]
@@ -289,7 +370,7 @@ class PosArgSpec(object):
 
 
 POSARGS_ENABLED = PosArgSpec()
-FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, on_duplicate='extend', missing=None, display_name='')
+FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, on_duplicate='extend', missing=None, display=True)
 HELP_FLAG_ENABLED = Flag('--help', parse_as=True, alias='-h')
 
 

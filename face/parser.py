@@ -684,6 +684,96 @@ class DisplayOptions(object):
         self.__dict__.update(kwargs)
 
 
+def value_policy(display=None):
+    """Advanced usage class decorator for making value policies. Check out
+    One, Multi, First, and Last. Can be used on functions provided
+    they meet the criteria specified in the exceptions below.
+    """
+    # TODO: display is the only option but it's not really leveraged yet
+    target = None
+    if callable(display):
+        target, display = display, None
+
+    def update_target(target):
+        if not callable(target):
+            raise TypeError('expected value policy to be a callable'
+                            ' which takes a flag and sequence of values,'
+                            ' not %r' % target)
+
+        target.display = display
+        target.fvp = True
+
+    if target is not None:
+        return update_target(target)
+    return update_target
+
+
+
+def check_value_policy(target):
+    if not getattr(target, 'fvp', None):
+        raise TypeError('expected target to be value policy, not %r '
+                        ' (did you forget to decorate it with @value_policy?)'
+                        % target)
+    parse_as = getattr(target, 'parse_as', None)
+    if not callable(parse_as):
+        raise TypeError('expected value policy (%r) to have a callable'
+                        ' attribute "parse_as", not %r' % (target, parse_as))
+    return target
+
+
+def _check_parse_as(parse_as):
+    if not callable(parse_as):
+        raise TypeError('parse_as expected callable, not %r' % parse_as)
+    return parse_as
+
+
+@value_policy
+class One(object):
+    def __init__(self, parse_as):
+        self.parse_as = _check_parse_as(parse_as)
+
+    def pick_only_value_or_raise(self, flag, value_list):
+        if len(value_list) > 1:
+            raise DuplicateFlagValue.from_parse(flag, value_list)
+        return value_list[0]
+
+    __call__ = pick_only_value_or_raise
+
+
+@value_policy
+class Multi(object):
+    def __init__(self, parse_as):
+        self.parse_as = _check_parse_as(parse_as)
+
+    def return_all_values(self, flag, value_list):
+        return value_list
+
+    __call__ = return_all_values
+
+
+@value_policy
+class First(object):
+    def __init__(self, parse_as):
+        self.parse_as = _check_parse_as(parse_as)
+
+    def return_first_value(self, flag, value_list):
+        return value_list[0]
+
+    __call__ = return_first_value
+
+
+@value_policy
+class Last(object):
+    def __init__(self, parse_as):
+        self.parse_as = _check_parse_as(parse_as)
+
+    def return_last_value(self, flag, value_list):
+        return value_list[-1]
+
+    __call__ = return_last_value
+
+
+
 """# Problems with argparse
 
 argparse is a pretty solid library, and despite many competitors over

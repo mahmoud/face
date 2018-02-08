@@ -39,7 +39,8 @@ def main():
     cmd = Command(busy_loop, 'cmd', middlewares=[output_streams_mw])
 
     sum_subcmd = Command(sum_func, 'sum')
-    sum_subcmd.add('--num', parse_as=int, on_duplicate='extend')
+    sum_subcmd.add('--num', parse_as=int, multi=True, missing=0,
+                   doc='a number to include in the sum')
     cmd.add(sum_subcmd)
 
 

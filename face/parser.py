@@ -204,31 +204,33 @@ def _arg_to_subcmd(arg):
     return arg.lower().replace('-', '_')
 
 
-def _on_dup_error(flag, arg_val_list):
+def _multi_error(flag, arg_val_list):
     if len(arg_val_list) > 1:
         raise DuplicateFlagValue.from_parse(flag, arg_val_list)
     return arg_val_list[0]
 
 
-def _on_dup_extend(flag, arg_val_list):
+def _multi_extend(flag, arg_val_list):
     return arg_val_list
 
 
-def _on_dup_override(flag, arg_val_list):
+def _multi_override(flag, arg_val_list):
     return arg_val_list[-1]
 
-# TODO: _on_dup_ignore?
+# TODO: _multi_ignore?
 
-_ON_DUP_SHORTCUTS = {'error': _on_dup_error,
-                     'extend': _on_dup_extend,
-                     'override': _on_dup_override}
+_MULTI_SHORTCUTS = {'error': _multi_error,
+                    False: _multi_error,
+                    'extend': _multi_extend,
+                    True: _multi_extend,
+                    'override': _multi_override}
 
 
 # TODO: allow name="--flag / -F" and do the split for automatic
 # aliasing?
 class Flag(object):
     def __init__(self, name, parse_as=True, missing=None, doc=None, alias=None,
-                 display=None, on_duplicate='error'):
+                 display=None, multi='error'):
         self.name = name
         self.doc = doc
         self.parse_as = parse_as
@@ -242,13 +244,13 @@ class Flag(object):
             alias = [alias]
         self.alias_list = list(alias)
 
-        if callable(on_duplicate):
-            self.on_duplicate = on_duplicate
-        elif on_duplicate in _ON_DUP_SHORTCUTS:
-            self.on_duplicate = _ON_DUP_SHORTCUTS[on_duplicate]
+        if callable(multi):
+            self.multi = multi
+        elif multi in _MULTI_SHORTCUTS:
+            self.multi = _MULTI_SHORTCUTS[multi]
         else:
-            raise ValueError('on_duplicate expected callable or one of %r, not: %r'
-                             % (list(_ON_DUP_SHORTCUTS.keys()), on_duplicate))
+            raise ValueError('multi expected callable, bool, or one of %r, not: %r'
+                             % (list(_MULTI_SHORTCUTS.keys()), multi))
 
         if display is None:
             display = {}
@@ -370,7 +372,7 @@ class PosArgSpec(object):
 
 
 POSARGS_ENABLED = PosArgSpec()
-FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, on_duplicate='extend', missing=None, display=True)
+FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, multi='extend', missing=None, display=True)
 HELP_FLAG_ENABLED = Flag('--help', parse_as=True, alias='-h')
 
 
@@ -626,7 +628,7 @@ class Parser(object):
         for flag_name in pfm:
             flag = cfm[flag_name]
             arg_val_list = pfm.getlist(flag_name)
-            ret[flag_name] = flag.on_duplicate(flag, arg_val_list)
+            ret[flag_name] = flag.multi(flag, arg_val_list)
 
         return ret
 
@@ -785,7 +787,7 @@ single-character flags (single-dash flags like -v vs -V).
 
 TODO: normalizing subcommands
 
-Should parse_as=List() with on_duplicate=extend give one long list or
+Should parse_as=List() with multi=extend give one long list or
 a list of lists?
 
 Parser is unable to determine which subcommands are valid leaf

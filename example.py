@@ -40,7 +40,8 @@ def main():
 
     sum_subcmd = Command(sum_func, 'sum')
     sum_subcmd.add('--num', parse_as=int, multi=True, missing=0,
-                   doc='a number to include in the sum')
+                   doc='a number to include in the sum, expects integers at the moment'
+                   ' because it is fun to change things later')
     cmd.add(sum_subcmd)
 
 

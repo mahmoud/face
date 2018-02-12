@@ -42,6 +42,10 @@ def main():
     sum_subcmd.add('--num', parse_as=int, multi=True, missing=0,
                    doc='a number to include in the sum, expects integers at the moment'
                    ' because it is fun to change things later')
+    sum_subcmd.add('--grummmmmmmmmmmmmmmmmmm', parse_as=int, multi=True, missing=0,
+                   doc='a bizarre creature, shrek-like, does nothing, but is here to'
+                   ' make the help longer and less helpful but still good for wraps.')
+
     cmd.add(sum_subcmd)
 
 

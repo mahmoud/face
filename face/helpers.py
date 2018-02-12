@@ -5,8 +5,6 @@ import textwrap
 
 from boltons.iterutils import unique
 
-from face.parser import ERROR, Flag
-
 
 class HelpHandler(object):
     default_context = {
@@ -17,7 +15,7 @@ class HelpHandler(object):
         'section_break': '\n',
         'group_break': '',
         'subcmd_example': 'subcommand',
-        'min_doc_width': 40,
+        'min_doc_width': 58,
         'doc_separator': ' ',
         'section_indent': '  '
     }
@@ -42,6 +40,7 @@ class HelpHandler(object):
         # flagfile_flag are semi-built-in, thus used by all subcommands)
         ctx = self.ctx
         widths = self.get_widths(parser, subcmds)
+        print widths
 
         ret = [self.get_usage_line(parser, subcmds=subcmds)]
         append = ret.append
@@ -70,7 +69,8 @@ class HelpHandler(object):
             append(ctx['group_break'])
             for flag in unique(shown_flags):
                 label = flag.display.label
-                label_f = label.ljust(widths['max_flag_width'])
+                min_lhs_width = len(label + ctx['doc_separator'])
+                label_f = label.ljust(widths['flag_doc_start'] - len(ctx['section_indent']) - len(ctx['doc_separator']))
                 lhs = ctx['section_indent'] + label_f + ctx['doc_separator']
                 doc_parts = [] if not flag.doc else [flag.doc]
                 doc_parts.append(flag.display.post_doc)
@@ -80,8 +80,11 @@ class HelpHandler(object):
                     continue
 
                 wrapped_doc = textwrap.wrap(full_doc, widths['max_flag_doc_width'])
-                first_line = lhs + wrapped_doc[0]
-                append(first_line)
+                if (min_lhs_width + len(wrapped_doc[0])) > widths['max_width']:
+                    append(lhs)
+                    append(' ' * widths['flag_doc_start'] + wrapped_doc[0])
+                else:
+                    append(lhs + wrapped_doc[0])
                 if len(wrapped_doc) == 1:
                     continue
 
@@ -127,6 +130,8 @@ class HelpHandler(object):
             except (KeyError, ValueError):
                 max_width = 80
             max_width -= 2
+        len_sep = len(self.ctx['doc_separator'])
+        len_indent = len(self.ctx['section_indent'])
 
         max_flag_width = 0
         for flag in unique(prs.path_flag_map[subprs_path].values()):
@@ -141,16 +146,20 @@ class HelpHandler(object):
                 max_subcmd_width = cur_len
 
         min_doc_width = self.ctx['min_doc_width']
-        max_flag_doc_width = max_width - max_flag_width - len(self.ctx['doc_separator'])
+        max_flag_doc_width = max_width - max_flag_width - len_sep - len_indent
+        max_flag_doc_width = max(max_flag_doc_width, min_doc_width)
 
-        flag_doc_start = len(self.ctx['section_indent'] + self.ctx['doc_separator']) + max_flag_width
-        subcmd_doc_start = len(self.ctx['section_indent'] + self.ctx['doc_separator']) + max_subcmd_width
+        flag_doc_start = len_indent + len_sep + max_flag_width
+        flag_doc_start = min(flag_doc_start, len_indent + max_width - max_flag_doc_width)
+
+        subcmd_doc_start = len_indent + len_sep + max_subcmd_width
 
         return {'max_flag_doc_width': max_flag_doc_width,
                 'max_flag_width': max_flag_width,
                 'max_subcmd_width': max_subcmd_width,
                 'flag_doc_start': flag_doc_start,
                 'subcmd_doc_start': subcmd_doc_start,
+                'min_doc_width': min_doc_width,
                 'max_width': max_width}
 
 

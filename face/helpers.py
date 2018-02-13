@@ -15,8 +15,8 @@ class HelpHandler(object):
         'section_break': '\n',
         'group_break': '',
         'subcmd_example': 'subcommand',
-        'min_doc_width': 58,
-        'doc_separator': ' ',
+        'min_doc_width': 50,
+        'doc_separator': '  ',
         'section_indent': '  '
     }
 
@@ -59,37 +59,37 @@ class HelpHandler(object):
             append(ctx['group_break'])
             for sub_name in unique([sp[0] for sp in parser.subprs_map if sp]):
                 subprs = parser.subprs_map[(sub_name,)]
-                append(ctx['section_indent'] + sub_name + '   ' + subprs.doc)
+                append(ctx['section_indent'] + sub_name + ctx['doc_separator'] + subprs.doc)
             append(ctx['section_break'])
 
         flags = parser.path_flag_map[()]
         shown_flags = [f for f in flags.values() if not f.display.hidden]
-        if shown_flags:
-            append(ctx['flags_section_heading'])
-            append(ctx['group_break'])
-            for flag in unique(shown_flags):
-                label = flag.display.label
-                min_lhs_width = len(label + ctx['doc_separator'])
-                label_f = label.ljust(widths['flag_doc_start'] - len(ctx['section_indent']) - len(ctx['doc_separator']))
-                lhs = ctx['section_indent'] + label_f + ctx['doc_separator']
-                doc_parts = [] if not flag.doc else [flag.doc]
-                doc_parts.append(flag.display.post_doc)
-                full_doc = ' '.join(doc_parts)
-                if not full_doc:
-                    append(lhs)
-                    continue
 
-                wrapped_doc = textwrap.wrap(full_doc, widths['max_flag_doc_width'])
-                if (min_lhs_width + len(wrapped_doc[0])) > widths['max_width']:
-                    append(lhs)
-                    append(' ' * widths['flag_doc_start'] + wrapped_doc[0])
-                else:
-                    append(lhs + wrapped_doc[0])
-                if len(wrapped_doc) == 1:
-                    continue
+        if not shown_flags:
+            return '\n'.join(ret)
 
-                for line in wrapped_doc[1:]:
-                    append(' ' * widths['flag_doc_start'] + line)
+        append(ctx['flags_section_heading'])
+        append(ctx['group_break'])
+        for flag in unique(shown_flags):
+            lhs = ctx['section_indent'] + flag.display.label + ctx['doc_separator']
+
+            lhs_f = lhs.ljust(widths['flag_doc_start'])
+            doc_parts = [] if not flag.doc else [flag.doc]
+            doc_parts.append(flag.display.post_doc)
+            full_doc = ' '.join(doc_parts)
+            if not full_doc:
+                append(lhs)
+                continue
+
+            wrapped_doc = textwrap.wrap(full_doc, widths['max_flag_doc_width'])
+            if len(lhs) <= widths['flag_doc_start']:
+                append(lhs_f + wrapped_doc[0])
+            else:
+                append(lhs)
+                append(' ' * widths['flag_doc_start'] + wrapped_doc[0])
+
+            for line in wrapped_doc[1:]:
+                append(' ' * widths['flag_doc_start'] + line)
 
         return '\n'.join(ret)
 
@@ -132,12 +132,18 @@ class HelpHandler(object):
             max_width -= 2
         len_sep = len(self.ctx['doc_separator'])
         len_indent = len(self.ctx['section_indent'])
+        min_doc_width = self.ctx['min_doc_width']
 
         max_flag_width = 0
+        flag_doc_start = max_width - min_doc_width
         for flag in unique(prs.path_flag_map[subprs_path].values()):
             cur_len = len(flag.display.label)
             if cur_len > max_flag_width:
                 max_flag_width = cur_len
+                # print len_indent, '+', cur_len, '+', len_sep, '+', min_doc_width
+                # print (len_indent + cur_len + len_sep + min_doc_width), '<', max_width
+                if (len_indent + cur_len + len_sep + min_doc_width) < max_width:
+                    flag_doc_start = len_indent + cur_len + len_sep
 
         max_subcmd_width = 0
         for subcmd_name in unique([path[0] for path in prs.subprs_map if path]):
@@ -145,12 +151,8 @@ class HelpHandler(object):
             if cur_len > max_subcmd_width:
                 max_subcmd_width = cur_len
 
-        min_doc_width = self.ctx['min_doc_width']
         max_flag_doc_width = max_width - max_flag_width - len_sep - len_indent
         max_flag_doc_width = max(max_flag_doc_width, min_doc_width)
-
-        flag_doc_start = len_indent + len_sep + max_flag_width
-        flag_doc_start = min(flag_doc_start, len_indent + max_width - max_flag_doc_width)
 
         subcmd_doc_start = len_indent + len_sep + max_subcmd_width
 
@@ -162,6 +164,19 @@ class HelpHandler(object):
                 'min_doc_width': min_doc_width,
                 'max_width': max_width}
 
+
+"""
+{'flag_doc_start': 24, 'max_flag_doc_width': 58, 'max_width': 78, 'subcmd_doc_start': 12, 'max_flag_width': 47, 'max_subcmd_width': 8, 'min_doc_width': 58}
+
+  --flagfile FLAGFILE       (defaults to None)
+  --help / -h
+  --num NUM                 a number to include in the sum, expects integers at the
+                        moment because it is fun to change things later (defaults
+                        to 0)
+
+
+  --loop-count LOOP_COUNT  (defaults to None)
+"""
 
 """Usage: cmd_name sub_cmd [..as many subcommands as the max] --flags args ...
 

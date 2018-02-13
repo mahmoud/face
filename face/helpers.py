@@ -258,6 +258,22 @@ def default_fmt_flag_label(self, flag):
 
 
 
+--------
 
+# Grouping
+
+Effectively sorted on: (group_name, group_index, sort_order, label)
+
+But group names should be based on insertion order, with the
+default-grouped/ungrouped items showing up in the last group.
+
+# Wrapping / Alignment
+
+Docs start at the position after the longest "left-hand side"
+(LHS/"key") item that would not cause the first line of the docs to be
+narrower than the minimum doc width.
+
+LHSes which do extend beyond this point will be on their own line,
+with the doc starting on the line below.
 
 """

@@ -1,9 +1,46 @@
 
 import os
 import sys
+import array
 import textwrap
 
 from boltons.iterutils import unique
+
+
+def _get_termios_winsize():
+    # TLPI, 62.9 (p. 1319)
+    import fcntl
+    import termios
+
+    winsize = array.array('H', [0, 0, 0, 0])
+
+    assert not fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, winsize)
+
+    ws_row, ws_col, _, _ = winsize
+
+    return ws_row, ws_col
+
+
+def _get_environ_winsize():
+    # the argparse approach. not sure which systems this works or
+    # worked on, if any. ROWS/COLUMNS are special shell variables.
+    try:
+        rows, columns = int(os.environ['ROWS']), int(os.environ['COLUMNS'])
+    except (KeyError, ValueError):
+        rows, columns = None, None
+    return rows, columns
+
+
+def get_winsize():
+    rows, cols = None, None
+    try:
+        rows, cols = _get_termios_winsize()
+    except Exception:
+        try:
+            rows, cols = _get_environ_winsize()
+        except Exception:
+            pass
+    return rows, cols
 
 
 class HelpHandler(object):
@@ -123,13 +160,14 @@ class HelpHandler(object):
 
         return ' '.join(parts)
 
-    def get_widths(self, prs, subprs_path=(), max_width=None):
+    def get_widths(self, prs, subprs_path=(), max_width=None, max_width_limit=120):
         if max_width is None:
-            try:
-                max_width = int(os.environ['COLUMNS'])
-            except (KeyError, ValueError):
+            _, max_width = get_winsize()
+            if max_width is None:
                 max_width = 80
+            max_width = min(max_width, max_width_limit)
             max_width -= 2
+
         len_sep = len(self.ctx['doc_separator'])
         len_indent = len(self.ctx['section_indent'])
         min_doc_width = self.ctx['min_doc_width']
@@ -290,5 +328,19 @@ narrower than the minimum doc width.
 
 LHSes which do extend beyond this point will be on their own line,
 with the doc starting on the line below.
+
+# Window width considerations
+
+With better termios-based logic in place to get window size, there are
+going to be a lot of wider-than-80-char help messages.
+
+The goal of help message alignment is to help eyes track across from a
+flag or subcommand to its corresponding doc. Rather than maximizing
+width usage or topping out at a max width limit, we should be
+balancing or at least limiting the amount of whitespace between the
+shortest flag and its doc.
+
+A width limit might still make sense because reading all the way
+across the screen can be tiresome, too.
 
 """

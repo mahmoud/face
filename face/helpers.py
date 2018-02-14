@@ -43,6 +43,29 @@ def get_winsize():
     return rows, cols
 
 
+def _wrap_pair(indent, label, sep, doc, doc_start, max_doc_width):
+    ret = []
+    append = ret.append
+    lhs = indent + label + sep
+
+    lhs_f = lhs.ljust(doc_start)
+    if not doc:
+        append(lhs)
+        return ret
+
+    wrapped_doc = textwrap.wrap(doc, max_doc_width)
+    if len(lhs) <= doc_start:
+        append(lhs_f + wrapped_doc[0])
+    else:
+        append(lhs)
+        append(' ' * doc_start + wrapped_doc[0])
+
+    for line in wrapped_doc[1:]:
+        append(' ' * doc_start + line)
+
+    return ret
+
+
 class HelpHandler(object):
     default_context = {
         'usage_label': 'Usage:',
@@ -108,25 +131,19 @@ class HelpHandler(object):
         append(ctx['flags_section_heading'])
         append(ctx['group_break'])
         for flag in unique(shown_flags):
-            lhs = ctx['section_indent'] + flag.display.label + ctx['doc_separator']
-
-            lhs_f = lhs.ljust(widths['flag_doc_start'])
+            # TODO: move to full_doc property on flag.display
             doc_parts = [] if not flag.doc else [flag.doc]
             doc_parts.append(flag.display.post_doc)
             full_doc = ' '.join(doc_parts)
-            if not full_doc:
-                append(lhs)
-                continue
 
-            wrapped_doc = textwrap.wrap(full_doc, widths['max_flag_doc_width'])
-            if len(lhs) <= widths['flag_doc_start']:
-                append(lhs_f + wrapped_doc[0])
-            else:
-                append(lhs)
-                append(' ' * widths['flag_doc_start'] + wrapped_doc[0])
+            flag_lines = _wrap_pair(indent=ctx['section_indent'],
+                                    label=flag.display.label,
+                                    sep=ctx['doc_separator'],
+                                    doc=full_doc,
+                                    doc_start=widths['flag_doc_start'],
+                                    max_doc_width=widths['max_flag_doc_width'])
 
-            for line in wrapped_doc[1:]:
-                append(' ' * widths['flag_doc_start'] + line)
+            ret.extend(flag_lines)
 
         return '\n'.join(ret)
 
@@ -173,14 +190,16 @@ class HelpHandler(object):
         min_doc_width = self.ctx['min_doc_width']
 
         max_flag_width = 0
+        max_flag_doc_width = min_doc_width
         flag_doc_start = max_width - min_doc_width
         for flag in unique(prs.path_flag_map[subprs_path].values()):
             cur_len = len(flag.display.label)
             if cur_len > max_flag_width:
-                max_flag_width = cur_len
                 # print len_indent, '+', cur_len, '+', len_sep, '+', min_doc_width
                 # print (len_indent + cur_len + len_sep + min_doc_width), '<', max_width
+                max_flag_width = cur_len
                 if (len_indent + cur_len + len_sep + min_doc_width) < max_width:
+                    max_flag_doc_width = max_width - max_flag_width - len_sep - len_indent
                     flag_doc_start = len_indent + cur_len + len_sep
 
         max_subcmd_width = 0
@@ -188,9 +207,6 @@ class HelpHandler(object):
             cur_len = len(subcmd_name)
             if cur_len > max_subcmd_width:
                 max_subcmd_width = cur_len
-
-        max_flag_doc_width = max_width - max_flag_width - len_sep - len_indent
-        max_flag_doc_width = max(max_flag_doc_width, min_doc_width)
 
         subcmd_doc_start = len_indent + len_sep + max_subcmd_width
 
@@ -338,7 +354,7 @@ The goal of help message alignment is to help eyes track across from a
 flag or subcommand to its corresponding doc. Rather than maximizing
 width usage or topping out at a max width limit, we should be
 balancing or at least limiting the amount of whitespace between the
-shortest flag and its doc.
+shortest flag and its doc.  (TODO)
 
 A width limit might still make sense because reading all the way
 across the screen can be tiresome, too.

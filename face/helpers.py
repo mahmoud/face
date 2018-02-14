@@ -75,6 +75,8 @@ class HelpHandler(object):
         'section_break': '\n',
         'group_break': '',
         'subcmd_example': 'subcommand',
+        'width': None,
+        'max_width': 120,
         'min_doc_width': 50,
         'doc_separator': '  ',
         'section_indent': '  '
@@ -100,7 +102,17 @@ class HelpHandler(object):
         # flagfile_flag are semi-built-in, thus used by all subcommands)
         ctx = self.ctx
         widths = self.get_widths(parser, subcmds)
-        print widths
+        flag_labels = [flag.display.label for flag in
+                       unique(parser.path_flag_map[subcmds].values())]
+        flag_widths = get_widths(labels=flag_labels,
+                                 indent=self.ctx['section_indent'],
+                                 sep=self.ctx['doc_separator'],
+                                 width=self.ctx['width'],
+                                 max_width=self.ctx['max_width'],
+                                 min_doc_width=self.ctx['min_doc_width'])
+
+        print sorted(widths.items())
+        print sorted(flag_widths.items())
 
         ret = [self.get_usage_line(parser, subcmds=subcmds)]
         append = ret.append
@@ -217,6 +229,35 @@ class HelpHandler(object):
                 'subcmd_doc_start': subcmd_doc_start,
                 'min_doc_width': min_doc_width,
                 'max_width': max_width}
+
+
+def get_widths(labels, indent, sep, width=None, max_width=120, min_doc_width=40):
+    if width is None:
+        _, width = get_winsize()
+        if width is None:
+            width = 80
+        width = min(width, max_width)
+        width -= 2
+
+    len_sep = len(sep)
+    len_indent = len(indent)
+
+    max_label_width = 0
+    max_doc_width = min_doc_width
+    doc_start = width - min_doc_width
+    for label in labels:
+        cur_len = len(label)
+        if cur_len < max_label_width:
+            continue
+        max_label_width = cur_len
+        if (len_indent + cur_len + len_sep + min_doc_width) < width:
+            max_doc_width = width - max_label_width - len_sep - len_indent
+            doc_start = len_indent + cur_len + len_sep
+
+    return {'width': width,
+            'label_width': max_label_width,
+            'doc_width': max_doc_width,
+            'doc_start': doc_start}
 
 
 """

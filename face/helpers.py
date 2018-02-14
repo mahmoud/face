@@ -105,11 +105,11 @@ class HelpHandler(object):
         flag_labels = [flag.display.label for flag in
                        unique(parser.path_flag_map[subcmds].values())]
         flag_widths = get_widths(labels=flag_labels,
-                                 indent=self.ctx['section_indent'],
-                                 sep=self.ctx['doc_separator'],
-                                 width=self.ctx['width'],
-                                 max_width=self.ctx['max_width'],
-                                 min_doc_width=self.ctx['min_doc_width'])
+                                 indent=ctx['section_indent'],
+                                 sep=ctx['doc_separator'],
+                                 width=ctx['width'],
+                                 max_width=ctx['max_width'],
+                                 min_doc_width=ctx['min_doc_width'])
 
         print sorted(widths.items())
         print sorted(flag_widths.items())
@@ -152,8 +152,8 @@ class HelpHandler(object):
                                     label=flag.display.label,
                                     sep=ctx['doc_separator'],
                                     doc=full_doc,
-                                    doc_start=widths['flag_doc_start'],
-                                    max_doc_width=widths['max_flag_doc_width'])
+                                    doc_start=flag_widths['doc_start'],
+                                    max_doc_width=flag_widths['doc_width'])
 
             ret.extend(flag_lines)
 

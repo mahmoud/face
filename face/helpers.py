@@ -53,19 +53,20 @@ def _wrap_pair(indent, label, sep, doc, doc_start, max_doc_width):
     # sequence)
     ret = []
     append = ret.append
-    lhs = indent + label + sep
+    lhs = indent + label
 
-    lhs_f = lhs.ljust(doc_start)
     if not doc:
         append(lhs)
         return ret
 
+    len_sep = len(sep)
     wrapped_doc = textwrap.wrap(doc, max_doc_width)
     if len(lhs) <= doc_start:
+        lhs_f = lhs.ljust(doc_start - len(sep)) + sep
         append(lhs_f + wrapped_doc[0])
     else:
         append(lhs)
-        append(' ' * doc_start + wrapped_doc[0])
+        append((' ' * (doc_start - len_sep)) + sep + wrapped_doc[0])
 
     for line in wrapped_doc[1:]:
         append(' ' * doc_start + line)
@@ -85,7 +86,7 @@ class HelpHandler(object):
         'width': None,
         'max_width': 120,
         'min_doc_width': 50,
-        'doc_separator': '  ',
+        'doc_separator': '   ',
         'section_indent': '  '
     }
 
@@ -117,7 +118,6 @@ class HelpHandler(object):
         # TODO: filter by actually-used flags (note that help_flag and
         # flagfile_flag are semi-built-in, thus used by all subcommands)
         ctx = self.ctx
-        widths = self.get_widths(parser, subcmds)
 
         ret = [self.get_usage_line(parser, subcmds=subcmds)]
         append = ret.append
@@ -203,47 +203,6 @@ class HelpHandler(object):
 
         return ' '.join(parts)
 
-    def get_widths(self, prs, subprs_path=(), max_width=None, max_width_limit=120):
-        if max_width is None:
-            _, max_width = get_winsize()
-            if max_width is None:
-                max_width = 80
-            max_width = min(max_width, max_width_limit)
-            max_width -= 2
-
-        len_sep = len(self.ctx['doc_separator'])
-        len_indent = len(self.ctx['section_indent'])
-        min_doc_width = self.ctx['min_doc_width']
-
-        max_flag_width = 0
-        max_flag_doc_width = min_doc_width
-        flag_doc_start = max_width - min_doc_width
-        for flag in unique(prs.path_flag_map[subprs_path].values()):
-            cur_len = len(flag.display.label)
-            if cur_len > max_flag_width:
-                # print len_indent, '+', cur_len, '+', len_sep, '+', min_doc_width
-                # print (len_indent + cur_len + len_sep + min_doc_width), '<', max_width
-                max_flag_width = cur_len
-                if (len_indent + cur_len + len_sep + min_doc_width) < max_width:
-                    max_flag_doc_width = max_width - max_flag_width - len_sep - len_indent
-                    flag_doc_start = len_indent + cur_len + len_sep
-
-        max_subcmd_width = 0
-        for subcmd_name in unique([path[0] for path in prs.subprs_map if path]):
-            cur_len = len(subcmd_name)
-            if cur_len > max_subcmd_width:
-                max_subcmd_width = cur_len
-
-        subcmd_doc_start = len_indent + len_sep + max_subcmd_width
-
-        return {'max_flag_doc_width': max_flag_doc_width,
-                'max_flag_width': max_flag_width,
-                'max_subcmd_width': max_subcmd_width,
-                'flag_doc_start': flag_doc_start,
-                'subcmd_doc_start': subcmd_doc_start,
-                'min_doc_width': min_doc_width,
-                'max_width': max_width}
-
 
 def get_widths(labels, indent, sep, width=None, max_width=120, min_doc_width=40):
     if width is None:
@@ -273,19 +232,6 @@ def get_widths(labels, indent, sep, width=None, max_width=120, min_doc_width=40)
             'doc_width': max_doc_width,
             'doc_start': doc_start}
 
-
-"""
-{'flag_doc_start': 24, 'max_flag_doc_width': 58, 'max_width': 78, 'subcmd_doc_start': 12, 'max_flag_width': 47, 'max_subcmd_width': 8, 'min_doc_width': 58}
-
-  --flagfile FLAGFILE       (defaults to None)
-  --help / -h
-  --num NUM                 a number to include in the sum, expects integers at the
-                        moment because it is fun to change things later (defaults
-                        to 0)
-
-
-  --loop-count LOOP_COUNT  (defaults to None)
-"""
 
 """Usage: cmd_name sub_cmd [..as many subcommands as the max] --flags args ...
 

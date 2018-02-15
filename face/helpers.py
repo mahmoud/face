@@ -104,41 +104,53 @@ class HelpHandler(object):
         print(self.get_help_text(cmd_.parser, subcmds=subcmds_))
         sys.exit(0)
 
+    def _get_widths(self, labels):
+        ctx = self.ctx
+        return get_widths(labels=labels,
+                          indent=ctx['section_indent'],
+                          sep=ctx['doc_separator'],
+                          width=ctx['width'],
+                          max_width=ctx['max_width'],
+                          min_doc_width=ctx['min_doc_width'])
+
     def get_help_text(self, parser, subcmds=(), flags=None):
         # TODO: filter by actually-used flags (note that help_flag and
         # flagfile_flag are semi-built-in, thus used by all subcommands)
         ctx = self.ctx
         widths = self.get_widths(parser, subcmds)
-        flag_labels = [flag.display.label for flag in
-                       unique(parser.path_flag_map[subcmds].values())]
-        flag_widths = get_widths(labels=flag_labels,
-                                 indent=ctx['section_indent'],
-                                 sep=ctx['doc_separator'],
-                                 width=ctx['width'],
-                                 max_width=ctx['max_width'],
-                                 min_doc_width=ctx['min_doc_width'])
-
-        print sorted(widths.items())
-        print sorted(flag_widths.items())
 
         ret = [self.get_usage_line(parser, subcmds=subcmds)]
         append = ret.append
+        append(ctx['group_break'])
 
         if subcmds:
             parser = parser.subprs_map[subcmds]
-
-        append(ctx['group_break'])
 
         if parser.doc:
             append(parser.doc)
             append(ctx['section_break'])
 
+        flag_labels = [flag.display.label for flag in
+                       unique(parser.path_flag_map[()].values())
+                       if not flag.display.hidden]
+        flag_widths = self._get_widths(labels=flag_labels)
+
         if parser.subprs_map:
+            subcmd_labels = unique([sp[0] for sp in parser.subprs_map if sp])
+            subcmd_widths = self._get_widths(labels=subcmd_labels)
+
             append(ctx['subcmd_section_heading'])
             append(ctx['group_break'])
             for sub_name in unique([sp[0] for sp in parser.subprs_map if sp]):
                 subprs = parser.subprs_map[(sub_name,)]
-                append(ctx['section_indent'] + sub_name + ctx['doc_separator'] + subprs.doc)
+                subcmd_lines = _wrap_pair(indent=ctx['section_indent'],
+                                          label=sub_name,
+                                          sep=ctx['doc_separator'],
+                                          doc=subprs.doc,
+                                          doc_start=subcmd_widths['doc_start'],
+                                          max_doc_width=subcmd_widths['doc_width'])
+                ret.extend(subcmd_lines)
+
             append(ctx['section_break'])
 
         flags = parser.path_flag_map[()]

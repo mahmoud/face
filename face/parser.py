@@ -281,7 +281,6 @@ class Flag(object):
 
 
 class FlagDisplay(object):
-    # TODO: support None for label to disable? or explicit hidden?
     def __init__(self, flag, **kw):
         self.flag = flag
         self.name = kw.pop('name', flag.name)
@@ -289,7 +288,7 @@ class FlagDisplay(object):
         self.format_label = kw.pop('format_label', self.default_format_label)
 
         self.doc = flag.doc
-        if self.doc is None and callable(flag.parse_as):
+        if self.doc is  and callable(flag.parse_as):
             _prep, desc = _get_type_desc(flag.parse_as)
             self.doc = 'Parsed with ' + desc
             if _prep == 'as':
@@ -317,6 +316,8 @@ class FlagDisplay(object):
     @label.setter
     def _set_label(self, val):
         self._label = val
+        # stay hidden if set to hidden, else hide if empty
+        self.hidden = self.hidden or (not val)
 
     def default_format_label(self):
         ret = ' / '.join([self.flag.name] + self.flag.alias_list)

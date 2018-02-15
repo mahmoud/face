@@ -48,8 +48,12 @@ def _docstring_to_doc(func):
     return ret
 
 
+def default_print_error(msg):
+    return sys.stderr.write(msg + '\n')
+
+
 class Command(object):
-    def __init__(self, func, name=None, doc=None, posargs=False, middlewares=None):
+    def __init__(self, func, name=None, doc=None, posargs=False, middlewares=None, print_error=None):
         name = name if name is not None else _get_default_name()
 
         if doc is None:
@@ -68,6 +72,13 @@ class Command(object):
         self._path_wrapped_map[()] = func
         for mw in middlewares:
             self.add_middleware(mw)
+
+        if print_error is None or print_error is True:
+            print_error = default_print_error
+        elif print_error and not callable(print_error):
+            raise TypeError('expected callable for print_error, not %r'
+                            % print_error)
+        self.print_error = print_error
         return
 
     @property
@@ -146,7 +157,7 @@ class Command(object):
                 msg += ' ' + ' '.join(ape.subcmds or ())
             msg += ': ' + ape.message
             cle = CommandLineError(msg)
-            print msg  # stderr
+            self.print_error(msg)
             raise cle
 
         kwargs.update({'args_': prs_res,

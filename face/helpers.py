@@ -130,11 +130,6 @@ class HelpHandler(object):
             append(parser.doc)
             append(ctx['section_break'])
 
-        flag_labels = [flag.display.label for flag in
-                       unique(parser.path_flag_map[()].values())
-                       if not flag.display.hidden]
-        flag_widths = self._get_widths(labels=flag_labels)
-
         if parser.subprs_map:
             subcmd_labels = unique([sp[0] for sp in parser.subprs_map if sp])
             subcmd_widths = self._get_widths(labels=subcmd_labels)
@@ -153,15 +148,16 @@ class HelpHandler(object):
 
             append(ctx['section_break'])
 
-        flags = parser.path_flag_map[()]
-        shown_flags = [f for f in flags.values() if not f.display.hidden]
-
+        shown_flags = unique([f for f in parser.path_flag_map[()].values() if not f.display.hidden])
         if not shown_flags:
             return '\n'.join(ret)
 
+        flag_labels = [flag.display.label for flag in shown_flags]
+        flag_widths = self._get_widths(labels=flag_labels)
+
         append(ctx['flags_section_heading'])
         append(ctx['group_break'])
-        for flag in unique(shown_flags):
+        for flag in shown_flags:
             flag_lines = _wrap_pair(indent=ctx['section_indent'],
                                     label=flag.display.label,
                                     sep=ctx['doc_separator'],

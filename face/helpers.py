@@ -44,6 +44,13 @@ def get_winsize():
 
 
 def _wrap_pair(indent, label, sep, doc, doc_start, max_doc_width):
+    # TODO: consider making sep align to the right of the fill-space,
+    # so that it can act more like bullets when it's more than just
+    # whitespace
+    # TODO: consider making the fill character configurable (ljust
+    # uses space by default, the just() methods can only take
+    # characters, might be a useful bolton to take a repeating
+    # sequence)
     ret = []
     append = ret.append
     lhs = indent + label + sep
@@ -143,15 +150,10 @@ class HelpHandler(object):
         append(ctx['flags_section_heading'])
         append(ctx['group_break'])
         for flag in unique(shown_flags):
-            # TODO: move to full_doc property on flag.display
-            doc_parts = [] if not flag.doc else [flag.doc]
-            doc_parts.append(flag.display.post_doc)
-            full_doc = ' '.join(doc_parts)
-
             flag_lines = _wrap_pair(indent=ctx['section_indent'],
                                     label=flag.display.label,
                                     sep=ctx['doc_separator'],
-                                    doc=full_doc,
+                                    doc=flag.display.full_doc,
                                     doc_start=flag_widths['doc_start'],
                                     max_doc_width=flag_widths['doc_width'])
 

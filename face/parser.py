@@ -289,7 +289,7 @@ class FlagDisplay(object):
         self.format_label = kw.pop('format_label', self.default_format_label)
 
         self.doc = flag.doc
-        if not self.doc and callable(flag.parse_as):
+        if self.doc is None and callable(flag.parse_as):
             _prep, desc = _get_type_desc(flag.parse_as)
             self.doc = 'Parsed with ' + desc
             if _prep == 'as':
@@ -297,6 +297,8 @@ class FlagDisplay(object):
 
         self._post_doc = kw.pop('post_doc', None)
         self.format_post_doc = kw.pop('format_post_doc', self.default_format_post_doc)
+
+        self._full_doc = kw.pop('full_doc', None)
 
         self.value_name = ''
         if callable(flag.parse_as):
@@ -342,6 +344,19 @@ class FlagDisplay(object):
             return '(optional)'
         return '(defaults to %r)' % self.flag.missing
 
+    @property
+    def full_doc(self):
+        if self._full_doc is not None:
+            return self._full_doc
+
+        doc_parts = [] if not self.doc else [self.doc]
+        doc_parts.append(self.post_doc)
+        return ' '.join(doc_parts)
+
+    @post_doc.setter
+    def _set_full_doc(self, val):
+        self._full_doc = val
+
 
 class PosArgDisplay(object):
     def __init__(self, name, doc=None, post_doc=None, label=None):
@@ -372,7 +387,7 @@ class PosArgSpec(object):
 
 
 POSARGS_ENABLED = PosArgSpec()
-FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, multi='extend', missing=None, display=True)
+FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, multi='extend', missing=None, display=True, doc='')
 HELP_FLAG_ENABLED = Flag('--help', parse_as=True, alias='-h')
 
 

@@ -105,9 +105,9 @@ class HelpHandler(object):
         print(self.get_help_text(cmd_.parser, subcmds=subcmds_))
         sys.exit(0)
 
-    def _get_widths(self, labels):
+    def _get_layout(self, labels):
         ctx = self.ctx
-        return get_widths(labels=labels,
+        return get_layout(labels=labels,
                           indent=ctx['section_indent'],
                           sep=ctx['doc_separator'],
                           width=ctx['width'],
@@ -132,7 +132,7 @@ class HelpHandler(object):
 
         if parser.subprs_map:
             subcmd_labels = unique([sp[0] for sp in parser.subprs_map if sp])
-            subcmd_widths = self._get_widths(labels=subcmd_labels)
+            subcmd_layout = self._get_layout(labels=subcmd_labels)
 
             append(ctx['subcmd_section_heading'])
             append(ctx['group_break'])
@@ -142,8 +142,8 @@ class HelpHandler(object):
                                           label=sub_name,
                                           sep=ctx['doc_separator'],
                                           doc=subprs.doc,
-                                          doc_start=subcmd_widths['doc_start'],
-                                          max_doc_width=subcmd_widths['doc_width'])
+                                          doc_start=subcmd_layout['doc_start'],
+                                          max_doc_width=subcmd_layout['doc_width'])
                 ret.extend(subcmd_lines)
 
             append(ctx['section_break'])
@@ -153,7 +153,7 @@ class HelpHandler(object):
             return '\n'.join(ret)
 
         flag_labels = [flag.display.label for flag in shown_flags]
-        flag_widths = self._get_widths(labels=flag_labels)
+        flag_layout = self._get_layout(labels=flag_labels)
 
         append(ctx['flags_section_heading'])
         append(ctx['group_break'])
@@ -162,8 +162,8 @@ class HelpHandler(object):
                                     label=flag.display.label,
                                     sep=ctx['doc_separator'],
                                     doc=flag.display.full_doc,
-                                    doc_start=flag_widths['doc_start'],
-                                    max_doc_width=flag_widths['doc_width'])
+                                    doc_start=flag_layout['doc_start'],
+                                    max_doc_width=flag_layout['doc_width'])
 
             ret.extend(flag_lines)
 
@@ -200,7 +200,7 @@ class HelpHandler(object):
         return ' '.join(parts)
 
 
-def get_widths(labels, indent, sep, width=None, max_width=120, min_doc_width=40):
+def get_layout(labels, indent, sep, width=None, max_width=120, min_doc_width=40):
     if width is None:
         _, width = get_winsize()
         if width is None:

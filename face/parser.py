@@ -422,7 +422,6 @@ class PosArgSpec(object):
         # TODO: default? type check that it's a sequence matching min/max reqs
 
 
-POSARGS_ENABLED = PosArgSpec()
 FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, multi='extend', missing=None, display=True, doc='')
 HELP_FLAG_ENABLED = Flag('--help', parse_as=True, alias='-h')
 
@@ -438,7 +437,9 @@ class Parser(object):
         self.name = name
         self.doc = doc
         if posargs is True:
-            posargs = POSARGS_ENABLED
+            posargs = PosArgSpec()
+        elif callable(posargs):
+            posargs = PosArgSpec(parse_as=posargs)
         if posargs and not isinstance(posargs, PosArgSpec):
             raise ValueError('expected posargs as True, False,'
                              ' or instance of PosArgSpec, not: %r' % posargs)

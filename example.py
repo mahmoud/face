@@ -51,7 +51,7 @@ def main():
 
     cmd.add(verbose_mw)
 
-    pas = PosArgSpec(parse_as=int, max_count=2, display_name='num')
+    pas = PosArgSpec(parse_as=int, max_count=2, display='num')
     subt_subcmd = Command(subtract_func, 'subtract', '', posargs=pas)
     cmd.add(subt_subcmd)
 

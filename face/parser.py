@@ -268,6 +268,21 @@ class Flag(object):
     def attr_name(self):
         return _normalize_flag_name(self.name)
 
+    def set_display(self, display):
+        if display is None:
+            display = {}
+        elif isinstance(display, bool):
+            display = {'hidden': not display}
+        elif isinstance(display, str):
+            display = {'name': display}
+        if isinstance(display, dict):
+            display = FlagDisplay(self, **display)
+        if not isinstance(display, FlagDisplay):
+            raise TypeError('expected bool, text name, dict of display'
+                            ' options, or FlagDisplay instance, not: %r'
+                            % display)
+        self.display = display
+
 
 class FlagDisplay(object):
     def __init__(self, flag, **kw):
@@ -295,6 +310,10 @@ class FlagDisplay(object):
         self.group = kw.pop('group', 0)   # int or str
         self.hidden = kw.pop('hidden', False)  # bool
         self.sort_key = kw.pop('sort_key', 0)  # int or str
+
+        if kw:
+            TypeError('unexpected keyword arguments: %r' % kw.keys())
+        return
 
     @property
     def label(self):
@@ -349,18 +368,35 @@ class FlagDisplay(object):
 
 
 class PosArgDisplay(object):
-    def __init__(self, name, doc=None, post_doc=None, label=None):
-        pass
+    def __init__(self, spec, **kw):
+        self.spec = spec
+        self.name = kw.pop('name', 'arg')
+        self.doc = kw.pop('doc', '')
+        self.post_doc = kw.pop('post_doc', '')
+        self._label = kw.pop('label', None)
+
+        if kw:
+            TypeError('unexpected keyword arguments: %r' % kw.keys())
+        return
+
+    @property
+    def label(self):
+        if self._label is not None:
+            return self._label
+        elif self.spec.min_count:
+            return 'args ...'
+        return '[args ...]'
+
+    @label.setter
+    def _set_label(self, val):
+        self._label = val
 
 
 class PosArgSpec(object):
-    def __init__(self, parse_as=None, min_count=None, max_count=None,
-                 display_name='arg', display_full=None):
+    def __init__(self, parse_as=None, min_count=None, max_count=None, display=None):
         self.parse_as = parse_as or str
         self.min_count = int(min_count) if min_count else 0
         self.max_count = int(max_count) if max_count else 0
-        self.display_name = display_name
-        self.display_full = display_full
 
         if self.min_count < 0:
             raise ValueError('expected min_count >= 0, not: %r' % self.min_count)
@@ -369,6 +405,16 @@ class PosArgSpec(object):
         if self.max_count and self.min_count > self.max_count:
             raise ValueError('expected min_count > max_count, not: %r > %r'
                              % (self.min_count, self.max_count))
+
+        if display is None:
+            display = {}
+        elif isinstance(display, bool):
+            display = {'hidden': not display}
+        elif isinstance(display, str):
+            display = {'name': display}
+        if isinstance(display, dict):
+            display = PosArgDisplay(self, **display)
+        self.display = display
 
         # display_name='arg', min_count = 2, max_count = 3 ->
         # arg1 arg2 [arg3]

@@ -117,6 +117,7 @@ class HelpHandler(object):
     def get_help_text(self, parser, subcmds=(), flags=None):
         # TODO: filter by actually-used flags (note that help_flag and
         # flagfile_flag are semi-built-in, thus used by all subcommands)
+        # TODO: incorporate "Arguments" section if posargs has a doc set
         ctx = self.ctx
 
         ret = [self.get_usage_line(parser, subcmds=subcmds)]
@@ -183,19 +184,18 @@ class HelpHandler(object):
         elif subcmds and parser.subprs_map[subcmds].subprs_map:
             append('subcommand')
 
-        flags = parser.path_flag_map[subcmds]
+        # with subcommands out of the way, look up the parser for flags and args
+        if subcmds:
+            parser = parser.subprs_map[subcmds]
+
+        flags = parser.path_flag_map[()]
         shown_flags = [f for f in flags.values() if not f.display.hidden]
 
         if shown_flags:
             append('[FLAGS]')
 
         if parser.posargs:
-            if parser.posargs.display_full:
-                append(parser.posargs.display_full)
-            elif parser.posargs.min_count:
-                append('args ...')
-            else:
-                append('[args ...]')
+            append(parser.posargs.display.label)
 
         return ' '.join(parts)
 

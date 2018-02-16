@@ -45,8 +45,8 @@ class UnknownFlag(ArgumentParseError):
     @classmethod
     def from_parse(cls, cmd_flag_map, flag_name):
         # TODO: add edit distance calculation
-        valid_flags = unique([flag.display_name for flag in
-                              cmd_flag_map.values() if flag.display_name])
+        valid_flags = unique([flag.display.name for flag in
+                              cmd_flag_map.values() if not flag.display.hidden])
         msg = ('unknown flag "%s", choose from: %s'
                % (flag_name, ', '.join(valid_flags)))
         return cls(msg)
@@ -268,17 +268,6 @@ class Flag(object):
     def attr_name(self):
         return _normalize_flag_name(self.name)
 
-    @property
-    def display_name(self):
-        orig_dn = self.display.name
-        if orig_dn is False:
-            return ''
-        if orig_dn:
-            return orig_dn
-        if len(self.name) == 1:
-            return '-' + self.name
-        return self.name.replace('_', '-')
-
 
 class FlagDisplay(object):
     def __init__(self, flag, **kw):
@@ -288,7 +277,7 @@ class FlagDisplay(object):
         self.format_label = kw.pop('format_label', self.default_format_label)
 
         self.doc = flag.doc
-        if self.doc is  and callable(flag.parse_as):
+        if self.doc is None and callable(flag.parse_as):
             _prep, desc = _get_type_desc(flag.parse_as)
             self.doc = 'Parsed with ' + desc
             if _prep == 'as':
@@ -695,11 +684,6 @@ class CommandParseResult(object):
         """
         return self.flags.get(_normalize_flag_name(name))
 
-
-# TODO
-class DisplayOptions(object):
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
 
 
 """# Problems with argparse

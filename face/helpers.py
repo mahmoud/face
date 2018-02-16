@@ -184,7 +184,7 @@ class HelpHandler(object):
             append('subcommand')
 
         flags = parser.path_flag_map[subcmds]
-        shown_flags = [f for f in flags.values() if f.display_name is not False]
+        shown_flags = [f for f in flags.values() if not f.display.hidden]
 
         if shown_flags:
             append('[FLAGS]')
@@ -244,7 +244,6 @@ Flag help notes:
 * don't display parenthetical if it's string/None
 * Also need to indicate required and mutual exclusion ("not with")
 * Maybe experimental / deprecated support
-* Need to respect display_name=False
 * General flag listing should also include flags up the chain
 
 Subcommand listing styles:
@@ -355,5 +354,9 @@ shortest flag and its doc.  (TODO)
 
 A width limit might still make sense because reading all the way
 across the screen can be tiresome, too.
+
+TODO: padding_top and padding_bottom attributes on various displays
+(esp FlagDisplay) to enable finer grained whitespace control without
+complicated group setups.
 
 """

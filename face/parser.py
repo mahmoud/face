@@ -27,7 +27,11 @@ class ArgumentParseError(FaceException):
     pass
 
 
-class UnexpectedArgs(ArgumentParseError):
+class InvalidPosArgs(ArgumentParseError):
+    pass
+
+
+class TooManyArguments(InvalidPosArgs):
     pass
 
 
@@ -381,6 +385,8 @@ class PosArgDisplay(object):
 
     @property
     def label(self):
+        if not self.spec.accepts_args:
+            return ''
         if self._label is not None:
             return self._label
         elif self.spec.min_count:
@@ -393,14 +399,16 @@ class PosArgDisplay(object):
 
 
 class PosArgSpec(object):
-    def __init__(self, parse_as=None, min_count=None, max_count=None, display=None):
-        self.parse_as = parse_as or str
+    def __init__(self, parse_as=str, min_count=None, max_count=None, display=None):
+        if not callable(parse_as) and parse_as is not ERROR:
+            raise TypeError('expected callable or ERROR for parse_as, not %r' % parse_as)
+        self.parse_as = parse_as
         self.min_count = int(min_count) if min_count else 0
-        self.max_count = int(max_count) if max_count else 0
+        self.max_count = int(max_count) if max_count is not None else None
 
         if self.min_count < 0:
             raise ValueError('expected min_count >= 0, not: %r' % self.min_count)
-        if self.max_count < 0:
+        if self.max_count is not None and self.max_count < 0:
             raise ValueError('expected max_count >= 0, not: %r' % self.max_count)
         if self.max_count and self.min_count > self.max_count:
             raise ValueError('expected min_count > max_count, not: %r > %r'
@@ -421,6 +429,53 @@ class PosArgSpec(object):
 
         # TODO: default? type check that it's a sequence matching min/max reqs
 
+    @property
+    def accepts_args(self):
+        if self.parse_as is ERROR:
+            return False
+        if self.max_count is not None and self.max_count == 0:
+            return False
+        return True
+
+    def parse(self, posargs):
+        len_posargs = len(posargs)
+        if posargs and not self.accepts_args:
+            raise InvalidPosArgs('unexpected arguments: %r' % posargs)
+        min_count, max_count = self.min_count, self.max_count
+        if min_count == max_count:
+            if min_count == 0:
+                arg_range_text = 'no arguments'
+            else:
+                arg_range_text = '%s argument' % min_count
+            if min_count > 1:
+                arg_range_text += 's'
+        else:
+            if min_count == 0:
+                arg_range_text = 'up to %s argument' % max_count
+                arg_range_text += 's' if max_count > 1 else ''
+            elif max_count is None:
+                arg_range_text = 'at least %s argument' % min_count
+                arg_range_text += 's' if min_count > 1 else ''
+            else:
+                arg_range_text = '%s - %s arguments' % (min_count, max_count)
+
+        if len_posargs < min_count:
+            raise InvalidPosArgs('too few arguments, expected %s, got %s'
+                                 % (arg_range_text, len_posargs))
+        if max_count is not None and len_posargs > max_count:
+            raise InvalidPosArgs('too many arguments, expected %s, got %s'
+                                 % (arg_range_text, len_posargs))
+        ret = []
+        for pa in posargs:
+            try:
+                val = self.parse_as(pa)
+            except Exception as exc:
+                raise InvalidPositionalArgument.from_parse(self, pa, exc)
+            else:
+                ret.append(val)
+        return ret
+
+
 
 FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, multi='extend', missing=None, display=True, doc='')
 HELP_FLAG_ENABLED = Flag('--help', parse_as=True, alias='-h')
@@ -436,13 +491,17 @@ class Parser(object):
             raise ValueError('expected name beginning with ASCII letter, not: %r' % (name,))
         self.name = name
         self.doc = doc
-        if posargs is True:
+
+        if not posargs:
+            posargs = PosArgSpec(parse_as=ERROR)
+        elif posargs is True:
             posargs = PosArgSpec()
         elif callable(posargs):
             posargs = PosArgSpec(parse_as=posargs)
-        if posargs and not isinstance(posargs, PosArgSpec):
+        if not isinstance(posargs, PosArgSpec):
             raise ValueError('expected posargs as True, False,'
                              ' or instance of PosArgSpec, not: %r' % posargs)
+        print self.name, posargs.parse_as, posargs.max_count
         self.posargs = posargs
 
         self.help_flag = HELP_FLAG_ENABLED
@@ -466,7 +525,7 @@ class Parser(object):
         To add a command under a different name, simply make a copy of
         that parser or command with a different name.
         """
-        if self.posargs:
+        if self.posargs.accepts_args:
             raise ValueError('commands accepting positional arguments'
                              ' cannot take subcommands')
 
@@ -569,21 +628,13 @@ class Parser(object):
             if '--' in posargs:
                 posargs, post_posargs = split(posargs, '--', 1)
 
-            if posargs:
-                if not prs.posargs:
-                    raise UnexpectedArgs('extra arguments passed: %r' % posargs)
-                for pa in posargs:
-                    try:
-                        val = prs.posargs.parse_as(pa)
-                    except Exception as exc:
-                        raise InvalidPositionalArgument.from_parse(prs.posargs, pa, exc)
-                posargs = [prs.posargs.parse_as(pa) for pa in posargs]
+            parsed_posargs = prs.posargs.parse(posargs)
         except ArgumentParseError as ape:
             ape.parser = prs
             ape.subcmds = subcmds
             raise
 
-        ret = CommandParseResult(cmd_name, subcmds, flag_map, posargs, post_posargs)
+        ret = CommandParseResult(cmd_name, subcmds, flag_map, parsed_posargs, post_posargs)
         return ret
 
     def _parse_subcmds(self, args):

@@ -9,7 +9,6 @@ from __future__ import print_function
 import sys
 
 from face import Command, face_middleware
-from face.parser import PosArgSpec
 
 
 def busy_loop(loop_count, stdout):

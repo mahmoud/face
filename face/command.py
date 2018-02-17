@@ -3,14 +3,16 @@ import sys
 from collections import OrderedDict
 
 from face.utils import unwrap_text
-from face.parser import Parser, Flag, ArgumentParseError, FaceException
+from face.parser import Parser, Flag, ArgumentParseError, FaceException, ERROR
 from face.middleware import (inject,
                              is_middleware,
                              face_middleware,
                              check_middleware,
-                             make_middleware_chain,
+                             get_middleware_chain,
+                             resolve_middleware_chain,
                              _BUILTIN_PROVIDES)
 
+from boltons.iterutils import unique
 
 class CommandLineError(FaceException, SystemExit):
     pass
@@ -132,6 +134,25 @@ class Command(object):
 
         return
 
+    def get_dep_flags(self, path=(), with_hidden=False):
+        flags = unique(self._parser.path_flag_map[path].values())
+        dep_names = self.get_dep_names(path)
+
+        return [f for f in flags if f.attr_name in dep_names
+                and (with_hidden or not f.display.hidden)]
+
+    def get_dep_names(self, path=()):
+        func = self.path_func_map[path]
+        if func is ERROR:  # TODO: check back if we're still supporting this
+            raise ValueError('no handler specified for command path: %r' % path)
+        mws = self.path_mw_map[path]
+        flag_names = self.parser.path_flag_map[path].keys()
+        provides = _BUILTIN_PROVIDES + flag_names
+
+        _, mw_chain_args, _ = resolve_middleware_chain(mws, func, provides)
+
+        return sorted(mw_chain_args)
+
     def prepare(self, paths=None):
         if paths is None:
             paths = self.path_func_map.keys()
@@ -140,7 +161,7 @@ class Command(object):
             mws = self.path_mw_map[path]
             flag_names = self.parser.path_flag_map[path].keys()
             provides = _BUILTIN_PROVIDES + flag_names
-            wrapped = make_middleware_chain(mws, func, provides)
+            wrapped = get_middleware_chain(mws, func, provides)
 
             self._path_wrapped_map[path] = wrapped
 

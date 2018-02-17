@@ -47,22 +47,25 @@ def face_middleware(*args, **kwargs):
     return decorate_face_middleware
 
 
-def make_middleware_chain(middlewares, innermost, preprovided):
+def resolve_middleware_chain(middlewares, innermost, preprovided):
+    mw_avail = set(preprovided) - set([INNER_NAME])
+    mw_provides = [mw._face_provides for mw in middlewares]
+
+    return make_chain(middlewares, mw_provides, innermost, mw_avail, INNER_NAME)
+
+
+def get_middleware_chain(middlewares, innermost, preprovided):
     _inner_exc_msg = "argument %r reserved for middleware use only (%r)"
     if INNER_NAME in get_arg_names(innermost):
         raise NameError(_inner_exc_msg % (INNER_NAME, innermost))
 
-    mw_avail = set(preprovided) - set([INNER_NAME])
-    mw_provides = [mw._face_provides for mw in middlewares]
+    mw_chain, mw_chain_args, mw_unres = resolve_middleware_chain(middlewares,
+                                                                 innermost,
+                                                                 preprovided)
 
-    mw_chain, mw_chain_args, mw_unres = make_chain(middlewares,
-                                                   mw_provides,
-                                                   innermost,
-                                                   mw_avail,
-                                                   INNER_NAME)
     if mw_unres:
         raise NameError("unresolved request middleware arguments: %r"
-                        % list(mw_unres))
+                        % sorted(mw_unres))
     return mw_chain
 
 

@@ -4,6 +4,7 @@ from collections import OrderedDict
 
 from face.utils import unwrap_text
 from face.parser import Parser, Flag, ArgumentParseError, FaceException, ERROR
+from face.helpers import HelpHandler
 from face.middleware import (inject,
                              is_middleware,
                              face_middleware,
@@ -54,8 +55,12 @@ def default_print_error(msg):
     return sys.stderr.write(msg + '\n')
 
 
+DEFAULT_HELP_HANDLER = HelpHandler()
+
+
 class Command(object):
-    def __init__(self, func, name=None, doc=None, posargs=False, middlewares=None, print_error=None):
+    def __init__(self, func, name=None, doc=None, posargs=False, middlewares=None, print_error=None,
+                 help=DEFAULT_HELP_HANDLER):
         name = name if name is not None else _get_default_name()
 
         if doc is None:
@@ -81,6 +86,14 @@ class Command(object):
             raise TypeError('expected callable for print_error, not %r'
                             % print_error)
         self.print_error = print_error
+
+        self.help_handler = help
+        if help:
+            if help.flag:
+                self.add(help.flag)
+            if help.subcmd:
+                self.add(help.func, help.subcmd)  # for 'help' as a subcmd
+
         return
 
     @property
@@ -191,11 +204,8 @@ class Command(object):
                        'parser_': self._parser})  # TODO: parser necessary?
         kwargs.update(prs_res.flags)
 
-        if self._parser.help_flag and prs_res.flags.get(self._parser.help_flag.attr_name):
-            # TODO: should the "help" path go through middlewares of any sort?
-            from face.helpers import HelpHandler
-            hh = HelpHandler()
-            return inject(hh.func, kwargs)
+        if self.help_handler and prs_res.flags.get(self.help_handler.flag.attr_name):
+            return inject(self.help_handler.func, kwargs)
 
         self.prepare(paths=[prs_res.subcmds])
 
@@ -278,4 +288,8 @@ Should Commands have resources like clastic?
 * Ensure top-level middleware flags like --verbose show up for subcommands
 * Ensure "builtin" flags like --flagfile and --help show up for all commands
 * Make help flag come from HelpHandler
+* What to do when the top-level command doesn't have a help_handler,
+  but a subcommand does? Maybe dispatch to the subcommand's help
+  handler? Right now the help flag is parsed and ignored.
+
 """

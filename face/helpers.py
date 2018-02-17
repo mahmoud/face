@@ -6,6 +6,8 @@ import textwrap
 
 from boltons.iterutils import unique
 
+from face.parser import Flag
+
 
 def _get_termios_winsize():
     # TLPI, 62.9 (p. 1319)
@@ -83,6 +85,9 @@ def _get_shown_flags(target):
     return target.get_flags()
 
 
+DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, alias='-h')
+
+
 class HelpHandler(object):
     default_context = {
         'usage_label': 'Usage:',
@@ -99,14 +104,17 @@ class HelpHandler(object):
         'section_indent': '  '
     }
 
-    def __init__(self, flag=('--help', '-h'), func=None, **kwargs):
+    def __init__(self, flag=DEFAULT_HELP_FLAG, func=None, subcmd=None, **kwargs):
+        # subcmd expects a string
         ctx = {}
         for key, val in self.default_context.items():
             ctx[key] = kwargs.pop(key, val)
         if kwargs:
             raise TypeError('unexpected keyword arguments: %r' % list(kwargs.keys()))
         self.ctx = ctx
+        self.flag = flag
         self.func = func if func is not None else self.default_help_func
+        self.subcmd = subcmd
         if not callable(self.func):
             raise TypeError('expected func to be callable, not %r' % func)
 

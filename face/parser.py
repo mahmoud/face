@@ -475,7 +475,6 @@ class PosArgSpec(object):
 
 
 FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, multi='extend', missing=None, display=True, doc='')
-HELP_FLAG_ENABLED = Flag('--help', parse_as=True, alias='-h')
 
 
 class Parser(object):
@@ -500,7 +499,6 @@ class Parser(object):
                              ' or instance of PosArgSpec, not: %r' % posargs)
         self.posargs = posargs
 
-        self.help_flag = HELP_FLAG_ENABLED
         self.flagfile_flag = FLAG_FILE_ENABLED
         # TODO: should flagfile and help flags be hidden by default?
 
@@ -510,8 +508,6 @@ class Parser(object):
 
         if self.flagfile_flag:
             self.add(self.flagfile_flag)
-        if self.help_flag:
-            self.add(self.help_flag)
         return
 
     def _add_subparser(self, subprs):

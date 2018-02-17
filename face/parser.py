@@ -424,9 +424,6 @@ class PosArgSpec(object):
             display = PosArgDisplay(self, **display)
         self.display = display
 
-        # display_name='arg', min_count = 2, max_count = 3 ->
-        # arg1 arg2 [arg3]
-
         # TODO: default? type check that it's a sequence matching min/max reqs
 
     @property
@@ -501,7 +498,6 @@ class Parser(object):
         if not isinstance(posargs, PosArgSpec):
             raise ValueError('expected posargs as True, False,'
                              ' or instance of PosArgSpec, not: %r' % posargs)
-        print self.name, posargs.parse_as, posargs.max_count
         self.posargs = posargs
 
         self.help_flag = HELP_FLAG_ENABLED

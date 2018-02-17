@@ -290,6 +290,7 @@ Should Commands have resources like clastic?
 * Make help flag come from HelpHandler
 * What to do when the top-level command doesn't have a help_handler,
   but a subcommand does? Maybe dispatch to the subcommand's help
-  handler? Right now the help flag is parsed and ignored.
+  handler? Would deferring adding the HelpHandler's flag/subcmd help?
+  Right now the help flag is parsed and ignored.
 
 """

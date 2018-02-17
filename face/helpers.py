@@ -85,7 +85,7 @@ def _get_shown_flags(target):
     return target.get_flags()
 
 
-DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, alias='-h')
+DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, alias='-h', doc='show this help message and exit')
 
 
 class HelpHandler(object):
@@ -100,8 +100,10 @@ class HelpHandler(object):
         'width': None,
         'max_width': 120,
         'min_doc_width': 50,
-        'doc_separator': '   ',
-        'section_indent': '  '
+        'doc_separator': '   ',  # '   + ' is pretty classy as bullet points, too
+        'section_indent': '  ',
+        'pre_doc': '',
+        'post_doc': '\n',
     }
 
     def __init__(self, flag=DEFAULT_HELP_FLAG, func=None, subcmd=None, **kwargs):
@@ -185,7 +187,7 @@ class HelpHandler(object):
 
             ret.extend(flag_lines)
 
-        return '\n'.join(ret)
+        return ctx['pre_doc'] + '\n'.join(ret) + ctx['post_doc']
 
     def get_usage_line(self, parser, subcmds=()):
         ctx = self.ctx

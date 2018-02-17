@@ -74,6 +74,15 @@ def _wrap_pair(indent, label, sep, doc, doc_start, max_doc_width):
     return ret
 
 
+def _get_shown_flags(target):
+    from face import Parser
+    # TODO: evaluate whether Command should inherit from Parser so
+    # that this can be removed. After writing tests.
+    if isinstance(target, Parser):
+        return unique([f for f in target.path_flag_map[()].values() if not f.display.hidden])
+    return target.get_flags()
+
+
 class HelpHandler(object):
     default_context = {
         'usage_label': 'Usage:',
@@ -149,7 +158,7 @@ class HelpHandler(object):
 
             append(ctx['section_break'])
 
-        shown_flags = unique([f for f in parser.path_flag_map[()].values() if not f.display.hidden])
+        shown_flags = _get_shown_flags(parser)
         if not shown_flags:
             return '\n'.join(ret)
 
@@ -188,10 +197,9 @@ class HelpHandler(object):
         if subcmds:
             parser = parser.subprs_map[subcmds]
 
-        flags = parser.path_flag_map[()]
-        shown_flags = [f for f in flags.values() if not f.display.hidden]
+        flags = _get_shown_flags(parser)
 
-        if shown_flags:
+        if flags:
             append('[FLAGS]')
 
         if parser.posargs:

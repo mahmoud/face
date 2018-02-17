@@ -130,11 +130,11 @@ class Command(object):
         check_middleware(mw)
 
         for path, mws in self.path_mw_map.items():
-            self.path_mw_map[path] = [mw] + mws
+            self.path_mw_map[path] = [mw] + mws  # TODO: check for conflicts
 
         return
 
-    def get_dep_flags(self, path=(), with_hidden=False):
+    def get_flags(self, path=(), with_hidden=False):
         flags = unique(self._parser.path_flag_map[path].values())
         dep_names = self.get_dep_names(path)
 
@@ -146,7 +146,7 @@ class Command(object):
         if func is ERROR:  # TODO: check back if we're still supporting this
             raise ValueError('no handler specified for command path: %r' % path)
         mws = self.path_mw_map[path]
-        flag_names = self.parser.path_flag_map[path].keys()
+        flag_names = self._parser.path_flag_map[path].keys()
         provides = _BUILTIN_PROVIDES + flag_names
 
         _, mw_chain_args, _ = resolve_middleware_chain(mws, func, provides)
@@ -159,7 +159,7 @@ class Command(object):
 
         for path, func in self.path_func_map.items():
             mws = self.path_mw_map[path]
-            flag_names = self.parser.path_flag_map[path].keys()
+            flag_names = self._parser.path_flag_map[path].keys()
             provides = _BUILTIN_PROVIDES + flag_names
             wrapped = get_middleware_chain(mws, func, provides)
 
@@ -271,4 +271,11 @@ Should Commands have resources like clastic?
 # TODO: need to check for middleware provides names + flag names
 # conflict
 
+-----
+
+* Command inherit from Parser
+* Enable middleware flags
+* Ensure top-level middleware flags like --verbose show up for subcommands
+* Ensure "builtin" flags like --flagfile and --help show up for all commands
+* Make help flag come from HelpHandler
 """

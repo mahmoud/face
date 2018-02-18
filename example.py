@@ -8,7 +8,7 @@ from __future__ import print_function
 
 import sys
 
-from face import Command, face_middleware
+from face import Command, face_middleware, ListParam
 
 
 def busy_loop(loop_count, stdout):
@@ -38,7 +38,7 @@ def main():
     cmd = Command(busy_loop, 'cmd', middlewares=[output_streams_mw])
 
     sum_subcmd = Command(sum_func, 'sum')
-    sum_subcmd.add('--num', parse_as=int, multi=True, missing=0,
+    sum_subcmd.add('--num', parse_as=ListParam(int), missing=(0,),
                    doc='a number to include in the sum, expects integers at the moment'
                    ' because it is fun to change things later')
     sum_subcmd.add('--grummmmmmmmmmmmmmmmmmm', parse_as=int, multi=True, missing=0,

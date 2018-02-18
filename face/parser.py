@@ -56,7 +56,7 @@ FRIENDLY_TYPE_NAMES = {int: 'integer',
 
 class InvalidFlagArgument(ArgumentParseError):
     @classmethod
-    def from_parse(cls, cmd_flag_map, flag, arg):
+    def from_parse(cls, cmd_flag_map, flag, arg, exc=None):
         if arg is None:
             return cls('expected argument for flag %s' % flag.name)
 
@@ -69,6 +69,9 @@ class InvalidFlagArgument(ArgumentParseError):
             tmpl = 'flag %s expected a valid %s value, not %r'
         msg = tmpl % (flag.name, vp_label, arg)
 
+        if exc:
+            # TODO: put this behind a verbose flag?
+            msg += ' (got error: %r)' % exc
         if arg.startswith('-'):
             msg += '. (Did you forget to pass an argument?)'
 
@@ -688,8 +691,8 @@ class Parser(object):
                 raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg=None)
             try:
                 arg_val = flag_conv(arg_text)
-            except Exception:
-                raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg_text)
+            except Exception as e:
+                raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg_text, exc=e)
             ret.add(flag_key, arg_val)
             _consumed_val = True
 
@@ -725,30 +728,37 @@ class Parser(object):
 def parse_sv_line(line, sep=','):
     # TODO: this doesn't support unicode, which is mostly handled at
     # the layer above.
-    from csv import reader, Dialect, QUOTE_MINIMAL, register_dialect
+    from csv import reader, Dialect, QUOTE_MINIMAL
 
-    class _face_list_dialect(Dialect):
-        """Describe the usual properties of Excel-generated CSV files."""
+    class _face_dialect(Dialect):
         delimiter = sep
-        quotechar = '"'
         escapechar = '\\'
+        quotechar = '"'
         doublequote = True
         skipinitialspace = False
         lineterminator = '\n'
         quoting = QUOTE_MINIMAL
 
-    # TODO: unicodedata.name(unichr(sep)) in the name of the dialect
-    dialect_name = "face_list_dialect"
-    register_dialect(dialect_name, _face_list_dialect)
-
-    parsed = list(reader([line], dialect=dialect_name))
+    parsed = list(reader([line], dialect=_face_dialect))
     return parsed[0]
 
 
 class ListParam(object):
-    def __init__(self, arg_type=str, sep=',', trim=True):
-        "basically a CSV as a parameter"
-        # trim = trim each parameter in the list before calling arg_type
+    # TODO: repr
+    def __init__(self, parse_one_as=str, sep=',', strip=False):
+        # TODO: min/max limits?
+        self.parse_one_as = parse_one_as
+        self.sep = sep
+        self.strip = strip
+
+    def parse(self, list_text):
+        split_vals = parse_sv_line(list_text, self.sep)
+        if self.strip:
+            split_vals = [v.strip() for v in split_vals]
+        return [self.parse_one_as(v) for v in split_vals]
+
+    __call__ = parse
+
 
 
 class FileValueParam(object):

@@ -8,6 +8,12 @@
 * Docs
 * Autocompletion
 
+## Big questions
+
+* Allow arbitrary aliases? Or only long name + short name? (aliases might enable changing of flag names)
+* Allow single-character flags without long names?
+* Handle conversion of argv to unicode on Py2? Or support bytes argv?
+
 ## API
 
 * Better check for conflicting Flags (`__eq__` on Flag?)
@@ -33,6 +39,7 @@ of Command, Flag, PosArgSpec.
 * Hidden? (doesn't make sense to customize label as with flags)
 * Doc (text between the usage line and the subcommands/flags)
 * Post-doc (text that comes after flags and subcommands)
+* What about multi-line usage strings?
 
 #### Flag
 
@@ -58,6 +65,8 @@ Related:
 * Add edit distance calculation for better error messages on unknown
   flags and invalid subcommands.
 * Fix up error message for positional arguments
+* Hook for HelpHandler to add a line to error messages? (e.g., "For
+  more information try --help" (or the help subcommand))
 
 ## Compatibility
 

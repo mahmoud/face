@@ -102,7 +102,7 @@ class HelpHandler(object):
         'min_doc_width': 50,
         'doc_separator': '   ',  # '   + ' is pretty classy as bullet points, too
         'section_indent': '  ',
-        'pre_doc': '',
+        'pre_doc': '',  # TODO: these should go on CommandDisplay
         'post_doc': '\n',
     }
 
@@ -336,7 +336,7 @@ Postdoc
 def default_fmt_flag_label(self, flag):
    ret = ' / '.join([flag.name] + flag.alias_list)
    if callable(flag.parse_as):
-      ret += ' ' + (self.flag_value_name or self.flag.attr_name.upper())
+      ret += ' ' + (self.flag_value_name or self.flag.identifier.upper())
    return ret
 
 

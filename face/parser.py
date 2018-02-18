@@ -12,17 +12,11 @@ from boltons.dictutils import OrderedMultiDict as OMD
 
 ERROR = make_sentinel('ERROR')
 
-# TODO: FaceExit, with message and exit code, handled inside
-# Command.run(), prints message and exits with code. Q: Inherit from
-# SystemExit? Might interfere with tests, no real advantage otherwise?
-
 
 class FaceException(Exception):
     pass
 
 
-# Not inheriting from SystemExit here; the exiting behavior will be
-# handled by the Command dispatcher
 class ArgumentParseError(FaceException):
     pass
 
@@ -131,7 +125,7 @@ class DuplicateFlagValue(ArgumentParseError):
 _VALID_FLAG_RE = re.compile(r"^[A-z][-_A-z0-9]*\Z")
 
 
-def flag_to_attr_name(flag):
+def flag_to_identifier(flag):
     # validate and canonicalize flag name. Basically, subset of valid
     # Python variable identifiers.
     #
@@ -269,7 +263,7 @@ class Flag(object):
     # TODO: __eq__ and copy
 
     @property
-    def attr_name(self):
+    def identifier(self):
         return _normalize_flag_name(self.name)
 
     def set_display(self, display):
@@ -309,7 +303,7 @@ class FlagDisplay(object):
 
         self.value_name = ''
         if callable(flag.parse_as):
-            self.value_name = kw.pop('value_name', None) or self.flag.attr_name.upper()
+            self.value_name = kw.pop('value_name', None) or self.flag.identifier.upper()
 
         self.group = kw.pop('group', 0)   # int or str
         self.hidden = kw.pop('hidden', False)  # bool
@@ -574,7 +568,7 @@ class Parser(object):
                                  ' not: %r, %r (got %r)' % (a, kw, te))
 
         # first check there are no conflicts...
-        flag_name = flag_to_attr_name(flag.name)
+        flag_name = flag_to_identifier(flag.name)
 
         for subcmds, flag_map in self.path_flag_map.items():
             if flag_name in flag_map:
@@ -583,14 +577,14 @@ class Parser(object):
                 # aliases below)
                 raise ValueError('duplicate definition for flag name: %r' % flag_name)
             for alias in flag.alias_list:
-                if flag_to_attr_name(alias) in flag_map:
+                if flag_to_identifier(alias) in flag_map:
                     raise ValueError('conflicting alias for flag %r: %r' % (flag_name, alias))
 
         # ... then we add the flags
         for flag_map in self.path_flag_map.values():
             flag_map[flag_name] = flag
             for alias in flag.alias_list:
-                flag_map[flag_to_attr_name(alias)] = flag
+                flag_map[flag_to_identifier(alias)] = flag
 
         return
 
@@ -680,7 +674,7 @@ class Parser(object):
             flag = cmd_flag_map.get(_normalize_flag_name(arg))
             if flag is None:
                 raise UnknownFlag.from_parse(cmd_flag_map, arg)
-            flag_key = flag.attr_name
+            flag_key = flag.identifier
 
             flag_conv = flag.parse_as
             if not callable(flag_conv):

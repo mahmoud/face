@@ -722,6 +722,28 @@ class Parser(object):
         return ret
 
 
+def parse_sv_line(line, sep=','):
+    # TODO: this doesn't support unicode, which is mostly handled at
+    # the layer above.
+    from csv import reader, Dialect, QUOTE_MINIMAL, register_dialect
+
+    class _face_list_dialect(Dialect):
+        """Describe the usual properties of Excel-generated CSV files."""
+        delimiter = sep
+        quotechar = '"'
+        escapechar = '\\'
+        doublequote = True
+        skipinitialspace = False
+        lineterminator = '\n'
+        quoting = QUOTE_MINIMAL
+
+    # TODO: unicodedata.name(unichr(sep)) in the name of the dialect
+    dialect_name = "face_list_dialect"
+    register_dialect(dialect_name, _face_list_dialect)
+
+    parsed = list(reader([line], dialect=dialect_name))
+    return parsed[0]
+
 
 class ListParam(object):
     def __init__(self, arg_type=str, sep=',', trim=True):

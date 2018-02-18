@@ -142,6 +142,9 @@ class Command(object):
             mw = face_middleware(mw)
         check_middleware(mw)
 
+        for flag in mw._face_flags:
+            self.add(flag)
+
         for path, mws in self.path_mw_map.items():
             self.path_mw_map[path] = [mw] + mws  # TODO: check for conflicts
 

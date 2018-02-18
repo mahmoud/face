@@ -55,13 +55,15 @@ def main():
 
     cmd.add(print_args, 'print', '', posargs=True)
 
-    cmd.add('--verbose', alias='-V', parse_as=True)
     cmd.add('--loop-count', parse_as=int)
 
     return cmd.run()  # execute
 
 
-@face_middleware
+from face.parser import Flag
+
+
+@face_middleware(flags=[Flag('--verbose', alias='-V', parse_as=True)])
 def verbose_mw(next_, verbose):
     if verbose:
         print('starting in verbose mode')

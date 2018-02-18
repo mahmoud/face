@@ -1,4 +1,5 @@
 
+from face.parser import Flag
 from face.sinter import make_chain, get_arg_names, getargspec, inject, get_func_name
 
 
@@ -31,13 +32,18 @@ def face_middleware(*args, **kwargs):
     provides = kwargs.pop('provides', [])
     if isinstance(provides, basestring):
         provides = [provides]
-
+    flags = list(kwargs.pop('flags', []))
+    if flags:
+        for flag in flags:
+            if not isinstance(flag, Flag):
+                raise TypeError('expected Flag object, not: %r' % flag)
     if kwargs:
         raise TypeError('unexpected keyword arguments: %r' % kwargs.keys())
 
     def decorate_face_middleware(func):
         check_middleware(func, provides=provides)
         func.is_face_middleware = True
+        func._face_flags = list(flags)
         func._face_provides = list(provides)
         return func
 

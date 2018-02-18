@@ -103,10 +103,3 @@ def check_middleware(func, provides=None):
                         ' reserved face builtins: %r' % (func_name, conflict_args))
 
     return
-
-
-"""
-    if not getattr(func, 'is_face_middleware', None):
-        raise TypeError('expected face middleware function, not: %r'
-                        ' (try decorating with @face_middleware)' % func_name)
-"""

@@ -747,30 +747,6 @@ class CommandParseResult(object):
         self.parser = parser
         self.argv = tuple(argv)
 
-    def __getattr__TODO(self, name):
-        """TODO: how to provide easy access to flag values while also
-        providing access to "args" and "cmd" members. Could treat them
-        as reserved keywords. Could "_"-prefix them. Could "_"-suffix
-        them. Could "_"-suffix conflicting args so they'd still be
-        accessible.
-
-        Could return three things from parse(), but still have
-        this issue when it comes to deciding what name to inject them
-        as. probably need to make a reserved keyword.
-
-        Even if this result object doesn't have the __getattr__
-        behavior, whatever does should have a better behavior than
-        just KeyError or AttributeError. Perhaps a new error
-        inheriting from those which also has a nice systemexit
-        behavior re: missing arguments.
-
-        This behavior could be keyed off of a private Source attribute
-        which keeps track of whether the arguments were sys.argv, even.
-
-        """
-        return self.flags.get(_normalize_flag_name(name))
-
-
 
 """# Problems with argparse
 

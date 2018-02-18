@@ -120,8 +120,12 @@ class HelpHandler(object):
         if not callable(self.func):
             raise TypeError('expected func to be callable, not %r' % func)
 
-    def default_help_func(self, cmd_, subcmds_):
-        print(self.get_help_text(cmd_.parser, subcmds=subcmds_))
+    def default_help_func(self, cmd_, subcmds_, args_):
+        try:
+            program_name = args_.argv[0]
+        except IndexError:
+            program_name = cmd_.name
+        print(self.get_help_text(cmd_.parser, subcmds=subcmds_, program_name=program_name))
         sys.exit(0)
 
     def _get_layout(self, labels):
@@ -133,13 +137,13 @@ class HelpHandler(object):
                           max_width=ctx['max_width'],
                           min_doc_width=ctx['min_doc_width'])
 
-    def get_help_text(self, parser, subcmds=(), flags=None):
+    def get_help_text(self, parser, subcmds=(), flags=None, program_name=None):
         # TODO: filter by actually-used flags (note that help_flag and
         # flagfile_flag are semi-built-in, thus used by all subcommands)
         # TODO: incorporate "Arguments" section if posargs has a doc set
         ctx = self.ctx
 
-        ret = [self.get_usage_line(parser, subcmds=subcmds)]
+        ret = [self.get_usage_line(parser, subcmds=subcmds, program_name=program_name)]
         append = ret.append
         append(ctx['group_break'])
 
@@ -189,13 +193,15 @@ class HelpHandler(object):
 
         return ctx['pre_doc'] + '\n'.join(ret) + ctx['post_doc']
 
-    def get_usage_line(self, parser, subcmds=()):
+    def get_usage_line(self, parser, subcmds=(), program_name=None):
         ctx = self.ctx
         subcmds = tuple(subcmds or ())
         parts = [ctx['usage_label']] if ctx['usage_label'] else []
         append = parts.append
 
-        append(' '.join((parser.name,) + subcmds))
+        program_name = program_name or parser.name
+
+        append(' '.join((program_name,) + subcmds))
 
         # TODO: put () in subprs_map to handle some of this sorta thing
         if not subcmds and parser.subprs_map:

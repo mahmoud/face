@@ -619,7 +619,8 @@ class Parser(object):
             ape.subcmds = subcmds
             raise
 
-        ret = CommandParseResult(cmd_name, subcmds, flag_map, parsed_posargs, post_posargs)
+        ret = CommandParseResult(cmd_name, subcmds, flag_map, parsed_posargs, post_posargs,
+                                 parser=self, argv=argv)
         return ret
 
     def _parse_subcmds(self, args):
@@ -736,13 +737,15 @@ class FileValueParam(object):
 
 
 class CommandParseResult(object):
-    # TODO: add parser + argv
-    def __init__(self, name, subcmds, flag_map, posargs, post_posargs):
+    def __init__(self, name, subcmds, flag_map, posargs, post_posargs,
+                 parser=None, argv=()):
         self.name = name
         self.subcmds = tuple(subcmds)
-        self.flags = dict(flag_map)
+        self.flags = OrderedDict(flag_map)
         self.posargs = tuple(posargs or ())
         self.post_posargs = tuple(post_posargs or ())
+        self.parser = parser
+        self.argv = tuple(argv)
 
     def __getattr__TODO(self, name):
         """TODO: how to provide easy access to flag values while also

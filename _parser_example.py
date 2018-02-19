@@ -7,7 +7,7 @@ def old_main():
     sum_subprs = Parser('sum')
     sum_subprs.add('--num', int, on_duplicate='extend')
     prs.add(sum_subprs)
-    prs.add('--verbose', alias='-V')
+    prs.add('--verbose', char='-V')
     prs.add('--loop-count', parse_as=int)
 
     args = prs.parse(None)

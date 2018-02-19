@@ -85,7 +85,7 @@ def _get_shown_flags(target):
     return target.get_flags()
 
 
-DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, alias='-h', doc='show this help message and exit')
+DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, char='-h', doc='show this help message and exit')
 
 
 class HelpHandler(object):
@@ -337,14 +337,6 @@ Postdoc
     {flag_label}   {flag.doc} {flag.post_doc}
 
 {cmd.post_doc}
-
-
-def default_fmt_flag_label(self, flag):
-   ret = ' / '.join([flag.name] + flag.alias_list)
-   if callable(flag.parse_as):
-      ret += ' ' + (self.flag_value_name or self.flag.identifier.upper())
-   return ret
-
 
 
 --------

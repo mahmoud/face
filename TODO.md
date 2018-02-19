@@ -10,7 +10,6 @@
 
 ## Big questions
 
-* Allow arbitrary aliases? Or only long name + short name? (aliases might enable changing of flag names)
 * Allow single-character flags without long names?
 * Handle conversion of argv to unicode on Py2? Or support bytes argv?
 

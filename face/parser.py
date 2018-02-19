@@ -227,10 +227,25 @@ _MULTI_SHORTCUTS = {'error': _multi_error,
                     'override': _multi_override}
 
 
+_VALID_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!*+./?@_'
+def _validate_char(char):
+    if not char:
+        return None
+    orig_char = char
+    if char[0] == '-' and len(char) > 1:
+        char = char[1:]
+    if len(char) > 1:
+        raise ValueError('char flags must be exactly one character, optionally'
+                         ' prefixed by a dash, not: %r' % orig_char)
+    if char not in _VALID_CHARS:
+        raise ValueError('expected valid flag character (ASCII letters, numbers,'
+                         ' or shell-compatible punctuation), not: %r' % orig_char)
+    return char
+
 # TODO: allow name="--flag / -F" and do the split for automatic
-# aliasing?
+# short form?
 class Flag(object):
-    def __init__(self, name, parse_as=True, missing=None, doc=None, alias=None,
+    def __init__(self, name, parse_as=True, missing=None, doc=None, char=None,
                  display=None, multi='error'):
         self.name = name
         self.doc = doc
@@ -239,11 +254,8 @@ class Flag(object):
         # TODO: parse_as=scalar + missing=ERROR seems like an invalid
         # case (a flag whose presence is always required? what's the
         # point?)
-        if not alias:
-            alias = []
-        elif isinstance(alias, str):
-            alias = [alias]
-        self.alias_list = list(alias)
+        self.char = _validate_char(char)
+
 
         if callable(multi):
             self.multi = multi
@@ -329,7 +341,10 @@ class FlagDisplay(object):
         self.hidden = self.hidden or (not val)
 
     def default_format_label(self):
-        ret = ' / '.join([self.flag.name] + self.flag.alias_list)
+        parts = [self.flag.name]
+        if self.flag.char:
+            parts.append('-' + self.flag.char)
+        ret = ' / '.join(parts)
         if self.value_name:
             ret += ' ' + self.value_name
         return ret
@@ -579,15 +594,15 @@ class Parser(object):
                 # properly exposes the existing flag (same goes for
                 # aliases below)
                 raise ValueError('duplicate definition for flag name: %r' % flag_name)
-            for alias in flag.alias_list:
-                if flag_to_identifier(alias) in flag_map:
-                    raise ValueError('conflicting alias for flag %r: %r' % (flag_name, alias))
+            if False:
+                # TODO
+                raise ValueError('conflicting short form for flag %r: %r' % (flag_name, flag.char))
 
         # ... then we add the flags
         for flag_map in self.path_flag_map.values():
             flag_map[flag_name] = flag
-            for alias in flag.alias_list:
-                flag_map[flag_to_identifier(alias)] = flag
+            if flag.char:
+                flag_map[flag.char] = flag
 
         return
 

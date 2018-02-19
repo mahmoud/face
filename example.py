@@ -63,7 +63,7 @@ def main():
 from face.parser import Flag
 
 
-@face_middleware(flags=[Flag('--verbose', alias='-V', parse_as=True)])
+@face_middleware(flags=[Flag('--verbose', char='-V', parse_as=True)])
 def verbose_mw(next_, verbose):
     if verbose:
         print('starting in verbose mode')

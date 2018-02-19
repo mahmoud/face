@@ -135,35 +135,37 @@ def flag_to_identifier(flag):
     # Only letters, numbers, '-', and/or '_'. Only single/double
     # leading dash allowed (-/--). No trailing dashes or
     # underscores. Must not be a Python keyword.
+    orig_flag = flag
     if not flag or not isinstance(flag, str):
         raise ValueError('expected non-zero length string for flag, not: %r' % flag)
 
     if flag.endswith('-') or flag.endswith('_'):
         raise ValueError('expected flag without trailing dashes'
-                         ' or underscores, not: %r' % flag)
+                         ' or underscores, not: %r' % orig_flag)
 
-    lstripped = flag.lstrip('-')
-    flag_match = _VALID_FLAG_RE.match(lstripped)
+    if flag[:2] == '--':
+        flag = flag[2:]
+
+    flag_match = _VALID_FLAG_RE.match(flag)
     if not flag_match:
-        raise ValueError('valid flags must begin with one or two dashes, '
-                         ' followed by a letter, and consist only of'
-                         ' letters, digits, underscores, and dashes, not: %r'
-                         % flag)
-    len_diff = len(flag) - len(lstripped)
-    if len_diff == 0 or len_diff > 2:
-        raise ValueError('expected flag to start with "-" or "--", not: %r'
-                         % flag)
-    if len_diff == 1 and len(lstripped) > 1:
-        raise ValueError('expected single-dash flag to consist of a single'
-                         ' character, not: %r' % flag)
+        raise ValueError('valid flag names must begin with a letter, optionally'
+                         ' prefixed by two dashes, and consist only of letters,'
+                         ' digits, underscores, and dashes, not: %r' % orig_flag)
 
     flag_name = _normalize_flag_name(flag)
 
     if keyword.iskeyword(flag_name):
-        raise ValueError('valid flags must not be a Python keyword: %r'
-                         % flag)
+        raise ValueError('valid flag names must not be Python keywords: %r'
+                         % orig_flag)
 
     return flag_name
+
+
+def identifier_to_flag(identifier):
+    if identifier.startswith('-'):
+        raise ValueError('expected identifier, not flag name: %r' % identifier)
+    ret = identifier.lower().replace('_', '-')
+    return '--' + ret
 
 
 def process_subcmd_name(name):
@@ -229,8 +231,6 @@ _MULTI_SHORTCUTS = {'error': _multi_error,
 
 _VALID_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!*+./?@_'
 def _validate_char(char):
-    if not char:
-        return None
     orig_char = char
     if char[0] == '-' and len(char) > 1:
         char = char[1:]
@@ -242,19 +242,20 @@ def _validate_char(char):
                          ' or shell-compatible punctuation), not: %r' % orig_char)
     return char
 
+
 # TODO: allow name="--flag / -F" and do the split for automatic
-# short form?
+# char form?
 class Flag(object):
     def __init__(self, name, parse_as=True, missing=None, doc=None, char=None,
                  display=None, multi='error'):
-        self.name = name
+        self.name = flag_to_identifier(name)
         self.doc = doc
         self.parse_as = parse_as
         self.missing = missing
         # TODO: parse_as=scalar + missing=ERROR seems like an invalid
         # case (a flag whose presence is always required? what's the
         # point?)
-        self.char = _validate_char(char)
+        self.char = _validate_char(char) if char else None
 
 
         if callable(multi):
@@ -341,7 +342,7 @@ class FlagDisplay(object):
         self.hidden = self.hidden or (not val)
 
     def default_format_label(self):
-        parts = [self.flag.name]
+        parts = [identifier_to_flag(self.flag.name)]
         if self.flag.char:
             parts.append('-' + self.flag.char)
         ret = ' / '.join(parts)
@@ -586,7 +587,7 @@ class Parser(object):
                                  ' not: %r, %r (got %r)' % (a, kw, te))
 
         # first check there are no conflicts...
-        flag_name = flag_to_identifier(flag.name)
+        flag_name = flag.name
 
         for subcmds, flag_map in self.path_flag_map.items():
             if flag_name in flag_map:

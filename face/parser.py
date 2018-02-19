@@ -278,10 +278,6 @@ class Flag(object):
 
     # TODO: __eq__ and copy
 
-    @property
-    def identifier(self):
-        return _normalize_flag_name(self.name)
-
     def set_display(self, display):
         if display is None:
             display = {}
@@ -319,7 +315,7 @@ class FlagDisplay(object):
 
         self.value_name = ''
         if callable(flag.parse_as):
-            self.value_name = kw.pop('value_name', None) or self.flag.identifier.upper()
+            self.value_name = kw.pop('value_name', None) or self.flag.name.upper()
 
         self.group = kw.pop('group', 0)   # int or str
         self.hidden = kw.pop('hidden', False)  # bool
@@ -484,7 +480,6 @@ class PosArgSpec(object):
             else:
                 ret.append(val)
         return ret
-
 
 
 FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, multi='extend', missing=None, display=False, doc='')
@@ -694,12 +689,11 @@ class Parser(object):
             flag = cmd_flag_map.get(_normalize_flag_name(arg))
             if flag is None:
                 raise UnknownFlag.from_parse(cmd_flag_map, arg)
-            flag_key = flag.identifier
 
             flag_conv = flag.parse_as
             if not callable(flag_conv):
                 # e.g., True is effectively store_true, False is effectively store_false
-                ret.add(flag_key, flag_conv)
+                ret.add(flag.name, flag_conv)
                 continue
             try:
                 arg_text = args[i + 1]
@@ -709,7 +703,7 @@ class Parser(object):
                 arg_val = flag_conv(arg_text)
             except Exception as e:
                 raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg_text, exc=e)
-            ret.add(flag_key, arg_val)
+            ret.add(flag.name, arg_val)
             _consumed_val = True
 
         # take care of dupes and check required flags

@@ -154,7 +154,7 @@ class Command(object):
         flags = unique(self._parser.path_flag_map[path].values())
         dep_names = self.get_dep_names(path)
 
-        return [f for f in flags if f.identifier in dep_names
+        return [f for f in flags if f.name in dep_names
                 and (with_hidden or not f.display.hidden)]
 
     def get_dep_names(self, path=()):
@@ -207,7 +207,7 @@ class Command(object):
                        'parser_': self._parser})  # TODO: parser necessary?
         kwargs.update(prs_res.flags)
 
-        if self.help_handler and prs_res.flags.get(self.help_handler.flag.identifier):
+        if self.help_handler and prs_res.flags.get(self.help_handler.flag.name):
             return inject(self.help_handler.func, kwargs)
 
         self.prepare(paths=[prs_res.subcmds])

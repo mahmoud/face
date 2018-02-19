@@ -10,7 +10,6 @@
 
 ## Big questions
 
-* Allow single-character flags without long names?
 * Handle conversion of argv to unicode on Py2? Or support bytes argv?
 
 ## API
@@ -25,6 +24,7 @@
 * Possible injectables: target function, set of all dependencies of
   downstream function + middlewares (enables basic/shallow conditional
   middlewares)
+* Split out HelpFormatter to be a member of HelpHandler
 
 ### DisplayOptions
 
@@ -49,6 +49,7 @@ of Command, Flag, PosArgSpec.
 * Label (--canonical-name / --alias / -C VALUE) (hide if empty/falsy, probably)
 * Value Label (name_of_the_flag.upper())
 * "parse_as" label (see parser._get_type_desc)
+* pre_padding, post_padding
 
 Related:
 
@@ -71,3 +72,10 @@ Related:
 
 * Check up on how cpython decodes argv (locale stuff)
 * Check sinter against new argspecs
+
+## Target projects
+
+* mp4_cut.py
+* Example calculator project
+* PocketProtector
+* Montage admin tools

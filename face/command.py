@@ -58,7 +58,7 @@ def default_print_error(msg):
 DEFAULT_HELP_HANDLER = HelpHandler()
 
 
-class Command(object):
+class Command(Parser):
     def __init__(self, func, name=None, doc=None, posargs=False, middlewares=None, print_error=None,
                  help=DEFAULT_HELP_HANDLER):
         name = name if name is not None else _get_default_name()
@@ -66,7 +66,7 @@ class Command(object):
         if doc is None:
             doc = _docstring_to_doc(func)
 
-        self._parser = Parser(name, doc, posargs=posargs)
+        super(Command, self).__init__(name, doc, posargs=posargs)
         # TODO: properties for name/doc/other parser things
 
         self.path_func_map = OrderedDict()
@@ -97,16 +97,8 @@ class Command(object):
         return
 
     @property
-    def name(self):
-        return self._parser.name
-
-    @property
     def func(self):
         return self.path_func_map[()]
-
-    @property
-    def parser(self):
-        return self._parser
 
     def add(self, *a, **kw):
         subcmd = a[0]
@@ -122,15 +114,17 @@ class Command(object):
         flag = a[0]
         if not isinstance(flag, Flag):
             flag = Flag(*a, **kw)  # attempt to construct a Flag from arguments
-        self._parser.add(flag)
+        super(Command, self).add(flag)
 
         return flag
 
     def add_command(self, subcmd):
+        if not isinstance(subcmd, Command):
+            raise TypeError('expected Command instance, not: %r' % subcmd)
         self_mw = self.path_mw_map[()]
-        self._parser.add(subcmd.parser)
+        super(Command, self).add(subcmd)
         # map in new functions
-        for path in self._parser.subprs_map:
+        for path in self.subprs_map:
             if path not in self.path_func_map:
                 self.path_func_map[path] = subcmd.path_func_map[path[1:]]
                 sub_mw = subcmd.path_mw_map[path[1:]]
@@ -150,8 +144,8 @@ class Command(object):
 
         return
 
-    def get_flags(self, path=(), with_hidden=False):
-        flags = unique(self._parser.path_flag_map[path].values())
+    def get_flags(self, path=(), with_hidden=True):
+        flags = unique(self.path_flag_map[path].values())
         dep_names = self.get_dep_names(path)
 
         return [f for f in flags if f.name in dep_names
@@ -162,7 +156,7 @@ class Command(object):
         if func is ERROR:  # TODO: check back if we're still supporting this
             raise ValueError('no handler specified for command path: %r' % path)
         mws = self.path_mw_map[path]
-        flag_names = self._parser.path_flag_map[path].keys()
+        flag_names = self.path_flag_map[path].keys()
         provides = _BUILTIN_PROVIDES + flag_names
 
         _, mw_chain_args, _ = resolve_middleware_chain(mws, func, provides)
@@ -175,7 +169,7 @@ class Command(object):
 
         for path, func in self.path_func_map.items():
             mws = self.path_mw_map[path]
-            flag_names = self._parser.path_flag_map[path].keys()
+            flag_names = self.path_flag_map[path].keys()
             provides = _BUILTIN_PROVIDES + flag_names
             wrapped = get_middleware_chain(mws, func, provides)
 
@@ -187,7 +181,7 @@ class Command(object):
         kwargs = dict(extras) if extras else {}
         # TODO: turn parse exceptions into nice error messages
         try:
-            prs_res = self._parser.parse(argv=argv)
+            prs_res = self.parse(argv=argv)
         except ArgumentParseError as ape:
             msg = 'error: ' + self.name
             if getattr(ape, 'subcmds', None):
@@ -203,8 +197,7 @@ class Command(object):
                        'flags_': prs_res.flags,
                        'posargs_': prs_res.posargs,
                        'post_posargs_': prs_res.post_posargs,
-                       'command_': self,
-                       'parser_': self._parser})  # TODO: parser necessary?
+                       'command_': self})
         kwargs.update(prs_res.flags)
 
         if self.help_handler and prs_res.flags.get(self.help_handler.flag.name):

@@ -76,12 +76,7 @@ def _wrap_pair(indent, label, sep, doc, doc_start, max_doc_width):
 
 
 def _get_shown_flags(target):
-    from face import Parser
-    # TODO: evaluate whether Command should inherit from Parser so
-    # that this can be removed. After writing tests.
-    if isinstance(target, Parser):
-        return unique([f for f in target.path_flag_map[()].values() if not f.display.hidden])
-    return target.get_flags()
+    return target.get_flags(with_hidden=False)
 
 
 DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, char='-h', doc='show this help message and exit')
@@ -124,7 +119,7 @@ class HelpHandler(object):
             program_name = args_.argv[0]
         except IndexError:
             program_name = cmd_.name
-        print(self.get_help_text(cmd_.parser, subcmds=subcmds_, program_name=program_name))
+        print(self.get_help_text(cmd_, subcmds=subcmds_, program_name=program_name))
         sys.exit(0)
 
     def _get_layout(self, labels):
@@ -137,6 +132,9 @@ class HelpHandler(object):
                           min_doc_width=ctx['min_doc_width'])
 
     def get_help_text(self, parser, subcmds=(), flags=None, program_name=None):
+        """parser is a Parser instance, which also includes Commands, which
+        inherit from Parser.
+        """
         # TODO: filter by actually-used flags (note that help_flag and
         # flagfile_flag are semi-built-in, thus used by all subcommands)
         # TODO: incorporate "Arguments" section if posargs has a doc set
@@ -146,6 +144,7 @@ class HelpHandler(object):
         append = ret.append
         append(ctx['group_break'])
 
+        shown_flags = parser.get_flags(path=subcmds, with_hidden=False)
         if subcmds:
             parser = parser.subprs_map[subcmds]
 
@@ -171,7 +170,6 @@ class HelpHandler(object):
 
             append(ctx['section_break'])
 
-        shown_flags = _get_shown_flags(parser)
         if not shown_flags:
             return '\n'.join(ret)
 

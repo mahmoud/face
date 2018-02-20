@@ -517,6 +517,12 @@ class Parser(object):
             self.add(self.flagfile_flag)
         return
 
+    def get_flags(self, path=(), with_hidden=True):
+        flags = unique(self.path_flag_map[path].values())
+
+        return [f for f in flags if with_hidden or not f.display.hidden]
+
+
     def _add_subparser(self, subprs):
         """Process subcommand name, check for subcommand conflicts, check for
         subcommand flag conflicts, then finally add subcommand.

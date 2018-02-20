@@ -43,7 +43,7 @@ class UnknownFlag(ArgumentParseError):
     @classmethod
     def from_parse(cls, cmd_flag_map, flag_name):
         # TODO: add edit distance calculation
-        valid_flags = unique([flag.display.name for flag in
+        valid_flags = unique([flag.display.label for flag in
                               cmd_flag_map.values() if not flag.display.hidden])
         msg = ('unknown flag "%s", choose from: %s'
                % (flag_name, ', '.join(valid_flags)))
@@ -517,10 +517,15 @@ class Parser(object):
             self.add(self.flagfile_flag)
         return
 
-    def get_flags(self, path=(), with_hidden=True):
-        flags = unique(self.path_flag_map[path].values())
+    def get_flag_map(self, path, with_hidden=True):
+        flag_map = self.path_flag_map[path]
+        return dict([(k, f) for k, f in flag_map.items()
+                     if with_hidden or not f.display.hidden])
 
-        return [f for f in flags if with_hidden or not f.display.hidden]
+    def get_flags(self, path=(), with_hidden=True):
+        flag_map = self.get_flag_map(path=path, with_hidden=with_hidden)
+
+        return unique(flag_map.values())
 
 
     def _add_subparser(self, subprs):
@@ -623,7 +628,7 @@ class Parser(object):
 
         try:
             # then look up the subcommand's supported flags
-            cmd_flag_map = self.path_flag_map[tuple(subcmds)]
+            cmd_flag_map = self.get_flag_map(path=tuple(subcmds))
 
             # parse and validate the supported flags
             flag_map, posargs = self._parse_flags(cmd_flag_map, args)

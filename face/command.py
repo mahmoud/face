@@ -144,12 +144,11 @@ class Command(Parser):
 
         return
 
-    def get_flags(self, path=(), with_hidden=True):
-        flags = unique(self.path_flag_map[path].values())
+    def get_flag_map(self, path=(), with_hidden=True):
+        flag_map = super(Command, self).get_flag_map(path=path, with_hidden=with_hidden)
         dep_names = self.get_dep_names(path)
 
-        return [f for f in flags if f.name in dep_names
-                and (with_hidden or not f.display.hidden)]
+        return dict([(k, f) for k, f in flag_map.items() if f.name in dep_names])
 
     def get_dep_names(self, path=()):
         func = self.path_func_map[path]

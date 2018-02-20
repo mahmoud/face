@@ -69,12 +69,12 @@ class Command(Parser):
         super(Command, self).__init__(name, doc, posargs=posargs)
         # TODO: properties for name/doc/other parser things
 
-        self.path_func_map = OrderedDict()
-        self.path_func_map[()] = func
+        self._path_func_map = OrderedDict()
+        self._path_func_map[()] = func
 
         middlewares = list(middlewares or [])
-        self.path_mw_map = OrderedDict()
-        self.path_mw_map[()] = []
+        self._path_mw_map = OrderedDict()
+        self._path_mw_map[()] = []
         self._path_wrapped_map = OrderedDict()
         self._path_wrapped_map[()] = func
         for mw in middlewares:
@@ -98,7 +98,7 @@ class Command(Parser):
 
     @property
     def func(self):
-        return self.path_func_map[()]
+        return self._path_func_map[()]
 
     def add(self, *a, **kw):
         subcmd = a[0]
@@ -121,14 +121,14 @@ class Command(Parser):
     def add_command(self, subcmd):
         if not isinstance(subcmd, Command):
             raise TypeError('expected Command instance, not: %r' % subcmd)
-        self_mw = self.path_mw_map[()]
+        self_mw = self._path_mw_map[()]
         super(Command, self).add(subcmd)
         # map in new functions
         for path in self.subprs_map:
-            if path not in self.path_func_map:
-                self.path_func_map[path] = subcmd.path_func_map[path[1:]]
-                sub_mw = subcmd.path_mw_map[path[1:]]
-                self.path_mw_map[path] = self_mw + sub_mw  # TODO: check for conflicts
+            if path not in self._path_func_map:
+                self._path_func_map[path] = subcmd._path_func_map[path[1:]]
+                sub_mw = subcmd._path_mw_map[path[1:]]
+                self._path_mw_map[path] = self_mw + sub_mw  # TODO: check for conflicts
         return
 
     def add_middleware(self, mw):
@@ -139,36 +139,39 @@ class Command(Parser):
         for flag in mw._face_flags:
             self.add(flag)
 
-        for path, mws in self.path_mw_map.items():
-            self.path_mw_map[path] = [mw] + mws  # TODO: check for conflicts
+        for path, mws in self._path_mw_map.items():
+            self._path_mw_map[path] = [mw] + mws  # TODO: check for conflicts
 
         return
 
     def get_flag_map(self, path=(), with_hidden=True):
+        """Command's get_flag_map differs from Parser's in that it filters
+        the flag map to just the flags used by the endpoint at the
+        associated subcommand *path*.
+        """
         flag_map = super(Command, self).get_flag_map(path=path, with_hidden=with_hidden)
         dep_names = self.get_dep_names(path)
 
-        return dict([(k, f) for k, f in flag_map.items() if f.name in dep_names])
+        return dict([(k, f) for k, f in flag_map.items() if f.name in dep_names
+                     or f is self.flagfile_flag or f is self.help_handler.flag])
 
     def get_dep_names(self, path=()):
-        func = self.path_func_map[path]
+        func = self._path_func_map[path]
         if func is ERROR:  # TODO: check back if we're still supporting this
             raise ValueError('no handler specified for command path: %r' % path)
-        mws = self.path_mw_map[path]
-        flag_names = self.path_flag_map[path].keys()
-        provides = _BUILTIN_PROVIDES + flag_names
+        mws = self._path_mw_map[path]
 
-        _, mw_chain_args, _ = resolve_middleware_chain(mws, func, provides)
+        _, mw_chain_args, _ = resolve_middleware_chain(mws, func, preprovided=[])
 
         return sorted(mw_chain_args)
 
     def prepare(self, paths=None):
         if paths is None:
-            paths = self.path_func_map.keys()
+            paths = self._path_func_map.keys()
 
-        for path, func in self.path_func_map.items():
-            mws = self.path_mw_map[path]
-            flag_names = self.path_flag_map[path].keys()
+        for path, func in self._path_func_map.items():
+            mws = self._path_mw_map[path]
+            flag_names = [f.name for f in self.get_flags(path=path)]
             provides = _BUILTIN_PROVIDES + flag_names
             wrapped = get_middleware_chain(mws, func, provides)
 
@@ -205,7 +208,7 @@ class Command(Parser):
         self.prepare(paths=[prs_res.subcmds])
 
         # default in case no middlewares have been installed
-        func = self.path_func_map[prs_res.subcmds]
+        func = self._path_func_map[prs_res.subcmds]
         wrapped = self._path_wrapped_map.get(prs_res.subcmds, func)
 
         return inject(wrapped, kwargs)

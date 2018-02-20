@@ -510,15 +510,15 @@ class Parser(object):
         self.flagfile_flag = FLAG_FILE_ENABLED
 
         self.subprs_map = OrderedDict()
-        self.path_flag_map = OrderedDict()
-        self.path_flag_map[()] = OrderedDict()
+        self._path_flag_map = OrderedDict()
+        self._path_flag_map[()] = OrderedDict()
 
         if self.flagfile_flag:
             self.add(self.flagfile_flag)
         return
 
     def get_flag_map(self, path, with_hidden=True):
-        flag_map = self.path_flag_map[path]
+        flag_map = self._path_flag_map[path]
         return dict([(k, f) for k, f in flag_map.items()
                      if with_hidden or not f.display.hidden])
 
@@ -546,10 +546,10 @@ class Parser(object):
         for prs_path in self.subprs_map:
             if prs_path[0] == subprs_name:
                 raise ValueError('conflicting subcommand name: %r' % subprs_name)
-        parent_flag_map = self.path_flag_map[()]
+        parent_flag_map = self._path_flag_map[()]
 
         check_no_conflicts = lambda parent_flag_map, subcmd_path, subcmd_flags: True
-        for path, flags in subprs.path_flag_map.items():
+        for path, flags in subprs._path_flag_map.items():
             if not check_no_conflicts(parent_flag_map, path, flags):
                 # TODO
                 raise ValueError('subcommand flags conflict with parent command: %r' % flags)
@@ -561,10 +561,10 @@ class Parser(object):
             self.subprs_map[new_path] = subprs
 
         # Flags inherit down (a parent's flags are usable by the child)
-        for path, flags in subprs.path_flag_map.items():
+        for path, flags in subprs._path_flag_map.items():
             new_flags = parent_flag_map.copy()
             new_flags.update(flags)
-            self.path_flag_map[(subprs_name,) + path] = new_flags
+            self._path_flag_map[(subprs_name,) + path] = new_flags
 
         # If two flags have the same name, as long as the "parse_as"
         # is the same, things should be ok. Need to watch for
@@ -595,7 +595,7 @@ class Parser(object):
         # first check there are no conflicts...
         flag_name = flag.name
 
-        for subcmds, flag_map in self.path_flag_map.items():
+        for subcmds, flag_map in self._path_flag_map.items():
             if flag_name in flag_map:
                 # TODO: need a better error message here, one that
                 # properly exposes the existing flag (same goes for
@@ -606,7 +606,7 @@ class Parser(object):
                 raise ValueError('conflicting short form for flag %r: %r' % (flag_name, flag.char))
 
         # ... then we add the flags
-        for flag_map in self.path_flag_map.values():
+        for flag_map in self._path_flag_map.values():
             flag_map[flag_name] = flag
             if flag.char:
                 flag_map[flag.char] = flag

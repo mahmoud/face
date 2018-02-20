@@ -50,6 +50,7 @@ of Command, Flag, PosArgSpec.
 * Value Label (name_of_the_flag.upper())
 * "parse_as" label (see parser._get_type_desc)
 * pre_padding, post_padding
+* Should format_label live on FlagDisplay or in HelpHandler/HelpFormatter?
 
 Related:
 

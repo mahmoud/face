@@ -8,6 +8,8 @@ from boltons.iterutils import unique
 
 from face.parser import Flag
 
+# TODO: separate "stout" and "airy" layouts
+
 
 def _get_termios_winsize():
     # TLPI, 62.9 (p. 1319)
@@ -46,9 +48,6 @@ def get_winsize():
 
 
 def _wrap_pair(indent, label, sep, doc, doc_start, max_doc_width):
-    # TODO: consider making sep align to the right of the fill-space,
-    # so that it can act more like bullets when it's more than just
-    # whitespace
     # TODO: consider making the fill character configurable (ljust
     # uses space by default, the just() methods can only take
     # characters, might be a useful bolton to take a repeating

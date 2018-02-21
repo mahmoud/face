@@ -30,7 +30,7 @@ def face_middleware(*args, **kwargs):
 
     """
     provides = kwargs.pop('provides', [])
-    if isinstance(provides, basestring):
+    if isinstance(provides, str):
         provides = [provides]
     flags = list(kwargs.pop('flags', []))
     if flags:

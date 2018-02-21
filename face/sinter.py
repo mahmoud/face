@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
+
 import re
+import sys
 import types
 import inspect
 from inspect import ArgSpec
 
 from boltons.strutils import camel2under
 
+PY3 = (sys.version_info[0] == 3)
 _VERBOSE = False
 _INDENT = '    '
 
@@ -24,7 +28,7 @@ def getargspec(f):
 
     ret = inspect.getargspec(f)
 
-    if not all([isinstance(a, basestring) for a in ret.args]):
+    if not all([isinstance(a, str) for a in ret.args]):
         raise TypeError('does not support anonymous tuple arguments'
                         ' or any other strange args for that matter.')
     if isinstance(f, types.MethodType):
@@ -44,8 +48,8 @@ def get_arg_names(f, only_required=False):
 def inject(f, injectables):
     __traceback_hide__ = True  # TODO
     arg_names, _, kw_name, defaults = getargspec(f)
-    defaults = dict(reversed(zip(reversed(arg_names),
-                                 reversed(defaults or []))))
+    defaults = dict(reversed(list(zip(reversed(arg_names),
+                                      reversed(defaults or [])))))
     all_kwargs = dict(defaults)
     all_kwargs.update(injectables)
     if kw_name:
@@ -107,7 +111,7 @@ def build_chain_str(funcs, params, inner_name, params_sofar=None, level=0,
     params_sofar.update(params[0])
     inner_args = getargspec(funcs[0]).args
     inner_arg_dict = dict([(a, a) for a in inner_args])
-    inner_arg_items = sorted(inner_arg_dict.iteritems())
+    inner_arg_items = sorted(inner_arg_dict.items())
     inner_args = ', '.join(['%s=%s' % kv for kv in inner_arg_items
                            if kv[0] in params_sofar])
     outer_indent = _INDENT * level
@@ -126,10 +130,13 @@ def compile_chain(funcs, params, inner_name, verbose=_VERBOSE):
     call_str = build_chain_str(funcs, params, inner_name)
     code = compile(call_str, '<string>', 'single')
     if verbose:
-        print call_str
-    d = {'funcs': funcs}
-    exec code in d
-    return d[inner_name]
+        print(call_str)
+    env = {'funcs': funcs}
+    if PY3:
+        exec(code, env)
+    else:
+        exec("exec code in env")
+    return env[inner_name]
 
 
 def make_chain(funcs, provides, final_func, preprovided, inner_name):

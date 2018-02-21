@@ -446,6 +446,7 @@ class PosArgSpec(object):
     def parse(self, posargs):
         len_posargs = len(posargs)
         if posargs and not self.accepts_args:
+            # TODO: check for likely subcommands
             raise InvalidPosArgs('unexpected arguments: %r' % posargs)
         min_count, max_count = self.min_count, self.max_count
         if min_count == max_count:
@@ -458,7 +459,7 @@ class PosArgSpec(object):
         else:
             if min_count == 0:
                 arg_range_text = 'up to %s argument' % max_count
-                arg_range_text += 's' if max_count > 1 else ''
+                arg_range_text += 's' if (max_count and max_count > 1) else ''
             elif max_count is None:
                 arg_range_text = 'at least %s argument' % min_count
                 arg_range_text += 's' if min_count > 1 else ''
@@ -783,6 +784,9 @@ class ListParam(object):
 
     __call__ = parse
 
+
+class ChoicesParam(object):
+    pass  # TODO
 
 
 class FileValueParam(object):

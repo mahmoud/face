@@ -2,7 +2,6 @@
 
 ## Big tickets
 
-* Help generation
 * Tests
 * Calculator example
 * Docs

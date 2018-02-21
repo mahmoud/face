@@ -45,7 +45,7 @@ def get_winsize():
     return rows, cols
 
 
-def _stout_wrap_pair(indent, label, sep, doc, doc_start, max_doc_width):
+def _wrap_stout_pair(indent, label, sep, doc, doc_start, max_doc_width):
     # TODO: consider making the fill character configurable (ljust
     # uses space by default, the just() methods can only take
     # characters, might be a useful bolton to take a repeating
@@ -73,8 +73,33 @@ def _stout_wrap_pair(indent, label, sep, doc, doc_start, max_doc_width):
     return ret
 
 
-def _get_shown_flags(target):
-    return target.get_flags(with_hidden=False)
+def get_stout_layout(labels, indent, sep, width=None, max_width=120, min_doc_width=40):
+    if width is None:
+        _, width = get_winsize()
+        if width is None:
+            width = 80
+        width = min(width, max_width)
+        width -= 2
+
+    len_sep = len(sep)
+    len_indent = len(indent)
+
+    max_label_width = 0
+    max_doc_width = min_doc_width
+    doc_start = width - min_doc_width
+    for label in labels:
+        cur_len = len(label)
+        if cur_len < max_label_width:
+            continue
+        max_label_width = cur_len
+        if (len_indent + cur_len + len_sep + min_doc_width) < width:
+            max_doc_width = width - max_label_width - len_sep - len_indent
+            doc_start = len_indent + cur_len + len_sep
+
+    return {'width': width,
+            'label_width': max_label_width,
+            'doc_width': max_doc_width,
+            'doc_start': doc_start}
 
 
 DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, char='-h', doc='show this help message and exit')
@@ -146,7 +171,7 @@ class StoutHelpFormatter(object):
             append(ctx['group_break'])
             for sub_name in unique([sp[0] for sp in parser.subprs_map if sp]):
                 subprs = parser.subprs_map[(sub_name,)]
-                subcmd_lines = _stout_wrap_pair(indent=ctx['section_indent'],
+                subcmd_lines = _wrap_stout_pair(indent=ctx['section_indent'],
                                                 label=sub_name,
                                                 sep=ctx['doc_separator'],
                                                 doc=subprs.doc,
@@ -165,7 +190,7 @@ class StoutHelpFormatter(object):
         append(ctx['flags_section_heading'])
         append(ctx['group_break'])
         for flag in shown_flags:
-            flag_lines = _stout_wrap_pair(indent=ctx['section_indent'],
+            flag_lines = _wrap_stout_pair(indent=ctx['section_indent'],
                                           label=flag.display.label,
                                           sep=ctx['doc_separator'],
                                           doc=flag.display.full_doc,
@@ -196,13 +221,12 @@ class StoutHelpFormatter(object):
         if subcmds:
             parser = parser.subprs_map[subcmds]
 
-        flags = _get_shown_flags(parser)
+        flags = parser.get_flags(with_hidden=False)
 
         if flags:
             append('[FLAGS]')
 
-        if parser.posargs:
-            append(parser.posargs.display.label)
+        append(parser.posargs.display.label)
 
         return ' '.join(parts)
 
@@ -219,6 +243,12 @@ class AiryHelpFormatter(object):
 
 
 class HelpHandler(object):
+    """
+    Other hooks (besides the help function itself):
+
+    * Callbacks for unhandled exceptions
+    * Callbacks for formatting errors (add a "see --help for more options")
+    """
     def __init__(self, flag=DEFAULT_HELP_FLAG, func=None, subcmd=None,
                  formatter=StoutHelpFormatter, **formatter_kwargs):
         # subcmd expects a string
@@ -247,35 +277,6 @@ class HelpHandler(object):
             program_name = cmd_.name
         print(self.formatter.get_help_text(cmd_, subcmds=subcmds_, program_name=program_name))
         sys.exit(0)
-
-
-def get_stout_layout(labels, indent, sep, width=None, max_width=120, min_doc_width=40):
-    if width is None:
-        _, width = get_winsize()
-        if width is None:
-            width = 80
-        width = min(width, max_width)
-        width -= 2
-
-    len_sep = len(sep)
-    len_indent = len(indent)
-
-    max_label_width = 0
-    max_doc_width = min_doc_width
-    doc_start = width - min_doc_width
-    for label in labels:
-        cur_len = len(label)
-        if cur_len < max_label_width:
-            continue
-        max_label_width = cur_len
-        if (len_indent + cur_len + len_sep + min_doc_width) < width:
-            max_doc_width = width - max_label_width - len_sep - len_indent
-            doc_start = len_indent + cur_len + len_sep
-
-    return {'width': width,
-            'label_width': max_label_width,
-            'doc_width': max_doc_width,
-            'doc_start': doc_start}
 
 
 """Usage: cmd_name sub_cmd [..as many subcommands as the max] --flags args ...

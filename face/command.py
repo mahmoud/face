@@ -58,9 +58,11 @@ def default_print_error(msg):
 DEFAULT_HELP_HANDLER = HelpHandler()
 
 
+# TODO: add flags, subcommands as parameters so that everything can be
+# initialized in one call.
 class Command(Parser):
-    def __init__(self, func, name=None, doc=None, posargs=False, middlewares=None, print_error=None,
-                 help=DEFAULT_HELP_HANDLER):
+    def __init__(self, func, name=None, doc=None, posargs=False, middlewares=None,
+                 print_error=None, help=DEFAULT_HELP_HANDLER):
         name = name if name is not None else _get_default_name()
 
         if doc is None:
@@ -290,5 +292,21 @@ Should Commands have resources like clastic?
   but a subcommand does? Maybe dispatch to the subcommand's help
   handler? Would deferring adding the HelpHandler's flag/subcmd help?
   Right now the help flag is parsed and ignored.
+
+---
+
+Notes on making Command inherit from Parser:
+
+The only fuzzy area is when to use prs.get_flag_map() vs
+prs._path_flag_map directly. Basically, when filtration-by-usage is
+desired, get_flag_map() (or get_flags()) should be used. Only Commands
+do this, so it looks a bit weird if you're only looking at the Parser,
+where this operation appears to do nothing. This only happens in 1-2
+places so probably safe to just comment it for now.
+
+Relatedly, there are some linting errors where it appears the private
+_path_flag_map is being accessed. I think these are ok, because these
+methods are operating on objects of the same type, so the members are
+still technically "protected", in the C++ OOP sense.
 
 """

@@ -628,6 +628,9 @@ class Parser(object):
 
         try:
             # then look up the subcommand's supported flags
+            # NOTE: get_flag_map() is used so that inheritors, like Command,
+            # can filter by actually-used arguments, not just
+            # available arguments.
             cmd_flag_map = self.get_flag_map(path=tuple(subcmds))
 
             # parse and validate the supported flags

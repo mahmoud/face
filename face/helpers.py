@@ -8,8 +8,6 @@ from boltons.iterutils import unique
 
 from face.parser import Flag
 
-# TODO: separate "stout" and "airy" layouts
-
 
 def _get_termios_winsize():
     # TLPI, 62.9 (p. 1319)
@@ -47,7 +45,7 @@ def get_winsize():
     return rows, cols
 
 
-def _wrap_pair(indent, label, sep, doc, doc_start, max_doc_width):
+def _stout_wrap_pair(indent, label, sep, doc, doc_start, max_doc_width):
     # TODO: consider making the fill character configurable (ljust
     # uses space by default, the just() methods can only take
     # characters, might be a useful bolton to take a repeating
@@ -82,7 +80,10 @@ def _get_shown_flags(target):
 DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, char='-h', doc='show this help message and exit')
 
 
-class HelpHandler(object):
+class StoutHelpFormatter(object):
+    """Inspired by, but not the same as argparse. Probably what most
+    Pythonists expect.
+    """
     default_context = {
         'usage_label': 'Usage:',
         'subcmd_section_heading': 'Subcommands: ',
@@ -100,36 +101,21 @@ class HelpHandler(object):
         'post_doc': '\n',
     }
 
-    def __init__(self, flag=DEFAULT_HELP_FLAG, func=None, subcmd=None, **kwargs):
-        # subcmd expects a string
-        ctx = {}
+    def __init__(self, **kwargs):
+        self.ctx = {}
         for key, val in self.default_context.items():
-            ctx[key] = kwargs.pop(key, val)
+            self.ctx[key] = kwargs.pop(key, val)
         if kwargs:
-            raise TypeError('unexpected keyword arguments: %r' % list(kwargs.keys()))
-        self.ctx = ctx
-        self.flag = flag
-        self.func = func if func is not None else self.default_help_func
-        self.subcmd = subcmd
-        if not callable(self.func):
-            raise TypeError('expected func to be callable, not %r' % func)
-
-    def default_help_func(self, cmd_, subcmds_, args_):
-        try:
-            program_name = args_.argv[0]
-        except IndexError:
-            program_name = cmd_.name
-        print(self.get_help_text(cmd_, subcmds=subcmds_, program_name=program_name))
-        sys.exit(0)
+            raise TypeError('unexpected formatter arguments: %r' % list(kwargs.keys()))
 
     def _get_layout(self, labels):
         ctx = self.ctx
-        return get_layout(labels=labels,
-                          indent=ctx['section_indent'],
-                          sep=ctx['doc_separator'],
-                          width=ctx['width'],
-                          max_width=ctx['max_width'],
-                          min_doc_width=ctx['min_doc_width'])
+        return get_stout_layout(labels=labels,
+                                indent=ctx['section_indent'],
+                                sep=ctx['doc_separator'],
+                                width=ctx['width'],
+                                max_width=ctx['max_width'],
+                                min_doc_width=ctx['min_doc_width'])
 
     def get_help_text(self, parser, subcmds=(), flags=None, program_name=None):
         """parser is a Parser instance, which also includes Commands, which
@@ -160,12 +146,12 @@ class HelpHandler(object):
             append(ctx['group_break'])
             for sub_name in unique([sp[0] for sp in parser.subprs_map if sp]):
                 subprs = parser.subprs_map[(sub_name,)]
-                subcmd_lines = _wrap_pair(indent=ctx['section_indent'],
-                                          label=sub_name,
-                                          sep=ctx['doc_separator'],
-                                          doc=subprs.doc,
-                                          doc_start=subcmd_layout['doc_start'],
-                                          max_doc_width=subcmd_layout['doc_width'])
+                subcmd_lines = _stout_wrap_pair(indent=ctx['section_indent'],
+                                                label=sub_name,
+                                                sep=ctx['doc_separator'],
+                                                doc=subprs.doc,
+                                                doc_start=subcmd_layout['doc_start'],
+                                                max_doc_width=subcmd_layout['doc_width'])
                 ret.extend(subcmd_lines)
 
             append(ctx['section_break'])
@@ -179,12 +165,12 @@ class HelpHandler(object):
         append(ctx['flags_section_heading'])
         append(ctx['group_break'])
         for flag in shown_flags:
-            flag_lines = _wrap_pair(indent=ctx['section_indent'],
-                                    label=flag.display.label,
-                                    sep=ctx['doc_separator'],
-                                    doc=flag.display.full_doc,
-                                    doc_start=flag_layout['doc_start'],
-                                    max_doc_width=flag_layout['doc_width'])
+            flag_lines = _stout_wrap_pair(indent=ctx['section_indent'],
+                                          label=flag.display.label,
+                                          sep=ctx['doc_separator'],
+                                          doc=flag.display.full_doc,
+                                          doc_start=flag_layout['doc_start'],
+                                          max_doc_width=flag_layout['doc_width'])
 
             ret.extend(flag_lines)
 
@@ -221,7 +207,49 @@ class HelpHandler(object):
         return ' '.join(parts)
 
 
-def get_layout(labels, indent, sep, width=None, max_width=120, min_doc_width=40):
+
+'''
+class AiryHelpFormatter(object):
+    """No wrapping a doc onto the same line as the label. Just left
+    aligned labels + newline, then right align doc. No complicated
+    width calculations either. See https://github.com/kbknapp/clap-rs
+    """
+    pass  # TBI
+'''
+
+
+class HelpHandler(object):
+    def __init__(self, flag=DEFAULT_HELP_FLAG, func=None, subcmd=None,
+                 formatter=StoutHelpFormatter, **formatter_kwargs):
+        # subcmd expects a string
+        self.flag = flag
+        self.subcmd = subcmd
+        self.func = func if func is not None else self.default_help_func
+        if not callable(self.func):
+            raise TypeError('expected func to be callable, not %r' % func)
+
+        self.formatter = formatter
+        if not formatter:
+            raise TypeError('expected Formatter type or instance, not: %r' % formatter)
+        if isinstance(formatter, type):
+            self.formatter = formatter(**formatter_kwargs)
+        elif formatter_kwargs:
+            raise TypeError('only accepts extra formatter kwargs (%r) if'
+                            ' formatter argument is a Formatter type, not: %r'
+                            % (sorted(formatter_kwargs.keys()), formatter))
+        # TODO: assert self.formatter has a get_help_text() method?
+        return
+
+    def default_help_func(self, cmd_, subcmds_, args_):
+        try:
+            program_name = args_.argv[0]
+        except IndexError:
+            program_name = cmd_.name
+        print(self.formatter.get_help_text(cmd_, subcmds=subcmds_, program_name=program_name))
+        sys.exit(0)
+
+
+def get_stout_layout(labels, indent, sep, width=None, max_width=120, min_doc_width=40):
     if width is None:
         _, width = get_winsize()
         if width is None:

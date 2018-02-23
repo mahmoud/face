@@ -190,7 +190,12 @@ class Command(Parser):
             msg = 'error: ' + self.name
             if getattr(ape, 'subcmds', None):
                 msg += ' ' + ' '.join(ape.subcmds or ())
-            msg += ': ' + ape.message
+            try:
+                e_msg = ape.args[0]
+            except (AttributeError, IndexError):
+                e_msg = ''
+            if e_msg:
+                msg += ': ' + e_msg
             cle = CommandLineError(msg)
             self.print_error(msg)
             raise cle

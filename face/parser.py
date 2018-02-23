@@ -119,8 +119,9 @@ class MissingRequiredFlags(ArgumentParseError):
 class DuplicateFlagValue(ArgumentParseError):
     @classmethod
     def from_parse(cls, flag, arg_val_list):
-        return cls('more than one value passed for flag %s: %r'
-                   % (flag.name, arg_val_list))
+        avl_text = ', '.join([repr(v) for v in arg_val_list])
+        return cls('more than one value passed for flag %s: %s'
+                   % (flag.name, avl_text))
 
 
 # keep it just to subset of valid python identifiers for now
@@ -257,7 +258,6 @@ class Flag(object):
         # point?)
         self.char = _validate_char(char) if char else None
 
-
         if callable(multi):
             self.multi = multi
         elif multi in _MULTI_SHORTCUTS:
@@ -315,6 +315,7 @@ class FlagDisplay(object):
 
         self.value_name = ''
         if callable(flag.parse_as):
+            # TODO: use default when it's set and it's a basic renderable type
             self.value_name = kw.pop('value_name', None) or self.flag.name.upper()
 
         self.group = kw.pop('group', 0)   # int or str
@@ -676,51 +677,49 @@ class Parser(object):
 
         return ret, args[len(ret):]
 
+    def _parse_single_flag(self, cmd_flag_map, args):
+        arg = args[0]
+        flag = cmd_flag_map.get(_normalize_flag_name(arg))
+        if flag is None:
+            raise UnknownFlag.from_parse(cmd_flag_map, arg)
+        flag_conv = flag.parse_as
+        if not callable(flag_conv):
+            # e.g., True is effectively store_true, False is effectively store_false
+            return flag.name, flag_conv, args[1:]
+
+        try:
+            arg_text = args[1]
+        except IndexError:
+            raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg=None)
+        try:
+            arg_val = flag_conv(arg_text)
+        except Exception as e:
+            raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg_text, exc=e)
+
+        return flag.name, arg_val, args[2:]
+
     def _parse_flags(self, cmd_flag_map, args):
         """Expects arguments after the initial command and subcommands (i.e.,
         the second item returned from _parse_subcmds)
 
-        Returns a tuple of (list_of_subcmds, remaining_args).
+        Returns a tuple of (dict of flag names to parsed and validated values, remaining_args).
 
         Raises on unknown subcommands.
         """
         ret, idx = OMD(), 0
 
-        _consumed_val = False
-        for i, arg in enumerate(args):
-            idx += 1
-            if _consumed_val:
-                _consumed_val = False
-                continue
-            if not arg:
-                # TODO
-                raise ArgumentParseError('unexpected empty arg between [...] and [...]')
-            elif arg[0] != '-' or arg == '-' or arg == '--':
+        orig_args = args
+        while args:
+            arg = args[0]
+            if not arg or arg[0] != '-' or arg == '-' or arg == '--':
                 # posargs or post_posargs beginning ('-' is a
                 # conventional pos arg for stdin)
-                idx -= 1
                 break
+            flag_name, value, args = self._parse_single_flag(cmd_flag_map, args)
+            ret.add(flag_name, value)
 
-            flag = cmd_flag_map.get(_normalize_flag_name(arg))
-            if flag is None:
-                raise UnknownFlag.from_parse(cmd_flag_map, arg)
-
-            flag_conv = flag.parse_as
-            if not callable(flag_conv):
-                # e.g., True is effectively store_true, False is effectively store_false
-                ret.add(flag.name, flag_conv)
-                continue
-            try:
-                arg_text = args[i + 1]
-            except IndexError:
-                raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg=None)
-            try:
-                arg_val = flag_conv(arg_text)
-            except Exception as e:
-                raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg_text, exc=e)
-            ret.add(flag.name, arg_val)
-            _consumed_val = True
-
+        # TODO: split out resolving flags so that above logic can be
+        # used for flagfile parsing with nice error messages.
         # take care of dupes and check required flags
         ret = self._resolve_flags(cmd_flag_map, ret)
         return ret, args[idx:]

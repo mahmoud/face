@@ -16,7 +16,9 @@ from face.middleware import (inject,
 from boltons.iterutils import unique
 
 class CommandLineError(FaceException, SystemExit):
-    pass
+    def __init__(self, msg, code=1):
+        SystemExit.__init__(self, msg)
+        self.code = code
 
 
 def _get_default_name(frame_level=1):

@@ -123,8 +123,13 @@ class DuplicateFlagValue(ArgumentParseError):
     @classmethod
     def from_parse(cls, flag, arg_val_list):
         avl_text = ', '.join([repr(v) for v in arg_val_list])
-        return cls('more than one value passed for flag %s: %s'
+        if callable(flag.parse_as):
+            msg = ('more than one value was passed for flag "%s": %s'
                    % (flag.name, avl_text))
+        else:
+            msg = ('flag "%s" was used multiple times, but can be used only once' % flag.name)
+        return cls(msg)
+
 
 
 # keep it just to subset of valid python identifiers for now
@@ -639,10 +644,10 @@ class Parser(object):
             cmd_flag_map = self.get_flag_map(path=tuple(subcmds))
 
             # parse supported flags and validate their arguments
-            flag_map, posargs = self._parse_flags(cmd_flag_map, args)
+            flag_map, flagfile_map, posargs = self._parse_flags(cmd_flag_map, args)
 
             # take care of dupes and check required flags
-            resolved_flag_map = self._resolve_flags(cmd_flag_map, flag_map)
+            resolved_flag_map = self._resolve_flags(cmd_flag_map, flag_map, flagfile_map)
 
             # separate out any trailing arguments from normal positional arguments
             post_posargs = None  # TODO: default to empty list? Rename to post_posargs?
@@ -712,7 +717,9 @@ class Parser(object):
 
         Raises on unknown subcommands.
         """
-        ret = OMD()
+        flag_value_map = OMD()
+        ff_path_res_map = OrderedDict()
+        ff_path_seen = set()
 
         orig_args = args
         while args:
@@ -721,14 +728,20 @@ class Parser(object):
                 # posargs or post_posargs beginning ('-' is a conventional pos arg for stdin)
                 break
             flag, value, args = self._parse_single_flag(cmd_flag_map, args)
-            ret.add(flag.name, value)
+            flag_value_map.add(flag.name, value)
+
             if flag is self.flagfile_flag:
-                self._parse_flagfile(cmd_flag_map, value)
+                self._parse_flagfile(cmd_flag_map, value, res_map=ff_path_res_map)
+                for path, ff_flag_value_map in ff_path_res_map.items():
+                    if path in ff_path_seen:
+                        continue
+                    flag_value_map.update_extend(ff_flag_value_map)
+                    ff_path_seen.add(path)
 
-        return ret, args
+        return flag_value_map, ff_path_res_map, args
 
-    def _parse_flagfile(self, cmd_flag_map, path_or_file):
-        ret = OMD()
+    def _parse_flagfile(self, cmd_flag_map, path_or_file, res_map=None):
+        ret = res_map if res_map is not None else OrderedDict()
         if callable(getattr(path_or_file, 'read', None)):
             # enable StringIO and custom flagfile opening
             f_name = getattr(path_or_file, 'name', None)
@@ -738,24 +751,34 @@ class Parser(object):
             path = os.path.abspath(path_or_file)
             with codecs.open(path_or_file, 'r', 'utf-8') as f:
                 ff_text = f.read()
+        if path in res_map:
+            # we've already seen this file
+            return res_map
+        ret[path] = cur_file_res = OMD()
         lines = ff_text.splitlines()
         for lineno, line in enumerate(lines, 1):
-            args = shlex.split(line, comments=True)
-            if not args:
-                continue  # comment or empty line
-            flag, value, leftover_args = self._parse_single_flag(cmd_flag_map, args)
+            try:
+                args = shlex.split(line, comments=True)
+                if not args:
+                    continue  # comment or empty line
+                flag, value, leftover_args = self._parse_single_flag(cmd_flag_map, args)
 
-            if leftover_args:
-                raise FaceException('excessive flags or arguments on line %s of'
-                                    ' flagfile "%s", expected one flag per line.'
-                                    % (lineno, path))
-            ret.add(flag.name, value)
+                if leftover_args:
+                    raise FaceException('excessive flags or arguments for flag "%s",'
+                                        ' expected one flag per line' % flag.name)
+            except FaceException as fe:
+                fe.args = (fe.args[0] + ' (on line %s of flagfile "%s")' % (lineno, path),)
+                raise
+            cur_file_res.add(flag.name, value)
+            if flag is self.flagfile_flag:
+                self._parse_flagfile(cmd_flag_map, value, res_map=ret)
 
         return ret
 
-    def _resolve_flags(self, cmd_flag_map, parsed_flag_map):
+    def _resolve_flags(self, cmd_flag_map, parsed_flag_map, flagfile_map=None):
         ret = OrderedDict()
         cfm, pfm = cmd_flag_map, parsed_flag_map
+        flagfile_map = flagfile_map or {}
 
         # check requireds and set defaults and then...
         missing_flags = []
@@ -773,8 +796,19 @@ class Parser(object):
         for flag_name in pfm:
             flag = cfm[flag_name]
             arg_val_list = pfm.getlist(flag_name)
-            ret[flag_name] = flag.multi(flag, arg_val_list)
-
+            try:
+                ret[flag_name] = flag.multi(flag, arg_val_list)
+            except FaceException as fe:
+                ff_paths = []
+                for ff_path, ff_value_map in flagfile_map.items():
+                    if flag_name in ff_value_map:
+                        ff_paths.append(ff_path)
+                if ff_paths:
+                    ff_label = 'flagfiles' if len(ff_paths) > 1 else 'flagfile'
+                    msg = ('\n\t(check %s with definitions for flag "%s": %s)'
+                           % (ff_label, flag_name, ', '.join(ff_paths)))
+                    fe.args = (fe.args[0] + msg,)
+                raise
         return ret
 
 

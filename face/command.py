@@ -156,6 +156,9 @@ class Command(Parser):
         flag_map = super(Command, self).get_flag_map(path=path, with_hidden=with_hidden)
         dep_names = self.get_dep_names(path)
 
+        # TODO: if dep_names includes args_ or flags_ we need to
+        # bypass the default filtering and either let all flags
+        # through or just the ones declared by some decorator.
         return dict([(k, f) for k, f in flag_map.items() if f.name in dep_names
                      or f is self.flagfile_flag or f is self.help_handler.flag])
 

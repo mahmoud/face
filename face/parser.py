@@ -1,7 +1,10 @@
 
 import re
 import sys
+import shlex
+import codecs
 import keyword
+import os.path
 
 from collections import OrderedDict
 
@@ -484,7 +487,7 @@ class PosArgSpec(object):
         return ret
 
 
-FLAG_FILE_ENABLED = Flag('--flagfile', parse_as=str, multi='extend', missing=None, display=False, doc='')
+FLAGFILE_ENABLED = Flag('--flagfile', parse_as=str, multi='extend', missing=None, display=False, doc='')
 
 
 class Parser(object):
@@ -509,7 +512,7 @@ class Parser(object):
                              ' or instance of PosArgSpec, not: %r' % posargs)
         self.posargs = posargs
 
-        self.flagfile_flag = FLAG_FILE_ENABLED
+        self.flagfile_flag = FLAGFILE_ENABLED
 
         self.subprs_map = OrderedDict()
         self._path_flag_map = OrderedDict()
@@ -635,8 +638,11 @@ class Parser(object):
             # available arguments.
             cmd_flag_map = self.get_flag_map(path=tuple(subcmds))
 
-            # parse and validate the supported flags
+            # parse supported flags and validate their arguments
             flag_map, posargs = self._parse_flags(cmd_flag_map, args)
+
+            # take care of dupes and check required flags
+            resolved_flag_map = self._resolve_flags(cmd_flag_map, flag_map)
 
             # separate out any trailing arguments from normal positional arguments
             post_posargs = None  # TODO: default to empty list? Rename to post_posargs?
@@ -649,8 +655,8 @@ class Parser(object):
             ape.subcmds = subcmds
             raise
 
-        ret = CommandParseResult(cmd_name, subcmds, flag_map, parsed_posargs, post_posargs,
-                                 parser=self, argv=argv)
+        ret = CommandParseResult(cmd_name, subcmds, resolved_flag_map,
+                                 parsed_posargs, post_posargs, parser=self, argv=argv)
         return ret
 
     def _parse_subcmds(self, args):
@@ -685,7 +691,7 @@ class Parser(object):
         flag_conv = flag.parse_as
         if not callable(flag_conv):
             # e.g., True is effectively store_true, False is effectively store_false
-            return flag.name, flag_conv, args[1:]
+            return flag, flag_conv, args[1:]
 
         try:
             arg_text = args[1]
@@ -696,33 +702,56 @@ class Parser(object):
         except Exception as e:
             raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg_text, exc=e)
 
-        return flag.name, arg_val, args[2:]
+        return flag, arg_val, args[2:]
 
     def _parse_flags(self, cmd_flag_map, args):
         """Expects arguments after the initial command and subcommands (i.e.,
         the second item returned from _parse_subcmds)
 
-        Returns a tuple of (dict of flag names to parsed and validated values, remaining_args).
+        Returns a tuple of (multidict of flag names to parsed and validated values, remaining_args).
 
         Raises on unknown subcommands.
         """
-        ret, idx = OMD(), 0
+        ret = OMD()
 
         orig_args = args
         while args:
             arg = args[0]
             if not arg or arg[0] != '-' or arg == '-' or arg == '--':
-                # posargs or post_posargs beginning ('-' is a
-                # conventional pos arg for stdin)
+                # posargs or post_posargs beginning ('-' is a conventional pos arg for stdin)
                 break
-            flag_name, value, args = self._parse_single_flag(cmd_flag_map, args)
-            ret.add(flag_name, value)
+            flag, value, args = self._parse_single_flag(cmd_flag_map, args)
+            ret.add(flag.name, value)
+            if flag is self.flagfile_flag:
+                self._parse_flagfile(cmd_flag_map, value)
 
-        # TODO: split out resolving flags so that above logic can be
-        # used for flagfile parsing with nice error messages.
-        # take care of dupes and check required flags
-        ret = self._resolve_flags(cmd_flag_map, ret)
-        return ret, args[idx:]
+        return ret, args
+
+    def _parse_flagfile(self, cmd_flag_map, path_or_file):
+        ret = OMD()
+        if callable(getattr(path_or_file, 'read', None)):
+            # enable StringIO and custom flagfile opening
+            f_name = getattr(path_or_file, 'name', None)
+            path = os.path.abspath(f_name) if f_name else repr(path_or_file)
+            ff_text = path_or_file.read()
+        else:
+            path = os.path.abspath(path_or_file)
+            with codecs.open(path_or_file, 'r', 'utf-8') as f:
+                ff_text = f.read()
+        lines = ff_text.splitlines()
+        for lineno, line in enumerate(lines, 1):
+            args = shlex.split(line, comments=True)
+            if not args:
+                continue  # comment or empty line
+            flag, value, leftover_args = self._parse_single_flag(cmd_flag_map, args)
+
+            if leftover_args:
+                raise FaceException('excessive flags or arguments on line %s of'
+                                    ' flagfile "%s", expected one flag per line.'
+                                    % (lineno, path))
+            ret.add(flag.name, value)
+
+        return ret
 
     def _resolve_flags(self, cmd_flag_map, parsed_flag_map):
         ret = OrderedDict()

@@ -132,8 +132,7 @@ class DuplicateFlagValue(ArgumentParseError):
 
 
 
-# keep it just to subset of valid python identifiers for now
-# TODO: switch [A-z] to [^\W\d_] for unicode support in future?
+# keep it just to subset of valid ASCII python identifiers for now
 _VALID_FLAG_RE = re.compile(r"^[A-z][-_A-z0-9]*\Z")
 
 
@@ -749,8 +748,11 @@ class Parser(object):
             ff_text = path_or_file.read()
         else:
             path = os.path.abspath(path_or_file)
-            with codecs.open(path_or_file, 'r', 'utf-8') as f:
-                ff_text = f.read()
+            try:
+                with codecs.open(path_or_file, 'r', 'utf-8') as f:
+                    ff_text = f.read()
+            except (UnicodeError, EnvironmentError) as ee:
+                raise ArgumentParseError('failed to load flagfile "%s", got: %r' % (path, ee))
         if path in res_map:
             # we've already seen this file
             return res_map
@@ -764,14 +766,16 @@ class Parser(object):
                 flag, value, leftover_args = self._parse_single_flag(cmd_flag_map, args)
 
                 if leftover_args:
-                    raise FaceException('excessive flags or arguments for flag "%s",'
-                                        ' expected one flag per line' % flag.name)
+                    raise ArgumentParseError('excessive flags or arguments for flag "%s",'
+                                             ' expected one flag per line' % flag.name)
+
+                cur_file_res.add(flag.name, value)
+                if flag is self.flagfile_flag:
+                    self._parse_flagfile(cmd_flag_map, value, res_map=ret)
+
             except FaceException as fe:
                 fe.args = (fe.args[0] + ' (on line %s of flagfile "%s")' % (lineno, path),)
                 raise
-            cur_file_res.add(flag.name, value)
-            if flag is self.flagfile_flag:
-                self._parse_flagfile(cmd_flag_map, value, res_map=ret)
 
         return ret
 

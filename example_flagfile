@@ -1,0 +1,17 @@
+--loop-count 5  # a comment here
+# and a comment there
+--verbose
+
+#### Notes:
+
+# one flag and value per line at most
+# blank lines and comment lines are also allowed
+
+# --flag "quoted values # with hashes work, too" note that comments
+# can be directly adjacent to flags like:
+#    "--verbose#set verbose mode to true"
+# but this is due to a bug in Python's shlex module.
+
+# flagfiles can include other flagfiles, and even have cycles
+# cycles are no issue because flagfiles are stateless
+--flagfile example_flagfile

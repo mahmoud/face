@@ -64,13 +64,13 @@ DEFAULT_HELP_HANDLER = HelpHandler()
 # initialized in one call.
 class Command(Parser):
     def __init__(self, func, name=None, doc=None, posargs=False, middlewares=None,
-                 print_error=None, help=DEFAULT_HELP_HANDLER):
+                 print_error=None, help=DEFAULT_HELP_HANDLER, flagfile=True):
         name = name if name is not None else _get_default_name()
 
         if doc is None:
             doc = _docstring_to_doc(func)
 
-        super(Command, self).__init__(name, doc, posargs=posargs)
+        super(Command, self).__init__(name, doc, posargs=posargs, flagfile=flagfile)
         # TODO: properties for name/doc/other parser things
 
         self._path_func_map = OrderedDict()
@@ -156,6 +156,9 @@ class Command(Parser):
         flag_map = super(Command, self).get_flag_map(path=path, with_hidden=with_hidden)
         dep_names = self.get_dep_names(path)
 
+        # TODO: if dep_names includes args_ or flags_ we need to
+        # bypass the default filtering and either let all flags
+        # through or just the ones declared by some decorator.
         return dict([(k, f) for k, f in flag_map.items() if f.name in dep_names
                      or f is self.flagfile_flag or f is self.help_handler.flag])
 

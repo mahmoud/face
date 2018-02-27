@@ -60,23 +60,58 @@ def default_print_error(msg):
 DEFAULT_HELP_HANDLER = HelpHandler()
 
 
-# TODO: add flags, subcommands as parameters so that everything can be
-# initialized in one call.
+# TODO: should name really go here?
 class Command(Parser):
-    def __init__(self, func, name=None, doc=None, posargs=False, middlewares=None,
-                 print_error=None, help=DEFAULT_HELP_HANDLER, flagfile=True):
+    def __init__(self, func, name=None, doc=None, **kwargs):
+        """The central type in the face framework. Instantiate a Command,
+        populate it with flags and subcommands, and then call
+        command.run() to execute your CLI.
+
+        Note that only the first three constructor arguments are
+        positional, the rest are keyword-only.
+
+        Args:
+           func (callable): The function called when this command is
+              run with an argv that contains no subcommands.
+           name (str): The name of this command, used when this
+              command is included as a subcommand.
+           doc (str): A description or message that appears in various
+               help outputs.
+           flags (list): A list of Flag instances to initialize the
+              Command with. Flags can always be added later with the
+              .add() method.
+           posargs (bool): Pass True if the command takes positional
+              arguments. Defaults to False. Can also pass a PosArgSpec
+              instance.
+           help (bool): Pass False to disable the automatically added
+              --help flag. Defaults to True. Also accepts a HelpHandler
+              instance, see those docs for more details.
+           print_error (callable): The function that formats/prints
+               error messages before program exit on CLI errors.
+           middlewares (list): A list of @face_middleware decorated
+              callables which participate in dispatch. Also addable
+              via the .add() method. See Middleware docs for more
+              details.
+
+        """
         name = name if name is not None else _get_default_name()
 
         if doc is None:
             doc = _docstring_to_doc(func)
 
-        super(Command, self).__init__(name, doc, posargs=posargs, flagfile=flagfile)
-        # TODO: properties for name/doc/other parser things
+        # TODO: default posargs if none by inspecting func
+        super(Command, self).__init__(name, doc,
+                                      posargs=kwargs.pop('posargs', None),
+                                      flagfile=kwargs.pop('flagfile', True))
 
         self._path_func_map = OrderedDict()
         self._path_func_map[()] = func
 
-        middlewares = list(middlewares or [])
+        flags = list(kwargs.pop('flags', None) or [])
+        for flag in flags:
+            self.add(flag)
+
+        middlewares = list(kwargs.pop('middlewares', None) or [])
         self._path_mw_map = OrderedDict()
         self._path_mw_map[()] = []
         self._path_wrapped_map = OrderedDict()
@@ -84,6 +119,7 @@ class Command(Parser):
         for mw in middlewares:
             self.add_middleware(mw)
 
+        print_error = kwargs.pop('print_error', None)
         if print_error is None or print_error is True:
             print_error = default_print_error
         elif print_error and not callable(print_error):
@@ -91,12 +127,16 @@ class Command(Parser):
                             % print_error)
         self.print_error = print_error
 
+        help = kwargs.pop('help', DEFAULT_HELP_HANDLER)
         self.help_handler = help
         if help:
             if help.flag:
                 self.add(help.flag)
             if help.subcmd:
                 self.add(help.func, help.subcmd)  # for 'help' as a subcmd
+
+        if kwargs:
+            raise TypeError('unexpected keyword arguments: %r' % sorted(kwargs.keys()))
 
         return
 

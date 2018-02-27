@@ -47,7 +47,6 @@ def main():
 
     cmd.add(sum_subcmd)
 
-
     cmd.add(verbose_mw)
 
     subt_subcmd = Command(subtract_func, 'subtract', '', posargs=float)

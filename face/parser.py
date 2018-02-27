@@ -416,6 +416,24 @@ class PosArgDisplay(object):
 
 
 class PosArgSpec(object):
+    """Passed to Command/Parser as posargs and post_posargs parameters to
+    configure the number and type of positional arguments.
+
+    Args:
+       parse_as (callable): A function to call on each of the passed
+          arguments. Also accepts special argument ERROR, which will raise
+          an exception if positional arguments are passed. Defaults to str.
+       min_count (int): A minimimum number of positional
+          arguments. Defaults to 0.
+       max_count (int): A maximum number of positional arguments. Also
+          accepts None, meaning no maximum. Defaults to None.
+       display: Pass a string to customize the name in help output, or
+          False to hide it completely. Also accepts a PosArgDisplay
+          instance, or a dict of the respective arguments.
+
+    PosArgSpecs are stateless and safe to be used multiple times
+    around the application.
+    """
     def __init__(self, parse_as=str, min_count=None, max_count=None, display=None):
         if not callable(parse_as) and parse_as is not ERROR:
             raise TypeError('expected callable or ERROR for parse_as, not %r' % parse_as)
@@ -455,7 +473,7 @@ class PosArgSpec(object):
         len_posargs = len(posargs)
         if posargs and not self.accepts_args:
             # TODO: check for likely subcommands
-            raise InvalidPosArgs('unexpected arguments: %r' % posargs)
+            raise InvalidPosArgs('unexpected positional arguments: %r' % posargs)
         min_count, max_count = self.min_count, self.max_count
         if min_count == max_count:
             if min_count == 0:
@@ -494,27 +512,37 @@ class PosArgSpec(object):
 FLAGFILE_ENABLED = Flag('--flagfile', parse_as=str, multi='extend', missing=None, display=False, doc='')
 
 
+def _ensure_posargspec(posargs, posargs_name):
+    if not posargs:
+        posargs = PosArgSpec(parse_as=ERROR)
+    elif posargs is True:
+        posargs = PosArgSpec()
+    elif callable(posargs):
+        posargs = PosArgSpec(parse_as=posargs)
+    if not isinstance(posargs, PosArgSpec):
+        raise ValueError('expected %s as True, False,'
+                         ' or instance of PosArgSpec, not: %r' % (posargs_name, posargs))
+    return posargs
+
+
+# TODO: should post_posargs default to True?
 class Parser(object):
     """
     Parser parses, Command parses with Parser, then dispatches.
     """
-    def __init__(self, name, doc=None, posargs=None, flagfile=True):
+    def __init__(self, name, doc=None, flags=None, posargs=None,
+                 post_posargs=None, flagfile=True):
         if not name or name[0] in ('-', '_'):
             # TODO: more complete validation
             raise ValueError('expected name beginning with ASCII letter, not: %r' % (name,))
         self.name = name
         self.doc = doc
+        flags = list(flags or [])
+        for flag in flags:
+            self.add(flag)
 
-        if not posargs:
-            posargs = PosArgSpec(parse_as=ERROR)
-        elif posargs is True:
-            posargs = PosArgSpec()
-        elif callable(posargs):
-            posargs = PosArgSpec(parse_as=posargs)
-        if not isinstance(posargs, PosArgSpec):
-            raise ValueError('expected posargs as True, False,'
-                             ' or instance of PosArgSpec, not: %r' % posargs)
-        self.posargs = posargs
+        self.posargs = _ensure_posargspec(posargs, 'posargs')
+        self.post_posargs = _ensure_posargspec(post_posargs, 'post_posargs')
 
         if flagfile is True:
             self.flagfile_flag = FLAGFILE_ENABLED
@@ -657,9 +685,11 @@ class Parser(object):
             resolved_flag_map = self._resolve_flags(cmd_flag_map, flag_map, flagfile_map)
 
             # separate out any trailing arguments from normal positional arguments
-            post_posargs = None  # TODO: default to empty list? Rename to post_posargs?
+            post_posargs = None  # TODO: default to empty list?
+            parsed_post_posargs = None
             if '--' in posargs:
                 posargs, post_posargs = split(posargs, '--', 1)
+                parsed_post_posargs = prs.post_posargs.parse(post_posargs)
 
             parsed_posargs = prs.posargs.parse(posargs)
         except ArgumentParseError as ape:
@@ -668,7 +698,8 @@ class Parser(object):
             raise
 
         ret = CommandParseResult(cmd_name, subcmds, resolved_flag_map,
-                                 parsed_posargs, post_posargs, parser=self, argv=argv)
+                                 parsed_posargs, parsed_post_posargs,
+                                 parser=self, argv=argv)
         return ret
 
     def _parse_subcmds(self, args):

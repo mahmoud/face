@@ -83,6 +83,9 @@ class Command(Parser):
            posargs (bool): Pass True if the command takes positional
               arguments. Defaults to False. Can also pass a PosArgSpec
               instance.
+           post_posargs (bool): Pass True if the command takes
+              additional positional arguments after a conventional '--'
+              specifier.
            help (bool): Pass False to disable the automatically added
               --help flag. Defaults to True. Also accepts a HelpHandler
               instance, see those docs for more details.
@@ -101,15 +104,13 @@ class Command(Parser):
 
         # TODO: default posargs if none by inspecting func
         super(Command, self).__init__(name, doc,
+                                      flags=kwargs.pop('flags', None),
                                       posargs=kwargs.pop('posargs', None),
+                                      post_posargs=kwargs.pop('post_posargs', None),
                                       flagfile=kwargs.pop('flagfile', True))
 
         self._path_func_map = OrderedDict()
         self._path_func_map[()] = func
-
-        flags = list(kwargs.pop('flags', None) or [])
-        for flag in flags:
-            self.add(flag)
 
         middlewares = list(kwargs.pop('middlewares', None) or [])
         self._path_mw_map = OrderedDict()

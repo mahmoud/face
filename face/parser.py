@@ -498,7 +498,7 @@ class Parser(object):
     """
     Parser parses, Command parses with Parser, then dispatches.
     """
-    def __init__(self, name, doc=None, posargs=None):
+    def __init__(self, name, doc=None, posargs=None, flagfile=True):
         if not name or name[0] in ('-', '_'):
             # TODO: more complete validation
             raise ValueError('expected name beginning with ASCII letter, not: %r' % (name,))
@@ -516,7 +516,15 @@ class Parser(object):
                              ' or instance of PosArgSpec, not: %r' % posargs)
         self.posargs = posargs
 
-        self.flagfile_flag = FLAGFILE_ENABLED
+        if flagfile is True:
+            self.flagfile_flag = FLAGFILE_ENABLED
+        elif isinstance(flagfile, Flag):
+            self.flagfile_flag = flagfile
+        elif not flagfile:
+            self.flagfile_flag = None
+        else:
+            raise ValueError('expected True, False, or Flag instance for'
+                             ' flagfile, not: %r' % flagfile)
 
         self.subprs_map = OrderedDict()
         self._path_flag_map = OrderedDict()

@@ -64,13 +64,13 @@ DEFAULT_HELP_HANDLER = HelpHandler()
 # initialized in one call.
 class Command(Parser):
     def __init__(self, func, name=None, doc=None, posargs=False, middlewares=None,
-                 print_error=None, help=DEFAULT_HELP_HANDLER):
+                 print_error=None, help=DEFAULT_HELP_HANDLER, flagfile=True):
         name = name if name is not None else _get_default_name()
 
         if doc is None:
             doc = _docstring_to_doc(func)
 
-        super(Command, self).__init__(name, doc, posargs=posargs)
+        super(Command, self).__init__(name, doc, posargs=posargs, flagfile=flagfile)
         # TODO: properties for name/doc/other parser things
 
         self._path_func_map = OrderedDict()

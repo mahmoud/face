@@ -25,7 +25,7 @@ def sum_func(num):
     print(sum(num))
 
 
-def subtract_func(posargs_):
+def subtract(posargs_):
     summable = [float(posargs_[0])] + [-float(a) for a in posargs_[1:]]
     print(sum(summable))
 
@@ -49,8 +49,7 @@ def main():
 
     cmd.add(verbose_mw)
 
-    subt_subcmd = Command(subtract_func, 'subtract', '', posargs=float)
-    cmd.add(subt_subcmd)
+    cmd.add(subtract, doc='', posargs=float)
 
     cmd.add(print_args, 'print', '', posargs=True)
 

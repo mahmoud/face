@@ -176,7 +176,7 @@ def identifier_to_flag(identifier):
     return '--' + ret
 
 
-def process_subcmd_name(name):
+def process_command_name(name):
     # validate and canonicalize flag name. Basically, subset of valid
     # Python variable identifiers.
     #
@@ -532,10 +532,7 @@ class Parser(object):
     """
     def __init__(self, name, doc=None, flags=None, posargs=None,
                  post_posargs=None, flagfile=True):
-        if not name or name[0] in ('-', '_'):
-            # TODO: more complete validation
-            raise ValueError('expected name beginning with ASCII letter, not: %r' % (name,))
-        self.name = name
+        self.name = process_command_name(name)
         self.doc = doc
         flags = list(flags or [])
         for flag in flags:
@@ -585,7 +582,7 @@ class Parser(object):
                              ' cannot take subcommands')
 
         # validate that the subparser's name can be used as a subcommand
-        subprs_name = process_subcmd_name(subprs.name)
+        subprs_name = process_command_name(subprs.name)
 
         # then, check for conflicts with existing subcommands and flags
         for prs_path in self.subprs_map:

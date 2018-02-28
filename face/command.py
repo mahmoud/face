@@ -21,21 +21,9 @@ class CommandLineError(FaceException, SystemExit):
         self.code = code
 
 
-def _get_default_name(frame_level=1):
-    # TODO: is this a good idea? What if multiple parsers are created
-    # in the same function for the sake of subparsers. This should
-    # probably only be used from a classmethod or maybe a util
-    # function.  TODO: what happens if a python module file contains a
-    # non-ascii character?
-    frame = sys._getframe(frame_level + 1)
-    mod_name = frame.f_globals.get('__name__')
-    if mod_name is None:
-        return 'COMMAND'
-    module = sys.modules[mod_name]
-    if mod_name == '__main__':
-        return module.__file__
-    # TODO: reverse lookup entrypoint?
-    return mod_name
+def _get_default_name(func):
+    # TODO: handle partials and callable classes
+    return func.func_name
 
 
 def _docstring_to_doc(func):
@@ -74,7 +62,8 @@ class Command(Parser):
            func (callable): The function called when this command is
               run with an argv that contains no subcommands.
            name (str): The name of this command, used when this
-              command is included as a subcommand.
+              command is included as a subcommand. (Defaults to name
+              of function)
            doc (str): A description or message that appears in various
                help outputs.
            flags (list): A list of Flag instances to initialize the
@@ -97,7 +86,7 @@ class Command(Parser):
               details.
 
         """
-        name = name if name is not None else _get_default_name()
+        name = name if name is not None else _get_default_name(func)
 
         if doc is None:
             doc = _docstring_to_doc(func)
@@ -146,16 +135,19 @@ class Command(Parser):
         return self._path_func_map[()]
 
     def add(self, *a, **kw):
+        target = a[0]
+
+        if is_middleware(target):
+            return self.add_middleware(target)
+
         subcmd = a[0]
-
         if not isinstance(subcmd, Command) and callable(subcmd):
-            if is_middleware(subcmd):
-                return self.add_middleware(subcmd)
-
             subcmd = Command(*a, **kw)  # attempt to construct a new subcmd
+
         if isinstance(subcmd, Command):
             self.add_command(subcmd)
             return subcmd
+
         flag = a[0]
         if not isinstance(flag, Flag):
             flag = Flag(*a, **kw)  # attempt to construct a Flag from arguments

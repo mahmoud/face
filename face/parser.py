@@ -711,9 +711,7 @@ class Parser(object):
         ret = []
 
         for arg in args:
-            if not arg:
-                continue # TODO: how bad of an idea is it to ignore this?
-            if arg[0] == '-':
+            if arg.startswith('-'):
                 break  # subcmd parsing complete
 
             arg = _arg_to_subcmd(arg)

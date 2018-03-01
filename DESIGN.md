@@ -476,6 +476,10 @@ A common pattern for Face arguments:
    user. Like most data objects, stateless and reusable. The most
    explicit option.
 
+For an example of this, look no further than the "posargs" argument to
+Parser/Command and the PosArgSpec configuration object that it expects
+or expects to be able to create.
+
 In my experience, the worst part about argparse and other UI libraries
 is constantly referencing the docs. When the API is too big, and there
 are too many methods and signatures to memorize, I find myself

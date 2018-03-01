@@ -421,3 +421,64 @@ Did you mean this?
 Pretty nice, draws attention to itself by being bigger, recommends
 help. The "did you mean" should include the command itself, i.e., "git
 log" instead of just "log" for easy copy and pastability.
+
+# API Design
+
+Face is designed to scale to a wide variety of command-line
+applications. As such, there are multiple levels of integration, each
+providing more control.
+
+1. A single "autocommand" convenience function that automatically
+   generates a command-line interface.
+2. A more explicit object-oriented Command construction interface,
+   with a polymorphic .add() method to add subcommands, flags, and
+   middlewares.
+3. Same as #2, but with explicit Command construction and direct usage
+   of the explicit methods used to add subcommands and flags.
+
+All these options also come with the .run() method, which is used to
+dispatch to the developer's logic, much like how a web framework
+dispatches a client request to a endpoint function (sometimes called a
+"view" or "controller"). By default, the program automatically handles
+any --help / -h flags, prints the help output, and exits.
+
+For certain advanced use cases, there is an additional API option, the
+Parser itself.
+
+Face's Parser is configured almost identically to the Command, except
+that it does not take callables, and has no .run() method to dispatch
+to application code. Instead, integrators call .parse() to parse and
+validate flags and arguments, and handle flow control themselves. The
+Parser, much like the Command, has a default HelpHandler, which can
+render help, but only if explicitly called by the integrator. Parse
+errors can be caught like any other kind of Python exception. Again,
+the integrator has full control of program flow.
+
+## Polymorphism
+
+Thanks to their prevalence in our workflow, we developers
+underestimate the variety and configurability of CLIs. As mentioned
+above, Face's APIs intentionally use polymorphism to better serve the
+evolving needs of a growing CLI.
+
+A common pattern for Face arguments:
+
+1. Unset. Most arguments to Face APIs are optional. Everything has
+   defaults designed to minimize surprise.
+2. Boolean. Pass True to enable a behavior (or show an element), or
+   False to disable it (or hide it).
+3. Integer or string. Enable/show, and use this limit/label.
+4. dict. Complex configurables are represented by objects. This
+   dictionary is a mapping of keyword arguments that will be passed
+   straight through to the configuration object constructor. Mostly
+   used to minimize imports and memorization of class names.
+5. A configuration object, manually imported and constructed by the
+   user. Like most data objects, stateless and reusable. The most
+   explicit option.
+
+In my experience, the worst part about argparse and other UI libraries
+is constantly referencing the docs. When the API is too big, and there
+are too many methods and signatures to memorize, I find myself
+spending too much time in the docs (and often still not finding the
+feature I want/need). Face aims to be the library that changes that
+for CLIs. As few imports, methods, and arguments as is responsible.

@@ -13,6 +13,7 @@ from face.middleware import (inject,
                              resolve_middleware_chain,
                              _BUILTIN_PROVIDES)
 
+from boltons.strutils import camel2under
 from boltons.iterutils import unique
 
 class CommandLineError(FaceException, SystemExit):
@@ -22,8 +23,14 @@ class CommandLineError(FaceException, SystemExit):
 
 
 def _get_default_name(func):
-    # TODO: handle partials and callable classes
-    return func.func_name
+    from functools import partial
+    if isinstance(func, partial):
+        func = func.func  # just one level of partial for now
+    try:
+        return func.func_name  # most functions hit this
+    except AttributeError:
+        pass
+    return camel2under(func.__class__.__name__).lower()  # callable instances, etc.
 
 
 def _docstring_to_doc(func):

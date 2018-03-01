@@ -195,10 +195,22 @@ class Command(Parser):
         """
         flag_map = super(Command, self).get_flag_map(path=path, with_hidden=with_hidden)
         dep_names = self.get_dep_names(path)
+        if 'args_' in dep_names or 'flags_' in dep_names:
+            # the argument parse result and flag dict both capture
+            # _all_ the flags, so for functions accepting these
+            # arguments we bypass filtering.
 
-        # TODO: if dep_names includes args_ or flags_ we need to
-        # bypass the default filtering and either let all flags
-        # through or just the ones declared by some decorator.
+            # Also note that by setting an argument default in the
+            # function definition, the dependency becomes "weak", and
+            # this bypassing of filtering will not trigger, unless
+            # another function in the chain has a non-default,
+            # "strong" dependency. This behavior is especially useful
+            # for middleware.
+
+            # TODO: add decorator for the corner case where a function
+            # accepts these arguments and doesn't use them all.
+            return dict(flag_map)
+
         return dict([(k, f) for k, f in flag_map.items() if f.name in dep_names
                      or f is self.flagfile_flag or f is self.help_handler.flag])
 

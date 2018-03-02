@@ -142,6 +142,27 @@ class Command(Parser):
         return self._path_func_map[()]
 
     def add(self, *a, **kw):
+        """Add a flag, subcommand, or middleware to this Command.
+
+        If the first argument is a callable, this method contructs a
+        Command from it and the remaining arguments, all of which are
+        optional. See the Command docs for for full details on names
+        and defaults.
+
+        If the first argument is a string, this method constructs a
+        Flag from that flag string and the rest of the method
+        arguments, all of which are optional. See the Flag docs for
+        more options.
+
+        If the argument is already an instance of Flag or Command, an
+        exception is only raised on conflicting subcommands and
+        flags. See add_command for details.
+
+        Middleware is only added if it is already decorated with
+        @face_middleware. Use .add_middleware() for automatic wrapping
+        of callables.
+
+        """
         target = a[0]
 
         if is_middleware(target):
@@ -163,6 +184,13 @@ class Command(Parser):
         return flag
 
     def add_command(self, subcmd):
+        """Add a Command, and all of its subcommands, as a subcommand of this
+        Command.
+
+        Middleware from the current command is layered on top of the
+        subcommand's. An exception may be raised if there are
+        conflicting middlewares or subcommand names.
+        """
         if not isinstance(subcmd, Command):
             raise TypeError('expected Command instance, not: %r' % subcmd)
         self_mw = self._path_mw_map[()]
@@ -215,6 +243,11 @@ class Command(Parser):
                      or f is self.flagfile_flag or f is self.help_handler.flag])
 
     def get_dep_names(self, path=()):
+        """Get a list of the names of all required arguments of a command (and
+        any associated middleware).
+
+        By specifying *path*, the same can be done for any subcommand.
+        """
         func = self._path_func_map[path]
         if func is ERROR:  # TODO: check back if we're still supporting this
             raise ValueError('no handler specified for command path: %r' % path)
@@ -225,10 +258,21 @@ class Command(Parser):
         return sorted(mw_chain_args)
 
     def prepare(self, paths=None):
+        """Compile and validate one or more subcommands to ensure all
+        dependencies are met. Call this once all flags, subcommands,
+        and middlewares have been added (using .add()).
+
+        This method is automatically called by .run() method, but it
+        only does so for the specific subcommand being invoked. More
+        conscientious users may want to call this method with no
+        arguments to validate that all subcommands are ready for
+        execution.
+        """
         if paths is None:
             paths = self._path_func_map.keys()
 
-        for path, func in self._path_func_map.items():
+        for path in paths:
+            func = self._path_func_map[path]
             mws = self._path_mw_map[path]
             flag_names = [f.name for f in self.get_flags(path=path)]
             provides = _BUILTIN_PROVIDES + flag_names
@@ -239,6 +283,21 @@ class Command(Parser):
         return
 
     def run(self, argv=None, extras=None):
+        """Parses arguments and dispatches to the appropriate subcommand
+        handler. If there is a parse error due to invalid user input,
+        an error is printed and a CommandLineError is raised. If not
+        caught, a CommandLineError will exit the process, typically
+        with status code 1. Also handles dispatching to the
+        appropriate HelpHandler, if configured.
+
+        Defaults to handling the arguments on the command line
+        (``sys.argv``), but can also be explicitly passed arguments
+        via the *argv* parameter.
+
+        .. note:: To ensure that the Command is configured properly, call
+                  .prepare() before calling .run().
+
+        """
         kwargs = dict(extras) if extras else {}
         # TODO: turn parse exceptions into nice error messages
         try:

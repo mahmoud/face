@@ -85,8 +85,6 @@ class Command(Parser):
            help (bool): Pass False to disable the automatically added
               --help flag. Defaults to True. Also accepts a HelpHandler
               instance, see those docs for more details.
-           print_error (callable): The function that formats/prints
-               error messages before program exit on CLI errors.
            middlewares (list): A list of @face_middleware decorated
               callables which participate in dispatch. Also addable
               via the .add() method. See Middleware docs for more
@@ -115,14 +113,6 @@ class Command(Parser):
         self._path_wrapped_map[()] = func
         for mw in middlewares:
             self.add_middleware(mw)
-
-        print_error = kwargs.pop('print_error', None)
-        if print_error is None or print_error is True:
-            print_error = default_print_error
-        elif print_error and not callable(print_error):
-            raise TypeError('expected callable for print_error, not %r'
-                            % print_error)
-        self.print_error = print_error
 
         help = kwargs.pop('help', DEFAULT_HELP_HANDLER)
         self.help_handler = help
@@ -282,7 +272,7 @@ class Command(Parser):
 
         return
 
-    def run(self, argv=None, extras=None):
+    def run(self, argv=None, extras=None, print_error=None):
         """Parses arguments and dispatches to the appropriate subcommand
         handler. If there is a parse error due to invalid user input,
         an error is printed and a CommandLineError is raised. If not
@@ -294,10 +284,24 @@ class Command(Parser):
         (``sys.argv``), but can also be explicitly passed arguments
         via the *argv* parameter.
 
+        Args:
+           argv (list): A sequence of strings representing the
+              command-line arguments. Defaults to ``sys.argv``.
+           extras (dict): A map of additional arguments to be made
+              available to the subcommand's handler function.
+           print_error (callable): The function that formats/prints
+               error messages before program exit on CLI errors.
+
         .. note:: To ensure that the Command is configured properly, call
                   .prepare() before calling .run().
 
         """
+        if print_error is None or print_error is True:
+            print_error = default_print_error
+        elif print_error and not callable(print_error):
+            raise TypeError('expected callable for print_error, not %r'
+                            % print_error)
+
         kwargs = dict(extras) if extras else {}
         # TODO: turn parse exceptions into nice error messages
         try:
@@ -313,7 +317,8 @@ class Command(Parser):
             if e_msg:
                 msg += ': ' + e_msg
             cle = CommandLineError(msg)
-            self.print_error(msg)
+            if print_error:
+                print_error(msg)
             raise cle
 
         kwargs.update({'args_': prs_res,

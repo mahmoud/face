@@ -436,3 +436,10 @@ methods are operating on objects of the same type, so the members are
 still technically "protected", in the C++ OOP sense.
 
 """
+
+"""should weak deps on builtins_ be treated differently than weak
+deps on flags? Should weak deps in handler functions be treated
+differently than that in the middleware (middleware implies more
+"passthrough")?
+
+"""

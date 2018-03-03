@@ -21,18 +21,27 @@ class FaceException(Exception):
 
 
 class ArgumentParseError(FaceException):
+    """A base exception used for all errors raised during argument
+    parsing.
+
+    Many subtypes have a ".from_parse()" classmethod that creates an
+    exception message from the values available during the parse
+    process.
+    """
     pass
 
 
-class InvalidPosArgs(ArgumentParseError):
-    pass
-
-
-class TooManyArguments(InvalidPosArgs):
+class ArgumentArityError(ArgumentParseError):
+    """Raised when too many or too few positional arguments are passed to
+    the command. See PosArgSpec for more info.
+    """
     pass
 
 
 class InvalidSubcommand(ArgumentParseError):
+    """
+    Raised when an unrecognized subcommand is passed.
+    """
     @classmethod
     def from_parse(cls, prs, subcmd_name):
         # TODO: add edit distance calculation
@@ -43,6 +52,9 @@ class InvalidSubcommand(ArgumentParseError):
 
 
 class UnknownFlag(ArgumentParseError):
+    """
+    Raised when an unrecognized flag is passed.
+    """
     @classmethod
     def from_parse(cls, cmd_flag_map, flag_name):
         # TODO: add edit distance calculation
@@ -58,6 +70,10 @@ FRIENDLY_TYPE_NAMES = {int: 'integer',
 
 
 class InvalidFlagArgument(ArgumentParseError):
+    """Raised when the argument passed to a flag (the value directly
+    after it in argv) fails to parse. Tries to automatically detect
+    when an argument is missing.
+    """
     @classmethod
     def from_parse(cls, cmd_flag_map, flag, arg, exc=None):
         if arg is None:
@@ -82,6 +98,7 @@ class InvalidFlagArgument(ArgumentParseError):
 
 
 def _get_type_desc(parse_as):
+    "Kind of a hacky way to improve message readability around argument types"
     if not callable(parse_as):
         raise TypeError('expected parse_as to be callable, not %r' % parse_as)
     try:
@@ -104,6 +121,9 @@ def _get_type_desc(parse_as):
 
 
 class InvalidPositionalArgument(ArgumentParseError):
+    """Raised when one of the positional arguments does not
+    parse/validate as specified. See PosArgSpec for more info.
+    """
     @classmethod
     def from_parse(cls, posargspec, arg, exc):
         prep, type_desc = _get_type_desc(posargspec.parse_as)
@@ -112,6 +132,9 @@ class InvalidPositionalArgument(ArgumentParseError):
 
 
 class MissingRequiredFlags(ArgumentParseError):
+    """
+    Raised when a required flag is not passed. See Flag for more info.
+    """
     @classmethod
     def from_parse(cls, cmd_flag_map, parsed_flag_map, missing_flag_names):
         msg = ('missing required arguments for flags: %s'
@@ -120,6 +143,9 @@ class MissingRequiredFlags(ArgumentParseError):
 
 
 class DuplicateFlagValue(ArgumentParseError):
+    """Raised when a flag is passed multiple times, and the flag's
+    "multi" setting is set to 'error'.
+    """
     @classmethod
     def from_parse(cls, flag, arg_val_list):
         avl_text = ', '.join([repr(v) for v in arg_val_list])
@@ -473,7 +499,7 @@ class PosArgSpec(object):
         len_posargs = len(posargs)
         if posargs and not self.accepts_args:
             # TODO: check for likely subcommands
-            raise InvalidPosArgs('unexpected positional arguments: %r' % posargs)
+            raise ArgumentArityError('unexpected positional arguments: %r' % posargs)
         min_count, max_count = self.min_count, self.max_count
         if min_count == max_count:
             if min_count == 0:
@@ -493,11 +519,11 @@ class PosArgSpec(object):
                 arg_range_text = '%s - %s arguments' % (min_count, max_count)
 
         if len_posargs < min_count:
-            raise InvalidPosArgs('too few arguments, expected %s, got %s'
-                                 % (arg_range_text, len_posargs))
+            raise ArgumentArityError('too few arguments, expected %s, got %s'
+                                     % (arg_range_text, len_posargs))
         if max_count is not None and len_posargs > max_count:
-            raise InvalidPosArgs('too many arguments, expected %s, got %s'
-                                 % (arg_range_text, len_posargs))
+            raise ArgumentArityError('too many arguments, expected %s, got %s'
+                                     % (arg_range_text, len_posargs))
         ret = []
         for pa in posargs:
             try:

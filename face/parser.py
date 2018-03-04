@@ -142,7 +142,7 @@ class MissingRequiredFlags(ArgumentParseError):
         return cls(msg)
 
 
-class DuplicateFlagValue(ArgumentParseError):
+class DuplicateFlag(ArgumentParseError):
     """Raised when a flag is passed multiple times, and the flag's
     "multi" setting is set to 'error'.
     """
@@ -163,12 +163,15 @@ _VALID_FLAG_RE = re.compile(r"^[A-z][-_A-z0-9]*\Z")
 
 
 def flag_to_identifier(flag):
-    # validate and canonicalize flag name. Basically, subset of valid
-    # Python variable identifiers.
-    #
-    # Only letters, numbers, '-', and/or '_'. Only single/double
-    # leading dash allowed (-/--). No trailing dashes or
-    # underscores. Must not be a Python keyword.
+    """Validate and canonicalize a flag name to a valid Python identifier
+    (variable name).
+
+    Valid input strings include only letters, numbers, '-', and/or
+    '_'. Only single/double leading dash allowed (-/--). No trailing
+    dashes or underscores. Must not be a Python keyword.
+
+    Input case doesn't matter, output case will always be lower.
+    """
     orig_flag = flag
     if not flag or not isinstance(flag, str):
         raise ValueError('expected non-zero length string for flag, not: %r' % flag)
@@ -196,6 +199,9 @@ def flag_to_identifier(flag):
 
 
 def identifier_to_flag(identifier):
+    """
+    Turn an identifier back into its flag format (e.g., "Flag" -> --flag).
+    """
     if identifier.startswith('-'):
         raise ValueError('expected identifier, not flag name: %r' % identifier)
     ret = identifier.lower().replace('_', '-')
@@ -203,13 +209,17 @@ def identifier_to_flag(identifier):
 
 
 def process_command_name(name):
-    # validate and canonicalize flag name. Basically, subset of valid
-    # Python variable identifiers.
-    #
-    # Only letters, numbers, '-', and/or '_'. Only single/double
-    # leading dash allowed (-/--). No trailing dashes or
-    # underscores. Python keywords are allowed, as subcommands are
-    # never used in injection.
+    """Validate and canonicalize a Command's name, generally on
+    construction or at subcommand addition. Like
+    ``flag_to_identifier()``, only letters, numbers, '-', and/or
+    '_'. Must begin with a letter, and no trailing underscores or
+    dashes.
+
+    Python keywords are allowed, as subcommands are never used as
+    attributes or variables in injection.
+
+    """
+
     if not name or not isinstance(name, str):
         raise ValueError('expected non-zero length string for subcommand name, not: %r' % name)
 
@@ -243,7 +253,7 @@ def _arg_to_subcmd(arg):
 
 def _multi_error(flag, arg_val_list):
     if len(arg_val_list) > 1:
-        raise DuplicateFlagValue.from_parse(flag, arg_val_list)
+        raise DuplicateFlag.from_parse(flag, arg_val_list)
     return arg_val_list[0]
 
 
@@ -280,6 +290,41 @@ def _validate_char(char):
 # TODO: allow name="--flag / -F" and do the split for automatic
 # char form?
 class Flag(object):
+    """The Flag object represents all there is to know about a resource
+    that can be parsed from argv and consumed by a Command
+    function. It also references a FlagDisplay, used by HelpHandlers
+    to control formatting of the flag during --help output
+
+    Args:
+       name (str): A string name for the flag, starting with a letter,
+          and consisting of only ASCII letters, numbers, '-', and '_'.
+       parse_as: How to interpret the flag. If *parse_as* is a
+         callable, it will be called with the argument to the flag,
+         the return value of which is stored in the parse result. If
+         *parse_as* is not a callable, then the flag takes no
+         argument, and the presence of the flag will produce this
+         value in the parse result. Defaults to ``True``.
+       missing: How to interpret the absence of the flag. Can be any
+         value, which will be in the parse result when the flag is not
+         present. Can also be the special value ``face.ERROR``, which
+         will make the flag required. Defaults to ``None``.
+       doc (str): A summary of the flag's behavior, used in automatic
+         help generation.
+       char (str): A single-character short form for the flag. Can be
+         user-friendly for commonly-used flags. Defaults to ``None``.
+       display: Controls how the flag is displayed in automatic help
+         generation. Pass False to hide the flag, pass a string to
+         customize the label, and pass a FlagDisplay instance for full
+         customizability.
+       multi (str): How to handle multiple instances of the same
+         flag. Pass 'overwrite' to accept the last flag's value. Pass
+         'extend' to collect all values into a list. Pass 'error' to
+         get the default behavior, which raises a DuplicateFlag
+         exception. *multi* can also take a callable, which accepts a
+         list of flag values and returns the value to be stored in the
+         ParseResult.
+
+    """
     def __init__(self, name, parse_as=True, missing=None, doc=None, char=None,
                  display=None, multi='error'):
         self.name = flag_to_identifier(name)
@@ -1098,4 +1143,13 @@ routes are checked for dependency satisfaction at Application
 creation. With Face, this check is performed on-demand, and only the
 single subcommand being executed is checked.
 
+"""
+
+x = 10
+
+"""
+ideas for flag types:
+
+* iso8601 date/time/datetime
+* duration
 """

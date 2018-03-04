@@ -308,14 +308,6 @@ class Flag(object):
          value, which will be in the parse result when the flag is not
          present. Can also be the special value ``face.ERROR``, which
          will make the flag required. Defaults to ``None``.
-       doc (str): A summary of the flag's behavior, used in automatic
-         help generation.
-       char (str): A single-character short form for the flag. Can be
-         user-friendly for commonly-used flags. Defaults to ``None``.
-       display: Controls how the flag is displayed in automatic help
-         generation. Pass False to hide the flag, pass a string to
-         customize the label, and pass a FlagDisplay instance for full
-         customizability.
        multi (str): How to handle multiple instances of the same
          flag. Pass 'overwrite' to accept the last flag's value. Pass
          'extend' to collect all values into a list. Pass 'error' to
@@ -323,10 +315,17 @@ class Flag(object):
          exception. *multi* can also take a callable, which accepts a
          list of flag values and returns the value to be stored in the
          ParseResult.
-
+       char (str): A single-character short form for the flag. Can be
+         user-friendly for commonly-used flags. Defaults to ``None``.
+       doc (str): A summary of the flag's behavior, used in automatic
+         help generation.
+       display: Controls how the flag is displayed in automatic help
+         generation. Pass False to hide the flag, pass a string to
+         customize the label, and pass a FlagDisplay instance for full
+         customizability.
     """
-    def __init__(self, name, parse_as=True, missing=None, doc=None, char=None,
-                 display=None, multi='error'):
+    def __init__(self, name, parse_as=True, missing=None, multi='error',
+                 char=None, doc=None, display=None):
         self.name = flag_to_identifier(name)
         self.doc = doc
         self.parse_as = parse_as
@@ -344,19 +343,14 @@ class Flag(object):
             raise ValueError('multi expected callable, bool, or one of %r, not: %r'
                              % (list(_MULTI_SHORTCUTS.keys()), multi))
 
-        if display is None:
-            display = {}
-        elif isinstance(display, bool):
-            display = {'hidden': not display}
-        elif isinstance(display, str):
-            display = {'name': display}
-        if isinstance(display, dict):
-            display = FlagDisplay(self, **display)
-        self.display = display
-
-    # TODO: __eq__ and copy
+        self.set_display(display)
 
     def set_display(self, display):
+        """Controls how the flag is displayed in automatic help
+        generation. Pass False to hide the flag, pass a string to
+        customize the label, and pass a FlagDisplay instance for full
+        customizability.
+        """
         if display is None:
             display = {}
         elif isinstance(display, bool):
@@ -370,6 +364,9 @@ class Flag(object):
                             ' options, or FlagDisplay instance, not: %r'
                             % display)
         self.display = display
+
+    # TODO: __eq__ and copy
+
 
 
 class FlagDisplay(object):

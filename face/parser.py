@@ -330,9 +330,10 @@ class Flag(object):
         self.doc = doc
         self.parse_as = parse_as
         self.missing = missing
-        # TODO: parse_as=scalar + missing=ERROR seems like an invalid
-        # case (a flag whose presence is always required? what's the
-        # point?)
+        if missing is ERROR and not callable(parse_as):
+            raise ValueError('cannot make an argument-less flag required.'
+                             ' expected non-ERROR for missing, or a callable'
+                             ' for parse_as, not: %r' % parse_as)
         self.char = _validate_char(char) if char else None
 
         if callable(multi):

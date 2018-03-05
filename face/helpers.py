@@ -6,7 +6,9 @@ import textwrap
 
 from boltons.iterutils import unique
 
-from face.parser import Flag
+from face.parser import Flag, format_flag_label
+
+DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, char='-h', doc='show this help message and exit')
 
 
 def _get_termios_winsize():
@@ -102,29 +104,30 @@ def get_stout_layout(labels, indent, sep, width=None, max_width=120, min_doc_wid
             'doc_start': doc_start}
 
 
-DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, char='-h', doc='show this help message and exit')
+DEFAULT_CONTEXT = {
+    'usage_label': 'Usage:',
+    'subcmd_section_heading': 'Subcommands: ',
+    'flags_section_heading': 'Flags: ',
+    'posargs_section_heading': 'Positional arguments:',
+    'section_break': '\n',
+    'group_break': '',
+    'subcmd_example': 'subcommand',
+    'width': None,
+    'max_width': 120,
+    'min_doc_width': 50,
+    'format_flag_label': format_flag_label,
+    'doc_separator': '   ',  # '   + ' is pretty classy as bullet points, too
+    'section_indent': '  ',
+    'pre_doc': '',  # TODO: these should go on CommandDisplay
+    'post_doc': '\n',
+}
 
 
 class StoutHelpFormatter(object):
     """Inspired by, but not the same as argparse. Probably what most
     Pythonists expect.
     """
-    default_context = {
-        'usage_label': 'Usage:',
-        'subcmd_section_heading': 'Subcommands: ',
-        'flags_section_heading': 'Flags: ',
-        'posargs_section_heading': 'Positional arguments:',
-        'section_break': '\n',
-        'group_break': '',
-        'subcmd_example': 'subcommand',
-        'width': None,
-        'max_width': 120,
-        'min_doc_width': 50,
-        'doc_separator': '   ',  # '   + ' is pretty classy as bullet points, too
-        'section_indent': '  ',
-        'pre_doc': '',  # TODO: these should go on CommandDisplay
-        'post_doc': '\n',
-    }
+    default_context = dict(DEFAULT_CONTEXT)
 
     def __init__(self, **kwargs):
         self.ctx = {}
@@ -184,14 +187,15 @@ class StoutHelpFormatter(object):
         if not shown_flags:
             return '\n'.join(ret)
 
-        flag_labels = [flag.display.label for flag in shown_flags]
+        fmt_flag_label = ctx['format_flag_label']
+        flag_labels = [fmt_flag_label(flag) for flag in shown_flags]
         flag_layout = self._get_layout(labels=flag_labels)
 
         append(ctx['flags_section_heading'])
         append(ctx['group_break'])
         for flag in shown_flags:
             flag_lines = _wrap_stout_pair(indent=ctx['section_indent'],
-                                          label=flag.display.label,
+                                          label=fmt_flag_label(flag),
                                           sep=ctx['doc_separator'],
                                           doc=flag.display.full_doc,
                                           doc_start=flag_layout['doc_start'],

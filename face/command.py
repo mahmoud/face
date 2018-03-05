@@ -258,6 +258,8 @@ class Command(Parser):
         arguments to validate that all subcommands are ready for
         execution.
         """
+        # TODO: also pre-execute help formatting to make sure all
+        # values are sane there, too
         if paths is None:
             paths = self._path_func_map.keys()
 

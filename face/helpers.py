@@ -6,7 +6,7 @@ import textwrap
 
 from boltons.iterutils import unique
 
-from face.parser import Flag, format_flag_label
+from face.parser import Flag, format_flag_label, format_flag_post_doc, format_posargs_label
 
 DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, char='-h', doc='show this help message and exit')
 
@@ -115,7 +115,9 @@ DEFAULT_CONTEXT = {
     'width': None,
     'max_width': 120,
     'min_doc_width': 50,
+    'format_posargs_label': format_posargs_label,
     'format_flag_label': format_flag_label,
+    'format_flag_post_doc': format_flag_post_doc,
     'doc_separator': '   ',  # '   + ' is pretty classy as bullet points, too
     'section_indent': '  ',
     'pre_doc': '',  # TODO: these should go on CommandDisplay
@@ -191,13 +193,24 @@ class StoutHelpFormatter(object):
         flag_labels = [fmt_flag_label(flag) for flag in shown_flags]
         flag_layout = self._get_layout(labels=flag_labels)
 
+        fmt_flag_post_doc = ctx['format_flag_post_doc']
         append(ctx['flags_section_heading'])
         append(ctx['group_break'])
         for flag in shown_flags:
+            disp = flag.display
+            if disp.full_doc is not None:
+                doc = disp.full_doc
+            else:
+                _parts = [disp.doc] if disp.doc else []
+                post_doc = disp.post_doc if disp.post_doc else fmt_flag_post_doc(flag)
+                if post_doc:
+                    _parts.append(post_doc)
+                doc = ' '.join(_parts)
+
             flag_lines = _wrap_stout_pair(indent=ctx['section_indent'],
                                           label=fmt_flag_label(flag),
                                           sep=ctx['doc_separator'],
-                                          doc=flag.display.full_doc,
+                                          doc=doc,
                                           doc_start=flag_layout['doc_start'],
                                           max_doc_width=flag_layout['doc_width'])
 
@@ -230,7 +243,8 @@ class StoutHelpFormatter(object):
         if flags:
             append('[FLAGS]')
 
-        append(parser.posargs.display.label)
+        fmt_posargs_label = ctx['format_posargs_label']
+        append(fmt_posargs_label(parser.posargs))
 
         return ' '.join(parts)
 

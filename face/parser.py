@@ -526,8 +526,8 @@ class PosArgSpec(object):
           False to hide it completely. Also accepts a PosArgDisplay
           instance, or a dict of the respective arguments.
 
-    PosArgSpecs are stateless and safe to be used multiple times
-    around the application.
+    PosArgSpec instances are stateless and safe to be used multiple
+    times around the application.
     """
     def __init__(self, parse_as=str, min_count=None, max_count=None, display=None):
         if not callable(parse_as) and parse_as is not ERROR:
@@ -558,6 +558,9 @@ class PosArgSpec(object):
 
     @property
     def accepts_args(self):
+        """Returns True if this PosArgSpec is configured to accept one or
+        more arguments.
+        """
         if self.parse_as is ERROR:
             return False
         if self.max_count is not None and self.max_count == 0:
@@ -565,6 +568,19 @@ class PosArgSpec(object):
         return True
 
     def parse(self, posargs):
+        """Parse a list of strings as positional arguments.
+
+        Args:
+           posargs (list): List of strings, likely parsed by a Parser
+              instance from sys.argv.
+
+        Raises an ArgumentArityError if there are too many or too few
+        arguments.
+
+        Raises InvalidPositionalArgument if the argument doesn't match
+        the configured *parse_as*. See PosArgSpec for more info.
+
+        """
         len_posargs = len(posargs)
         if posargs and not self.accepts_args:
             # TODO: check for likely subcommands

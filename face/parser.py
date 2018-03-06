@@ -1052,6 +1052,11 @@ class ListParam(object):
 
     __call__ = parse
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return ("%s(%r, sep=%r, strip=%r)"
+                % (cn, self.parse_one_as, self.sep, self.strip))
+
 
 class ChoicesParam(object):
     pass  # TODO

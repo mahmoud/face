@@ -314,7 +314,7 @@ class Flag(object):
          get the default behavior, which raises a DuplicateFlag
          exception. *multi* can also take a callable, which accepts a
          list of flag values and returns the value to be stored in the
-         ParseResult.
+         :class:`CommandParseResult`.
        char (str): A single-character short form for the flag. Can be
          user-friendly for commonly-used flags. Defaults to ``None``.
        doc (str): A summary of the flag's behavior, used in automatic
@@ -370,6 +370,7 @@ class Flag(object):
 
 
 def format_flag_label(flag):
+    "The default flag label formatter, used in help and error formatting"
     if flag.display.label is not None:
         return flag.display.label
     parts = [identifier_to_flag(flag.name)]
@@ -382,6 +383,7 @@ def format_flag_label(flag):
 
 
 def format_posargs_label(posargspec):
+    "The default positional argument label formatter, used in help formatting"
     if posargspec.display.label:
         return posargspec.display.label
     if not posargspec.accepts_args:
@@ -393,6 +395,7 @@ def format_posargs_label(posargspec):
 
 
 def format_flag_post_doc(flag):
+    "The default positional argument label formatter, used in help formatting"
     if flag.display.post_doc is not None:
         return flag.display.post_doc
     if not flag.display.value_name:
@@ -558,7 +561,7 @@ class PosArgSpec(object):
 
     @property
     def accepts_args(self):
-        """Returns True if this PosArgSpec is configured to accept one or
+        """True if this PosArgSpec is configured to accept one or
         more arguments.
         """
         if self.parse_as is ERROR:
@@ -579,6 +582,8 @@ class PosArgSpec(object):
 
         Raises InvalidPositionalArgument if the argument doesn't match
         the configured *parse_as*. See PosArgSpec for more info.
+
+        Returns a list of arguments, parsed with *parse_as*.
 
         """
         len_posargs = len(posargs)
@@ -638,8 +643,34 @@ def _ensure_posargspec(posargs, posargs_name):
 
 # TODO: should post_posargs default to True?
 class Parser(object):
-    """
-    Parser parses, Command parses with Parser, then dispatches.
+    """The Parser lies at the center of face, primarily providing a
+    configurable validation logic on top of the conventional grammar
+    for CLI argument parsing.
+
+    Args:
+       name (str): A name used to identify this command. Important
+          when the command is embedded as a subcommand of another
+          command.
+       doc (str): An optional summary description of the command, used
+          to generate help and usage information.
+       flags (list): A list of Flag instances. Optional, as flags can
+          be added with :meth:`~Parser.add()`.
+       posargs (bool): Defaults to disabled, pass ``True`` to enable
+          the Parser to accept positional arguments. Pass a callable
+          to parse the positional arguments using that
+          function/type. Pass a :class:`PosArgSpec` for full
+          customizability.
+       post_posargs (bool): Same as *posargs*, but refers to the list
+          of arguments following the ``--`` conventional marker. See
+          ``git`` and ``tox`` for examples of commands using this
+          style of positional argument.
+       flagfile (bool): Defaults to enabled, pass ``False`` to disable
+          flagfile support. Pass a :class:`Flag` instance to use a
+          custom flag instead of ``--flagfile``. Read more about
+          Flagfiles below.
+
+    Once initialized, parsing is performed by calling
+    :meth:`Parser.parse()` with ``sys.argv`` or any other list of strings.
     """
     def __init__(self, name, doc=None, flags=None, posargs=None,
                  post_posargs=None, flagfile=True):
@@ -726,10 +757,15 @@ class Parser(object):
         # for defaults?
 
     def add(self, *a, **kw):
-        """Add a flag or subparser. Unless the first argument is a Parser or
-        Flag object, the arguments are the same as the Flag
-        constructor, and will be used to create a new Flag instance to
-        be added.
+        """Add a flag or subparser.
+
+        Unless the first argument is a Parser or Flag object, the
+        arguments are the same as the Flag constructor, and will be
+        used to create a new Flag instance to be added.
+
+        May raise ValueError if arguments are not recognized as
+        Parser, Flag, or Flag parameters. ValueError may also be
+        raised on duplicate definitions and other conflicts.
         """
         if isinstance(a[0], Parser):
             subprs = a[0]
@@ -767,6 +803,27 @@ class Parser(object):
         return
 
     def parse(self, argv):
+        """This method takes a list of strings and converts them into a
+        validated :class:`CommandParseResult` according to the flags,
+        subparsers, and other options configured.
+
+        Args:
+           argv (list): A required list of strings. Pass ``None`` to
+              use ``sys.argv``.
+
+        This method may raise ArgumentParseError (or one of its
+        subtypes) if the list of strings fails to parse.
+
+        .. note:: The *argv* parameter does not automatically default
+                  to using ``sys.argv`` because it's best practice for
+                  implementing codebases to perform that sort of
+                  defaulting in their ``main()``, which should accept
+                  an ``argv=None`` parameter. This simple step ensures
+                  that the Python CLI application has some sort of
+                  programmatic interface that doesn't require
+                  subprocessing. See here for an example.
+
+        """
         if argv is None:
             argv = sys.argv
         if not argv:
@@ -1008,11 +1065,32 @@ class FileValueParam(object):
 
 
 class CommandParseResult(object):
-    def __init__(self, name, subcmds, flag_map, posargs, post_posargs,
+    """The result of :meth:`Parser.parse`, instances of this type
+    semantically store all that a command line can contain. Each
+    argument corresponds 1:1 with an attribute.
+
+    Args:
+       name (str): Top-level program name, typically the first
+          argument on the command line, i.e., ``sys.argv[0]``.
+       subcmds (tuple): Sequence of subcommand names.
+       flags (OrderedDict): Mapping of canonical flag names to matched values.
+       posargs (tuple): Sequence of parsed positional arguments.
+       post_posargs (tuple): Sequence of parsed post-positional
+          arguments (args following ``--``)
+       parser (Parser): The Parser instance that parsed this
+          result. Defaults to None.
+       argv (tuple): The sequence of strings parsed by the Parser to
+          yield this result. Defaults to ``()``.
+
+    Instances of this class can be injected by accepting the "args_"
+    builtin in their Command handler function.
+
+    """
+    def __init__(self, name, subcmds, flags, posargs, post_posargs,
                  parser=None, argv=()):
         self.name = name
         self.subcmds = tuple(subcmds)
-        self.flags = OrderedDict(flag_map)
+        self.flags = OrderedDict(flags)
         self.posargs = tuple(posargs or ())
         self.post_posargs = tuple(post_posargs or ())
         self.parser = parser

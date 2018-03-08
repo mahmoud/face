@@ -1,5 +1,4 @@
-"""
-Face Middleware
+"""Face Middleware
 ===============
 
 When using Face's Command framework, Face takes over handling dispatch
@@ -106,9 +105,11 @@ value will be injected into commands that need it.
 .. note:: **Weak Dependencies** - Middlewares that set defaults for
           keyword arguments are said to have a "weak" dependency on
           the associated injectable. If the command handler function,
-          or another downstream middleware, do not require the
+          or another downstream middleware, do not accept the
           argument, the flag will not be parsed, or shown in generated
-          help and error messages.
+          help and error messages. This differs from the command
+          handler function itself, which will accept arguments even
+          when the function signature sets a default.
 
 Wrapping up
 -----------

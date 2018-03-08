@@ -6,6 +6,7 @@ from face.utils import unwrap_text
 from face.parser import Parser, Flag, ArgumentParseError, FaceException, ERROR
 from face.helpers import HelpHandler
 from face.middleware import (inject,
+                             get_arg_names,
                              is_middleware,
                              face_middleware,
                              check_middleware,
@@ -245,7 +246,10 @@ class Command(Parser):
 
         _, mw_chain_args, _ = resolve_middleware_chain(mws, func, preprovided=[])
 
-        return sorted(mw_chain_args)
+        # stronger dependencies for the handler function
+        all_args = mw_chain_args.union(set(get_arg_names(func, only_required=False)))
+
+        return sorted(all_args)
 
     def prepare(self, paths=None):
         """Compile and validate one or more subcommands to ensure all

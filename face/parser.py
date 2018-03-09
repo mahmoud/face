@@ -584,7 +584,6 @@ class PosArgSpec(object):
         the configured *parse_as*. See PosArgSpec for more info.
 
         Returns a list of arguments, parsed with *parse_as*.
-
         """
         len_posargs = len(posargs)
         if posargs and not self.accepts_args:
@@ -1059,7 +1058,30 @@ class ListParam(object):
 
 
 class ChoicesParam(object):
-    pass  # TODO
+    def __init__(self, choices, parse_as=None):
+        if not choices:
+            raise ValueError('expected at least one choice, not: %r' % choices)
+        try:
+            self.choices = sorted(choices)
+        except Exception:
+            # in case choices aren't sortable
+            self.choices = list(choices)
+        if parse_as is None:
+            parse_as = type(self.choices[0])
+            # TODO: check for builtins, raise if not a supported type
+        self.parse_as = parse_as
+
+    def parse(self, text):
+        choice = self.parse_as(text)
+        if choice not in self.choices:
+            raise ValueError('expected one of %r, not: %r' % (self.choices, text))
+        return choice
+
+    __call__ = parse
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return ("%s(%r, parse_as=%r)" % (cn, self.choices, self.parse_as))
 
 
 class FileValueParam(object):

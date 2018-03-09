@@ -1084,11 +1084,21 @@ class ChoicesParam(object):
         return ("%s(%r, parse_as=%r)" % (cn, self.choices, self.parse_as))
 
 
+class FilePathParam(object):
+    """TODO
+
+    ideas: exists, minimum permissions, can create, abspath, type=d/f
+    (technically could also support socket, named pipe, and symlink)
+
+    could do missing=TEMP, but that might be getting too fancy tbh.
+    """
+
 class FileValueParam(object):
-    # Basically a file with a single value in it, like a pidfile
-    # or a password file mounted in. Read in and treated like it
-    # was on the argv.
-    pass
+    """
+    TODO: file with a single value in it, like a pidfile
+    or a password file mounted in. Read in and treated like it
+    was on the argv.
+    """
 
 
 class CommandParseResult(object):

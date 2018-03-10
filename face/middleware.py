@@ -124,6 +124,11 @@ in a wide variety of ways. Other useful middleware ideas:
     commands which can write additional output.
   * Logging middleware - sets up and provides an associated logger
     object for downstream commands.
+  * Pipe middleware - Many CLIs are made for streaming. There are some
+    semantics a middleware can help with, like breaking pipes.
+  * KeyboardInterrupt middleware - Ctrl-C is a common way to exit
+    programs, but Python generally spits out an ugly stack trace, even
+    where a keyboard interrupt may have been valid.
   * Authentication middleware - provides an AuthenticatedUser object
     after checking environment variables and prompting for a username
     and password.

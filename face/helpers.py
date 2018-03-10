@@ -216,7 +216,10 @@ class StoutHelpFormatter(object):
               specifying the subcommand to generate help text for.
               Defaults to ``()``.
            program_name (str): The program name, if it differs from
-              the default ``sys.argv[0]``.
+              the default ``sys.argv[0]``. (For example,
+              ``example.py``, when running the command ``python
+              example.py --flag val arg``.)
+
         """
         # TODO: incorporate "Arguments" section if posargs has a doc set
         ctx = self.ctx

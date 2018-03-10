@@ -309,7 +309,8 @@ class Flag(object):
          the return value of which is stored in the parse result. If
          *parse_as* is not a callable, then the flag takes no
          argument, and the presence of the flag will produce this
-         value in the parse result. Defaults to ``True``.
+         value in the parse result. Defaults to ``str``, meaning a
+         default flag will take one string argument.
        missing: How to interpret the absence of the flag. Can be any
          value, which will be in the parse result when the flag is not
          present. Can also be the special value ``face.ERROR``, which
@@ -330,7 +331,7 @@ class Flag(object):
          customize the label, and pass a FlagDisplay instance for full
          customizability.
     """
-    def __init__(self, name, parse_as=True, missing=None, multi='error',
+    def __init__(self, name, parse_as=str, missing=None, multi='error',
                  char=None, doc=None, display=None):
         self.name = flag_to_identifier(name)
         self.doc = doc

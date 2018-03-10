@@ -126,8 +126,65 @@ DEFAULT_CONTEXT = {
 
 
 class StoutHelpFormatter(object):
-    """Inspired by, but not the same as argparse. Probably what most
-    Pythonists expect.
+    """This formatter takes :class:`Parser` and :class:`Command` instances
+    and generates help text. The output style is inspired by, but not
+    the same as, argparse's automatic help formatting.
+
+    Probably what most Pythonists expect, this help text is slightly
+    stouter (conservative with vertical space) than other conventional
+    help messages.
+
+    The default output looks like::
+
+        Usage: example.py subcommand [FLAGS]
+
+        Does a bit of busy work
+
+
+        Subcommands:
+
+          sum        Just a lil fun in the sum
+          subtract
+          print
+
+
+        Flags:
+
+          --help / -h               show this help message and exit
+          --verbose / -V
+
+
+    Due to customizability, the constructor takes a large number of
+    keyword arguments, the most important of which are highlighted
+    here.
+
+    Args:
+       width (int): The width of the help output in
+          columns/characters. Defaults to the width of the terminal,
+          with a max of *max_width*.
+       max_width (int): The widest the help output will get. Too wide
+          and it can be hard to visually scan. Defaults to 120 columns.
+       min_doc_width (int): The text documentation's minimum width in
+          columns/characters. Puts flags and subcommands on their own
+          lines when they're long or the terminal is narrow. Defaults to
+          50.
+       doc_separator (str): The string to put between a
+          flag/subcommand and its documentation. Defaults to `' '`. (Try
+          `' + '` for a classy bulleted doc style.
+
+    An instance of StoutHelpFormatter can be passed to
+    :class:`HelpHandler`, which can in turn be passed to
+    :class:`Command` for maximum command customizability.
+
+    Alternatively, when using :class:`Parser` object directly, you can
+    instantiate this type and pass a :class:`Parser` object to
+    :meth:`get_help_text()` or :meth:`get_usage_line()` to get
+    identically formatted text without sacrificing flow control.
+
+    HelpFormatters are stateless, in that they can be used more than
+    once, with different Parsers and Commands without needing to be
+    recreated or otherwise reset.
+
     """
     default_context = dict(DEFAULT_CONTEXT)
 
@@ -147,12 +204,20 @@ class StoutHelpFormatter(object):
                                 max_width=ctx['max_width'],
                                 min_doc_width=ctx['min_doc_width'])
 
-    def get_help_text(self, parser, subcmds=(), flags=None, program_name=None):
-        """parser is a Parser instance, which also includes Commands, which
-        inherit from Parser.
+    def get_help_text(self, parser, subcmds=(), program_name=None):
+        """Turn a :class:`Parser` or :class:`Command` into a multiline
+        formatted help string, suitable for printing. Includes the
+        usage line and trailing newline by default.
+
+        Args:
+           parser (Parser): A :class:`Parser` or :class:`Command`
+              object to generate help text for.
+           subcmds (tuple): A sequence of subcommand strings
+              specifying the subcommand to generate help text for.
+              Defaults to ``()``.
+           program_name (str): The program name, if it differs from
+              the default ``sys.argv[0]``.
         """
-        # TODO: filter by actually-used flags (note that help_flag and
-        # flagfile_flag are semi-built-in, thus used by all subcommands)
         # TODO: incorporate "Arguments" section if posargs has a doc set
         ctx = self.ctx
 
@@ -219,6 +284,13 @@ class StoutHelpFormatter(object):
         return ctx['pre_doc'] + '\n'.join(ret) + ctx['post_doc']
 
     def get_usage_line(self, parser, subcmds=(), program_name=None):
+        """Get just the top line of automated text output. Arguments are the
+        same as :meth:`get_help_text()`. Basic info about running the
+        command, such as:
+
+           Usage: example.py subcommand [FLAGS] [args ...]
+
+        """
         ctx = self.ctx
         subcmds = tuple(subcmds or ())
         parts = [ctx['usage_label']] if ctx['usage_label'] else []
@@ -261,14 +333,40 @@ class AiryHelpFormatter(object):
 
 
 class HelpHandler(object):
-    """
-    Other hooks (besides the help function itself):
+    """The HelpHandler is a one-stop object for that all-important CLI
+    feature: automatic help generation. It ties together the actual
+    help handler with the optional flag and subcommand such that it
+    can be added to any :class:`Command` instance.
 
-    * Callbacks for unhandled exceptions
-    * Callbacks for formatting errors (add a "see --help for more options")
+    The :class:`Command` creates a HelpHandler instance by default,
+    and its constructor also accepts an instance of this type to
+    customize a variety of helpful features.
+
+    Args:
+       flag (face.Flag): The Flag instance to use for triggering a
+          help output in a Command setting. Defaults to the standard
+          ``--help / -h`` flag. Pass ``False`` to disable.
+       subcmd (str): A subcommand name to be added to any
+          :class:`Command` using this HelpHandler. Defaults to
+          ``None``.
+       formatter: A help formatter instance or type. Type will be
+          instantiated with keyword arguments passed to this
+          constructor. Defaults to :class:`StoutHelpFormatter`.
+       func (callable): The actual handler function called on flag
+          presence or subcommand invocation. Defaults to
+          :meth:`HelpHandler.default_help_func()`.
+
+    All other remaining keyword arguments are used to construct the
+    HelpFormatter, if *formatter* is a type (as is the default). For
+    an example of a formatter, see :class:`StoutHelpFormatter`, the
+    default help formatter.
     """
-    def __init__(self, flag=DEFAULT_HELP_FLAG, func=None, subcmd=None,
-                 formatter=StoutHelpFormatter, **formatter_kwargs):
+    # Other hooks (besides the help function itself):
+    # * Callbacks for unhandled exceptions
+    # * Callbacks for formatting errors (add a "see --help for more options")
+
+    def __init__(self, flag=DEFAULT_HELP_FLAG, subcmd=None,
+                 formatter=StoutHelpFormatter, func=None, **formatter_kwargs):
         # subcmd expects a string
         self.flag = flag
         self.subcmd = subcmd
@@ -289,6 +387,13 @@ class HelpHandler(object):
         return
 
     def default_help_func(self, cmd_, subcmds_, args_):
+        """The default help handler function. Called when either the help flag
+        or subcommand is passed.
+
+        Prints the output of the help formatter instance attached to
+        this HelpHandler and exits with exit code 0.
+
+        """
         try:
             program_name = args_.argv[0]
         except IndexError:

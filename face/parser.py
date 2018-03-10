@@ -17,6 +17,9 @@ ERROR = make_sentinel('ERROR')
 
 
 class FaceException(Exception):
+    """The basest base exception Face has. Rarely directly instantiated
+    if ever, but useful for catching.
+    """
     pass
 
 
@@ -1018,8 +1021,12 @@ class Parser(object):
 
 
 def parse_sv_line(line, sep=','):
-    # TODO: this doesn't support unicode, which is mostly handled at
-    # the layer above.
+    """Parse a single line of values, separated by the delimiter
+    *sep*. Supports quoting.
+
+    """
+    # TODO: this doesn't support unicode, which is intended to be
+    # handled at the layer above.
     from csv import reader, Dialect, QUOTE_MINIMAL
 
     class _face_dialect(Dialect):
@@ -1036,7 +1043,35 @@ def parse_sv_line(line, sep=','):
 
 
 class ListParam(object):
-    # TODO: repr
+    """The ListParam takes an argument as a character-separated list, and
+    produces a Python list of parsed values. Basically, the argument
+    equivalent of CSV (Comma-Separated Values)::
+
+      --flag a1,b2,c3
+
+    By default, this yields a ``['a1', 'b2', 'c3']`` as the value for
+    ``flag``. The format is also similar to CSV in that it supports
+    quoting when values themselves contain the separator::
+
+      --flag 'a1,"b,2",c3'
+
+    Args:
+       parse_one_as (callable): Turns a single value's text into its
+          parsed value.
+       sep (str): A single-character string representing the list
+         value separator. Defaults to ``,``.
+       strip (bool): Whether or not each value in the list should have
+          whitespace stripped before being passed to
+          *parse_one_as*. Defaults to False.
+
+    .. note:: Aside from using ListParam, an alternative method for
+              accepting multiple arguments is to use the
+              ``multi=True`` on the :class:`Flag` constructor. The
+              approach tends to be more verbose and can be confusing
+              because arguments can get spread across the command
+              line.
+
+    """
     def __init__(self, parse_one_as=str, sep=',', strip=False):
         # TODO: min/max limits?
         self.parse_one_as = parse_one_as
@@ -1044,6 +1079,7 @@ class ListParam(object):
         self.strip = strip
 
     def parse(self, list_text):
+        "Parse a single string argument into a list of arguments."
         split_vals = parse_sv_line(list_text, self.sep)
         if self.strip:
             split_vals = [v.strip() for v in split_vals]
@@ -1058,6 +1094,10 @@ class ListParam(object):
 
 
 class ChoicesParam(object):
+    """Parses a single value, limited to a set of *choices*. The actual
+    converter used to parse is inferred from *choices* by default, but
+    an explicit one can be set *parse_as*.
+    """
     def __init__(self, choices, parse_as=None):
         if not choices:
             raise ValueError('expected at least one choice, not: %r' % choices)
@@ -1081,7 +1121,7 @@ class ChoicesParam(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return ("%s(%r, parse_as=%r)" % (cn, self.choices, self.parse_as))
+        return "%s(%r, parse_as=%r)" % (cn, self.choices, self.parse_as)
 
 
 class FilePathParam(object):

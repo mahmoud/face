@@ -255,16 +255,19 @@ def _arg_to_subcmd(arg):
 
 
 def _multi_error(flag, arg_val_list):
+    "Raise a DuplicateFlag if more than one value is specified for an argument"
     if len(arg_val_list) > 1:
         raise DuplicateFlag.from_parse(flag, arg_val_list)
     return arg_val_list[0]
 
 
 def _multi_extend(flag, arg_val_list):
+    "Return a list of all arguments specified for a flag"
     return arg_val_list
 
 
 def _multi_override(flag, arg_val_list):
+    "Return only the last argument specified for a flag"
     return arg_val_list[-1]
 
 # TODO: _multi_ignore?

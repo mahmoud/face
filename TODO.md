@@ -79,3 +79,10 @@ Related:
 * Example calculator project
 * PocketProtector
 * Montage admin tools
+
+## Small Questions
+
+* How bad of an idea is it to have HelpHandler take the remaining
+  kwargs and pass them through to the helpformatter? kind of locks us
+  into an API should we ever want to change the default help
+  formatter.

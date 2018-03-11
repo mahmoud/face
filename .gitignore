@@ -3,6 +3,8 @@ tmp.py
 htmlcov/
 
 *.py[cod]
+.pytest_cache
+
 
 # emacs
 *~

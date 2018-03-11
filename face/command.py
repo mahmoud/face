@@ -103,6 +103,18 @@ class Command(Parser):
                                       post_posargs=kwargs.pop('post_posargs', None),
                                       flagfile=kwargs.pop('flagfile', True))
 
+        help = kwargs.pop('help', DEFAULT_HELP_HANDLER)
+        self.help_handler = help
+        if help:
+            if help.flag:
+                self.add(help.flag)
+            if help.subcmd:
+                self.add(help.func, help.subcmd)  # for 'help' as a subcmd
+
+        if not func and not help:
+            raise ValueError('Command requires a help handler or handler function'
+                             ' to be set, not: %r' % func)
+
         self._path_func_map = OrderedDict()
         self._path_func_map[()] = func
 
@@ -113,14 +125,6 @@ class Command(Parser):
         self._path_wrapped_map[()] = func
         for mw in middlewares:
             self.add_middleware(mw)
-
-        help = kwargs.pop('help', DEFAULT_HELP_HANDLER)
-        self.help_handler = help
-        if help:
-            if help.flag:
-                self.add(help.flag)
-            if help.subcmd:
-                self.add(help.func, help.subcmd)  # for 'help' as a subcmd
 
         if kwargs:
             raise TypeError('unexpected keyword arguments: %r' % sorted(kwargs.keys()))
@@ -239,8 +243,9 @@ class Command(Parser):
         By specifying *path*, the same can be done for any subcommand.
         """
         func = self._path_func_map[path]
-        if func is ERROR:  # TODO: check back if we're still supporting this
-            raise ValueError('no handler specified for command path: %r' % path)
+        if not func:
+            return []  # for when no handler is specified
+
         mws = self._path_mw_map[path]
 
         _, mw_chain_args, _ = resolve_middleware_chain(mws, func, preprovided=[])
@@ -335,13 +340,15 @@ class Command(Parser):
                        'command_': self})
         kwargs.update(prs_res.flags)
 
-        if self.help_handler and prs_res.flags.get(self.help_handler.flag.name):
-            return inject(self.help_handler.func, kwargs)
-
-        self.prepare(paths=[prs_res.subcmds])
-
         # default in case no middlewares have been installed
         func = self._path_func_map[prs_res.subcmds]
+
+        if self.help_handler and (prs_res.flags.get(self.help_handler.flag.name) or not func):
+            return inject(self.help_handler.func, kwargs)
+        elif not func:
+            return None  # TODO: what to do with commands that do nothing and also have no help?
+
+        self.prepare(paths=[prs_res.subcmds])
         wrapped = self._path_wrapped_map.get(prs_res.subcmds, func)
 
         return inject(wrapped, kwargs)

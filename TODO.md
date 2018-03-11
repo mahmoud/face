@@ -86,3 +86,7 @@ Related:
   kwargs and pass them through to the helpformatter? kind of locks us
   into an API should we ever want to change the default help
   formatter.
+* Should we allow keywords to be flag/injectable names, but just
+  automatically remap them internally such that a `--class` flag
+  becomes available under `flags['class_']`. Might want to do this
+  with builtin functions like sum, too?

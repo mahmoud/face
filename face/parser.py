@@ -709,8 +709,8 @@ class Parser(object):
 
     def get_flag_map(self, path, with_hidden=True):
         flag_map = self._path_flag_map[path]
-        return dict([(k, f) for k, f in flag_map.items()
-                     if with_hidden or not f.display.hidden])
+        return OrderedDict([(k, f) for k, f in flag_map.items()
+                            if with_hidden or not f.display.hidden])
 
     def get_flags(self, path=(), with_hidden=True):
         flag_map = self.get_flag_map(path=path, with_hidden=with_hidden)

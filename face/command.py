@@ -227,10 +227,10 @@ class Command(Parser):
 
             # TODO: add decorator for the corner case where a function
             # accepts these arguments and doesn't use them all.
-            return dict(flag_map)
+            return OrderedDict(flag_map)
 
-        return dict([(k, f) for k, f in flag_map.items() if f.name in dep_names
-                     or f is self.flagfile_flag or f is self.help_handler.flag])
+        return OrderedDict([(k, f) for k, f in flag_map.items() if f.name in dep_names
+                            or f is self.flagfile_flag or f is self.help_handler.flag])
 
     def get_dep_names(self, path=()):
         """Get a list of the names of all required arguments of a command (and

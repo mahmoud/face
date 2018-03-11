@@ -90,3 +90,8 @@ Related:
   automatically remap them internally such that a `--class` flag
   becomes available under `flags['class_']`. Might want to do this
   with builtin functions like sum, too?
+* Most useful default sort? Currently doing by insertion order, which
+  works well for smaller command as it exposes quite a bit of control,
+  but this will change for larger commands which may need to compose
+  differently. Could keep an _id = next(itertools.count()) approach to
+  record creation order.

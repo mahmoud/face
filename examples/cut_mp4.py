@@ -31,8 +31,8 @@ TIME_FORMAT = '%H:%M:%S'
 def main():
     cmd = Command(cut_mp4)
 
-    cmd.add('--input', doc='path to the input mp4 file')
-    cmd.add('--output', doc='path to write the output mp4 file')
+    cmd.add('--input', missing=ERROR, doc='path to the input mp4 file')
+    cmd.add('--output', missing=ERROR, doc='path to write the output mp4 file')
     cmd.add('--start', doc='starting timestamp in hh:mm:ss format')
     cmd.add('--end', doc='ending timestamp in hh:mm:ss format')
 

@@ -19,9 +19,6 @@ Run ./cut_mp4.py --help for more info.
 
 """
 
-import os
-import sys
-import argparse
 import datetime
 import subprocess
 
@@ -31,7 +28,25 @@ FFMPEG_CMD = 'ffmpeg'
 TIME_FORMAT = '%H:%M:%S'
 
 
+def main():
+    cmd = Command(cut_mp4)
+
+    cmd.add('--input', doc='path to the input mp4 file')
+    cmd.add('--output', doc='path to write the output mp4 file')
+    cmd.add('--start', doc='starting timestamp in hh:mm:ss format')
+    cmd.add('--end', doc='ending timestamp in hh:mm:ss format')
+
+    cmd.add('--no-align-keyframes', parse_as=True,
+            doc="don't align to the nearest keyframe, potentially"
+            " creating an unclean cut with video artifacts")
+
+    cmd.run()
+
+
 def cut_mp4(input, output, start, end, no_align_keyframes=False):
+    """
+    Losslessly cut an mp4 video to a time range.
+    """
     start_ts = start or '00:00:00'
     start_dt = datetime.datetime.strptime(start_ts, TIME_FORMAT)
 
@@ -54,23 +69,14 @@ def cut_mp4(input, output, start, end, no_align_keyframes=False):
     return subprocess.check_call(cmd)
 
 
-def main():
-    cmd = Command(cut_mp4, doc='losslessly cut an mp4 video to a time range')
-    cmd.add('--input')
-    cmd.add('--output')
-    cmd.add('--start')
-    cmd.add('--end')
-    cmd.add('--no-align-keyframes', parse_as=True)
-
-    cmd.run()
-
-
 if __name__ == '__main__':
     main()
 
 
 """This program was originally written with argparse, the CLI
-integration code of which is below::
+integration code (without the help strings) is below::
+
+    import argparse
 
     def main(argv):
         prs = argparse.ArgumentParser()

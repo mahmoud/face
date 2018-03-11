@@ -41,11 +41,10 @@ def _docstring_to_doc(func):
 
     unwrapped = unwrap_text(doc)
     try:
-        first_graf = [g for g in unwrapped.splitlines() if g][0]
+        ret = [g for g in unwrapped.splitlines() if g][0]
     except IndexError:
-        return ''
+        ret = ''
 
-    ret = first_graf[:first_graf.find('.')][:80]
     return ret
 
 

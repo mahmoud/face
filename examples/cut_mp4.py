@@ -44,8 +44,8 @@ def main():
 
 
 def cut_mp4(input, output, start, end, no_align_keyframes=False):
-    """
-    Losslessly cut an mp4 video to a time range.
+    """Losslessly cut an mp4 video to a time range using ffmpeg. Note that
+    ffmpeg must be preinstalled on the system.
     """
     start_ts = start or '00:00:00'
     start_dt = datetime.datetime.strptime(start_ts, TIME_FORMAT)

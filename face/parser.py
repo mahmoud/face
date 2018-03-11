@@ -409,7 +409,7 @@ def format_flag_post_doc(flag):
         return ''
     if flag.missing is ERROR:
         return '(required)'
-    if repr(flag.missing) == object.__repr__(flag.missing):
+    if flag.missing is None or repr(flag.missing) == object.__repr__(flag.missing):
         # avoid displaying unhelpful defaults
         return '(optional)'
     return '(defaults to %r)' % flag.missing

@@ -247,11 +247,43 @@ class Command(Parser):
             return []  # for when no handler is specified
 
         mws = self._path_mw_map[path]
+        required_args = set(get_arg_names(func, only_required=False))
+        dep_map = {func: set(required_args)}
+        for mw in mws:
+            arg_names = set(get_arg_names(mw, only_required=True))
+            for provide in mw._face_provides:
+                dep_map[provide] = arg_names
+            if not mw._face_optional:
+                required_args.update(arg_names)
+
+        flag_map = super(Command, self).get_flag_map(path=path, with_hidden=True)
+        dep_map.update(dict([(flag_name, set()) for flag_name in flag_map]))
+
+        def get_rdep_map(dep_map):
+            "expects a dict of {item: set([deps])}"
+            ret = {}
+            for key in dep_map:
+                to_proc, rdeps, seen = [key], set(), set()
+                while to_proc:
+                    cur = to_proc.pop()
+                    if cur in seen:
+                        raise ValueError('dependency cycle: %r recursively depends'
+                                         ' on itself, as well as %r' % (cur, rdeps))
+                    cur_rdeps = dep_map.get(cur, [])
+                    to_proc.extend([c for c in cur_rdeps if c not in to_proc])
+                    rdeps.update(cur_rdeps)
+                ret[key] = rdeps
+            return ret
+
+        rdep_map = get_rdep_map(dep_map)
+
+        recursive_required_args = rdep_map[func].union(required_args)
+        print path, recursive_required_args
 
         _, mw_chain_args, _ = resolve_middleware_chain(mws, func, preprovided=[])
 
         # stronger dependencies for the handler function
-        all_args = mw_chain_args.union(set(get_arg_names(func, only_required=False)))
+        all_args = recursive_required_args  # mw_chain_args.union()
 
         return sorted(all_args)
 

@@ -191,6 +191,7 @@ def face_middleware(func=None, **kwargs):
         for flag in flags:
             if not isinstance(flag, Flag):
                 raise TypeError('expected Flag object, not: %r' % flag)
+    optional = kwargs.pop('optional', False)
     if kwargs:
         raise TypeError('unexpected keyword arguments: %r' % kwargs.keys())
 
@@ -199,6 +200,7 @@ def face_middleware(func=None, **kwargs):
         func.is_face_middleware = True
         func._face_flags = list(flags)
         func._face_provides = list(provides)
+        func._face_optional = optional
         return func
 
     if func and callable(func):

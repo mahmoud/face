@@ -25,3 +25,29 @@ def format_invocation(name='', args=(), kwargs=None):
     star_args_text += kw_text
 
     return '%s(%s)' % (name, star_args_text)
+
+
+def get_rdep_map(dep_map):
+    """
+    expects and returns a dict of {item: set([deps])}
+
+    item can be a string or any other hashable object.
+    """
+    # TODO: the way this is used, this function doesn't receive
+    # information about what functions take what args. this ends up
+    # just being args depending on args, with no mediating middleware
+    # names. this can make circular dependencies harder to debug.
+    ret = {}
+    for key in dep_map:
+        to_proc, rdeps, seen = [key], set(), []
+        while to_proc:
+            cur = to_proc.pop()
+            if cur in seen:
+                raise ValueError('dependency cycle: %r recursively depends'
+                                 ' on itself. full dep chain: %r' % (cur, seen))
+            cur_rdeps = dep_map.get(cur, [])
+            to_proc.extend([c for c in cur_rdeps if c not in to_proc])
+            rdeps.update(cur_rdeps)
+            seen.append(cur)
+        ret[key] = rdeps
+    return ret

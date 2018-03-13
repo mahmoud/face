@@ -2,7 +2,7 @@
 import sys
 from collections import OrderedDict
 
-from face.utils import unwrap_text
+from face.utils import unwrap_text, get_rdep_map
 from face.parser import Parser, Flag, ArgumentParseError, FaceException, ERROR
 from face.helpers import HelpHandler
 from face.middleware import (inject,
@@ -247,6 +247,8 @@ class Command(Parser):
             return []  # for when no handler is specified
 
         mws = self._path_mw_map[path]
+
+        # start out with all args of handler function, which gets stronger dependencies
         required_args = set(get_arg_names(func, only_required=False))
         dep_map = {func: set(required_args)}
         for mw in mws:
@@ -254,38 +256,14 @@ class Command(Parser):
             for provide in mw._face_provides:
                 dep_map[provide] = arg_names
             if not mw._face_optional:
+                # all non-optional middlewares get their args required, too.
                 required_args.update(arg_names)
-
-        flag_map = super(Command, self).get_flag_map(path=path, with_hidden=True)
-        dep_map.update(dict([(flag_name, set()) for flag_name in flag_map]))
-
-        def get_rdep_map(dep_map):
-            "expects a dict of {item: set([deps])}"
-            ret = {}
-            for key in dep_map:
-                to_proc, rdeps, seen = [key], set(), set()
-                while to_proc:
-                    cur = to_proc.pop()
-                    if cur in seen:
-                        raise ValueError('dependency cycle: %r recursively depends'
-                                         ' on itself, as well as %r' % (cur, rdeps))
-                    cur_rdeps = dep_map.get(cur, [])
-                    to_proc.extend([c for c in cur_rdeps if c not in to_proc])
-                    rdeps.update(cur_rdeps)
-                ret[key] = rdeps
-            return ret
 
         rdep_map = get_rdep_map(dep_map)
 
         recursive_required_args = rdep_map[func].union(required_args)
-        print path, recursive_required_args
 
-        _, mw_chain_args, _ = resolve_middleware_chain(mws, func, preprovided=[])
-
-        # stronger dependencies for the handler function
-        all_args = recursive_required_args  # mw_chain_args.union()
-
-        return sorted(all_args)
+        return sorted(recursive_required_args)
 
     def prepare(self, paths=None):
         """Compile and validate one or more subcommands to ensure all
@@ -304,9 +282,14 @@ class Command(Parser):
             paths = self._path_func_map.keys()
 
         for path in paths:
+            deps = self.get_dep_names(path)
             func = self._path_func_map[path]
-            mws = self._path_mw_map[path]
             flag_names = [f.name for f in self.get_flags(path=path)]
+            all_mws = self._path_mw_map[path]
+
+            # filter out unused middlewares
+            mws = [mw for mw in all_mws if not mw._face_optional
+                   or [p for p in mw._face_provides if p in deps]]
             provides = _BUILTIN_PROVIDES + flag_names
             wrapped = get_middleware_chain(mws, func, provides)
 

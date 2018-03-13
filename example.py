@@ -71,7 +71,7 @@ def verbose_mw(next_, verbose):
     return ret
 
 
-@face_middleware(provides=['stdout', 'stderr'])
+@face_middleware(provides=['stdout', 'stderr'], optional=True)
 def output_streams_mw(next_):
     return next_(stdout=sys.stdout, stderr=sys.stderr)
 

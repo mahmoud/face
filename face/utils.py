@@ -39,15 +39,19 @@ def get_rdep_map(dep_map):
     # names. this can make circular dependencies harder to debug.
     ret = {}
     for key in dep_map:
-        to_proc, rdeps, seen = [key], set(), []
+        to_proc, rdeps, cur_chain = [key], set(), []
         while to_proc:
             cur = to_proc.pop()
-            if cur in seen:
-                raise ValueError('dependency cycle: %r recursively depends'
-                                 ' on itself. full dep chain: %r' % (cur, seen))
+            cur_chain.append(cur)
+
             cur_rdeps = dep_map.get(cur, [])
+
+            if key in cur_rdeps:
+                raise ValueError('dependency cycle: %r recursively depends'
+                                 ' on itself. full dep chain: %r' % (cur, cur_chain))
+
             to_proc.extend([c for c in cur_rdeps if c not in to_proc])
             rdeps.update(cur_rdeps)
-            seen.append(cur)
+
         ret[key] = rdeps
     return ret

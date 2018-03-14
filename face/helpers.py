@@ -401,6 +401,13 @@ class HelpHandler(object):
             program_name = args_.argv[0]
         except IndexError:
             program_name = cmd_.name
+        else:
+            # TODO: review
+            path, basename = os.path.split(program_name)
+            if basename == '__main__.py':
+                pkg_name = os.path.basename(path)
+                program_name = '%s -m %s' % (sys.executable, pkg_name)
+
         print(self.formatter.get_help_text(cmd_, subcmds=subcmds_, program_name=program_name))
         sys.exit(0)
 

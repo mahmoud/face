@@ -406,10 +406,26 @@ class HelpHandler(object):
             path, basename = os.path.split(program_name)
             if basename == '__main__.py':
                 pkg_name = os.path.basename(path)
-                program_name = '%s -m %s' % (sys.executable, pkg_name)
+                executable_path = get_minimal_executable()
+                program_name = '%s -m %s' % (executable_path, pkg_name)
 
         print(self.formatter.get_help_text(cmd_, subcmds=subcmds_, program_name=program_name))
         sys.exit(0)
+
+
+def get_minimal_executable(executable=None, path=None):
+    executable = sys.executable if executable is None else executable
+    path = os.getenv('PATH', '') if path is None else path
+    if isinstance(path, str):
+        path = path.split(':')
+
+    executable_basename = os.path.basename(executable)
+    for p in path:
+        if os.path.relpath(executable, p) == executable_basename:
+            return executable_basename
+        # TODO: support "../python" as a return?
+    return executable
+
 
 
 """Usage: cmd_name sub_cmd [..as many subcommands as the max] --flags args ...

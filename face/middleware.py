@@ -9,7 +9,9 @@ web frameworks route requests based on path.
 In more advanced programs, this basic control flow can be enhanced by
 adding middleware. Middlewares comprise a stack of functions, each
 which calls the next, until finally calling the appropriate
-command-handling function.
+command-handling function. Middlewares are added to the command, with
+the outermost middleware being added first. Remember: first added,
+first called.
 
 Middlewares are a great way to handle general setup and logic which is
 common across many subcommands, such as verbosity, logging, and
@@ -141,6 +143,8 @@ The possibilities never end. If you build a middleware of particularly
 broad usefulness, consider contributing it back to the core!
 
 """
+
+
 from face.parser import Flag
 from face.sinter import make_chain, get_arg_names, getargspec, inject, get_func_name
 

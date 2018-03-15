@@ -198,6 +198,10 @@ class Command(Parser):
         return
 
     def add_middleware(self, mw):
+        """Add a single middleware to this command. Outermost middleware
+        should be added first. Remember: first added, first called.
+
+        """
         if not is_middleware(mw):
             mw = face_middleware(mw)
         check_middleware(mw)

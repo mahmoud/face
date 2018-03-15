@@ -257,6 +257,7 @@ def get_middleware_chain(middlewares, innermost, preprovided):
                                                                  preprovided)
 
     if mw_unres:
+        # TODO: enhance error message
         raise NameError("unresolved request middleware arguments: %r"
                         % sorted(mw_unres))
     return mw_chain

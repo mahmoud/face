@@ -636,14 +636,23 @@ FLAGFILE_ENABLED = Flag('--flagfile', parse_as=str, multi='extend', missing=None
 
 def _ensure_posargspec(posargs, posargs_name):
     if not posargs:
+        # take no posargs
         posargs = PosArgSpec(parse_as=ERROR)
     elif posargs is True:
+        # take any number of posargs
         posargs = PosArgSpec()
+    elif isinstance(posargs, int):
+        # take an exact number of posargs
+        # (True and False are handled above, so only real ints get here)
+        posargs = PosArgSpec(min_count=posargs, max_count=posargs)
     elif callable(posargs):
+        # take any number of posargs of a given format
         posargs = PosArgSpec(parse_as=posargs)
+
     if not isinstance(posargs, PosArgSpec):
         raise ValueError('expected %s as True, False,'
                          ' or instance of PosArgSpec, not: %r' % (posargs_name, posargs))
+
     return posargs
 
 

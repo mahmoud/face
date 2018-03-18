@@ -1,0 +1,12 @@
+[run]
+branch = True
+source =
+    face
+    ../face
+
+[paths]
+source =
+   ../face
+   */lib/python*/site-packages/face
+   */Lib/site-packages/face
+   */pypy/site-packages/face

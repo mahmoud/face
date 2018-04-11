@@ -95,3 +95,6 @@ Related:
   but this will change for larger commands which may need to compose
   differently. Could keep an _id = next(itertools.count()) approach to
   record creation order.
+* Should we accept flags _anywhere_ in argv? Or just between
+  subcommands and arguments? There is a case to be made for the
+  occasional quick addition of a flag to the end of a command.

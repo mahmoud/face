@@ -237,15 +237,15 @@ class StoutHelpFormatter(object):
             append(ctx['section_break'])
 
         if parser.subprs_map:
-            subcmd_labels = unique([sp[0] for sp in parser.subprs_map if sp])
-            subcmd_layout = self._get_layout(labels=subcmd_labels)
+            subcmd_names = unique([sp[0] for sp in parser.subprs_map if sp])
+            subcmd_layout = self._get_layout(labels=subcmd_names)
 
             append(ctx['subcmd_section_heading'])
             append(ctx['group_break'])
             for sub_name in unique([sp[0] for sp in parser.subprs_map if sp]):
                 subprs = parser.subprs_map[(sub_name,)]
                 subcmd_lines = _wrap_stout_pair(indent=ctx['section_indent'],
-                                                label=sub_name,
+                                                label=sub_name.replace('_', '-'),
                                                 sep=ctx['doc_separator'],
                                                 doc=subprs.doc,
                                                 doc_start=subcmd_layout['doc_start'],

@@ -88,9 +88,10 @@ def _wrap_stout_pair(indent, label, sep, doc, doc_start, max_doc_width):
 
 def _wrap_stout_cmd_doc(indent, doc, max_width):
     """Function for wrapping command description."""
-    sep = "\n{}".format(indent)
-    width = max_width - len(indent)
-    return "{}{}".format(indent, sep.join(textwrap.wrap(doc, width)))
+    return textwrap.fill(text=doc,
+                         width=(max_width - len(indent)),
+                         initial_indent=indent,
+                         subsequent_indent=indent)
 
 
 def get_stout_layout(labels, indent, sep, width=None, max_width=DEFAULT_MAX_WIDTH,

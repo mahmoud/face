@@ -98,3 +98,11 @@ Related:
 * Should we accept flags _anywhere_ in argv? Or just between
   subcommands and arguments? There is a case to be made for the
   occasional quick addition of a flag to the end of a command.
+* Mark as subinjectable? When lots of arguments might complicate a
+  function API, create a config object that soaks them up and is
+  itself injectable. (strata "lite")
+
+## Small things
+
+* Recommended practice for exiting with an error?
+* Need to also wrap command-level doc to width

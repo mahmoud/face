@@ -1,38 +1,50 @@
 
-from face import Parser, ListParam
+from face import Command, Parser, ListParam, ArgumentParseError
 
 
-def get_calc_parser():
-    prs = Parser('cmd')
+def get_search_command(as_parser=False):
+    """A command which provides various subcommands mimicking popular
+    command-line text search tools to test power, compatiblity, and
+    flexibility.
 
-    sum_subprs = Parser('sum')
-    sum_subprs.add('--num', multi=True, missing=0, parse_as=int,
-                   doc='a number to include in the sum, expects integers at the moment'
-                   ' because it is fun to change things later')
-    prs.add(sum_subprs)
+    """
+    cmd = Command(None, 'search')
+    cmd.add('--verbose', char='-V', parse_as=True)
 
-    prs.add('--verbose', char='-V', parse_as=True)
-    prs.add('--loop-count', parse_as=int)
+    rg_subcmd = Command(None, 'rg')
+    rg_subcmd.add('--glob', char='-g', multi=True, parse_as=str,
+                   doc='Include or exclude files/directories for searching'
+                   ' that match the given glob. Precede with ! to exclude.')
+    rg_subcmd.add('--max-count', char='-m', parse_as=int,
+                  doc='Limit the number of matching lines per file.')
 
-    return prs
+    cmd.add(rg_subcmd)
+
+    if as_parser:
+        cmd.__class__ = Parser
+
+    return cmd
 
 
-def test_calc_parser():
-    prs = get_calc_parser()
+def test_search_cmd_basic():
+    prs = get_search_command(as_parser=True)
 
-    res = prs.parse(['calc.py', '--verbose'])
+    res = prs.parse(['search', '--verbose'])
 
-    assert res.name == 'calc.py'
+    assert res.name == 'search'
     assert res.flags['verbose'] is True
 
-    res = prs.parse(['calc.py', '--loop_count', '5'])
-    assert res.flags['loop_count'] == 5
+    res = prs.parse(['search', 'rg', '--glob', '*.py', '-g', '*.md', '--max-count', '5'])
+    assert res.subcmds == ('rg',)
+    assert res.flags['glob'] == ['*.py', '*.md']
 
-    res = prs.parse(['calc.py', '--loop-count', '4'])
-    assert res.flags['loop_count'] == 4
 
-    res = prs.parse(['calc.py', 'sum', '--num', '4', '--num', '-2', '--num', '0'])
-    assert res.subcmds == ('sum',)
-    assert res.flags['num'] == [4, -2, 0]
+def test_search_parse_errors():
+    from pytest import raises
+    cmd = get_search_command(as_parser=True)
+    with raises(ArgumentParseError):
+        cmd.parse(['splorch', 'splarch'])
 
-    return
+
+def test_search_help():
+    cmd = get_search_command()

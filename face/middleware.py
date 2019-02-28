@@ -146,7 +146,7 @@ broad usefulness, consider contributing it back to the core!
 
 
 from face.parser import Flag
-from face.sinter import make_chain, get_arg_names, getargspec, inject, get_func_name
+from face.sinter import make_chain, get_arg_names, get_fb, inject, get_func_name
 
 
 INNER_NAME = 'next_'
@@ -272,8 +272,8 @@ def check_middleware(func, provides=None):
     if not callable(func):
         raise TypeError('expected middleware %r to be a function' % func)
     func_name = get_func_name(func)
-    argspec = getargspec(func)
-    arg_names = argspec.args
+    fb = get_fb(func)
+    arg_names = fb.args
     if not arg_names:
         raise TypeError('middleware function %r must take at least one'
                         ' argument "%s" as its first parameter'
@@ -282,12 +282,12 @@ def check_middleware(func, provides=None):
         raise TypeError('middleware function %r must take argument'
                         ' "%s" as the first parameter, not "%s"'
                         % (func_name, INNER_NAME, arg_names[0]))
-    if argspec.varargs:
+    if fb.varargs:
         raise TypeError('middleware function %r may only take explicitly'
-                        ' named arguments, not "*%s"' % (func_name, argspec.varargs))
-    if argspec.keywords:
+                        ' named arguments, not "*%s"' % (func_name, fb.varargs))
+    if fb.varkw:
         raise TypeError('middleware function %r may only take explicitly'
-                        ' named arguments, not "**%s"' % (func_name, argspec.keywords))
+                        ' named arguments, not "**%s"' % (func_name, fb.varkw))
 
     provides = provides if provides is not None else func._face_provides
     conflict_args = list(set(_BUILTIN_PROVIDES) & set(provides))

@@ -27,11 +27,14 @@ def _get_default_name(func):
     from functools import partial
     if isinstance(func, partial):
         func = func.func  # just one level of partial for now
-    try:
-        return func.func_name  # most functions hit this
-    except AttributeError:
-        pass
-    return camel2under(func.__class__.__name__).lower()  # callable instances, etc.
+
+    # func_name on py2, __name__ on py3
+    ret = getattr(func, 'func_name', getattr(func, '__name__', None))  # most functions hit this
+
+    if ret is None:
+        ret = camel2under(func.__class__.__name__).lower()  # callable instances, etc.
+
+    return ret
 
 
 def _docstring_to_doc(func):

@@ -59,20 +59,22 @@ def inject(f, injectables):
     return f(**kwargs)
 
 
-def get_func_name(obj, with_module=False):
-    if not callable(obj):
-        raise TypeError('expected a callable object')
-    ret = []
-    if with_module and obj.__module__:
-        ret.append(obj.__module__)
+def get_callable_labels(obj):
+    ctx_parts = []
     if isinstance(obj, types.MethodType):
-        ret.append(obj.im_class.__name__)
-        obj = obj.im_func
-    func_name = getattr(obj, 'func_name', None)
-    if not func_name:
-        func_name = repr(obj)
-    ret.append(func_name)
-    return '.'.join(ret)
+        # bit of 2/3 messiness below
+        im_self = getattr(obj, 'im_self', getattr(obj, '__self__', None))
+        if im_self:
+            ctx_parts.append(im_self.__class__.__name__)
+        obj = getattr(obj, 'im_func', getattr(obj, '__func__', None))
+
+    fb = get_fb(obj)
+    if fb.module:
+        ctx_parts.insert(0, fb.module)
+
+
+    return '.'.join(ctx_parts), fb.name, fb.get_invocation_str()
+
 
 
 # TODO: turn the following into an object (keeps inner_name easier to
@@ -130,25 +132,28 @@ def build_chain_str(funcs, params, inner_name, params_sofar=None, level=0,
 
 def compile_chain(funcs, params, inner_name, verbose=_VERBOSE):
     call_str = build_chain_str(funcs, params, inner_name)
-    code_hash = hashlib.sha1(call_str.encode('utf8')).hexdigest()[:16]
-    unique_filename = "<sinter generated %s chain %s>" % (inner_name, code_hash)
-    code = compile(call_str, unique_filename, 'single')
+    return compile_code(call_str, inner_name, {'funcs': funcs}, verbose=verbose)
+
+
+def compile_code(code_str, name, env=None, verbose=_VERBOSE):
+    code_hash = hashlib.sha1(code_str.encode('utf8')).hexdigest()[:16]
+    unique_filename = "<sinter generated %s %s>" % (name, code_hash)
+    code = compile(code_str, unique_filename, 'single')
     if verbose:
-        print(call_str)
-    env = {'funcs': funcs}
+        print(code_str)
     if PY3:
         exec(code, env)
     else:
         exec("exec code in env")
 
     linecache.cache[unique_filename] = (
-        len(call_str),
+        len(code_str),
         None,
-        call_str.splitlines(True),
+        code_str.splitlines(True),
         unique_filename,
     )
+    return env[name]
 
-    return env[inner_name]
 
 
 def make_chain(funcs, provides, final_func, preprovided, inner_name):
@@ -163,19 +168,3 @@ def make_chain(funcs, provides, final_func, preprovided, inner_name):
     chain = compile_chain(funcs + [final_func],
                           [args] + provides, inner_name)
     return chain, set(args), set(unresolved)
-
-
-def get_inner_func_alias(func, inner_name, func_names=None):
-    if func_names is None:
-        func_names = set()
-    func_name = get_func_name(func)
-    func_alias = camel2under(func_name.replace('.', '__'))
-    func_alias = func_alias.replace('middleware', 'mw')
-    while func_alias in func_names:
-        try:
-            head, _, tail = func_alias.rpartition('_')
-            cur_count = int(tail)
-            func_alias = '%s_%s' % (head, cur_count + 1)
-        except Exception:
-            func_alias = func_alias + '_2'
-    return '%s_%s' % (inner_name, func_alias)

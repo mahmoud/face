@@ -146,8 +146,8 @@ broad usefulness, consider contributing it back to the core!
 
 
 from face.parser import Flag
-from face.sinter import make_chain, get_arg_names, get_fb, inject, get_func_name
-
+from face.sinter import make_chain, get_arg_names, get_fb, get_callable_labels
+from face.sinter import inject  # transitive import for external use
 
 INNER_NAME = 'next_'
 
@@ -271,28 +271,28 @@ def check_middleware(func, provides=None):
     """
     if not callable(func):
         raise TypeError('expected middleware %r to be a function' % func)
-    func_name = get_func_name(func)
     fb = get_fb(func)
+    func_label = ''.join(get_callable_labels(func))
     arg_names = fb.args
     if not arg_names:
         raise TypeError('middleware function %r must take at least one'
                         ' argument "%s" as its first parameter'
-                        % (func_name, INNER_NAME))
+                        % (func_label, INNER_NAME))
     if arg_names[0] != INNER_NAME:
         raise TypeError('middleware function %r must take argument'
                         ' "%s" as the first parameter, not "%s"'
-                        % (func_name, INNER_NAME, arg_names[0]))
+                        % (func_label, INNER_NAME, arg_names[0]))
     if fb.varargs:
         raise TypeError('middleware function %r may only take explicitly'
-                        ' named arguments, not "*%s"' % (func_name, fb.varargs))
+                        ' named arguments, not "*%s"' % (func_label, fb.varargs))
     if fb.varkw:
         raise TypeError('middleware function %r may only take explicitly'
-                        ' named arguments, not "**%s"' % (func_name, fb.varkw))
+                        ' named arguments, not "**%s"' % (func_label, fb.varkw))
 
     provides = provides if provides is not None else func._face_provides
     conflict_args = list(set(_BUILTIN_PROVIDES) & set(provides))
     if conflict_args:
         raise TypeError('middleware function %r provides conflict with'
-                        ' reserved face builtins: %r' % (func_name, conflict_args))
+                        ' reserved face builtins: %r' % (func_label, conflict_args))
 
     return

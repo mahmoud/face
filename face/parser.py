@@ -1222,6 +1222,7 @@ class CommandParseResult(object):
         self.post_posargs = None  # tuple
 
     def to_cmd_scope(self):
+        "returns a dict which can be used as kwargs in an inject call"
         ret = {'args_': self,
                'cmd_': self.parser,  # TODO: see also command_, should this be prs_res.name, or argv[0]?
                'subcmds_': self.subcmds,

@@ -1,5 +1,9 @@
 # TODO
 
+* Allow setting of "name" alias on PosArgSpec. Specifies an alternate
+  name by which posargs_ (or post_posargs_) will be injected into the
+  target function.
+
 ## Big tickets
 
 * Tests

@@ -346,11 +346,19 @@ class Command(Parser):
         try:
             prs_res = self.parse(argv=argv)
         except ArgumentParseError as ape:
+            prs_res = ape.prs_res
+
+            # even if parsing failed, check if the caller was trying to access the help flag
+            if self.help_handler and prs_res.flags and prs_res.flags.get(self.help_handler.flag.name):
+                kwargs.update(prs_res.to_cmd_scope())
+                return inject(self.help_handler.func, kwargs)
+
             msg = 'error: ' + self.name
-            if getattr(ape, 'subcmds', None):
-                msg += ' ' + ' '.join(ape.subcmds or ())
+            if prs_res.subcmds:
+                msg += ' ' + ' '.join(prs_res.subcmds or ())
             try:
-                e_msg = ape.args[0]
+                e_msg = ape.args[0]  # this is the standard-issue Exception
+                                     # args attribute, nothing to do with cmdline args
             except (AttributeError, IndexError):
                 e_msg = ''
             if e_msg:
@@ -360,14 +368,7 @@ class Command(Parser):
                 print_error(msg)
             raise cle
 
-        kwargs.update({'args_': prs_res,
-                       'cmd_': self,  # TODO: see also command_, should this be prs_res.name, or argv[0]?
-                       'subcmds_': prs_res.subcmds,
-                       'flags_': prs_res.flags,
-                       'posargs_': prs_res.posargs,
-                       'post_posargs_': prs_res.post_posargs,
-                       'command_': self})
-        kwargs.update(prs_res.flags)
+        kwargs.update(prs_res.to_cmd_scope())
 
         # default in case no middlewares have been installed
         func = self._path_func_map[prs_res.subcmds]

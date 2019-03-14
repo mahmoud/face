@@ -8,6 +8,7 @@ import os.path
 
 from collections import OrderedDict
 
+from boltons.strutils import pluralize
 from boltons.iterutils import split, unique
 from boltons.typeutils import make_sentinel
 from boltons.dictutils import OrderedMultiDict as OMD
@@ -395,10 +396,30 @@ def format_posargs_label(posargspec):
         return posargspec.display.label
     if not posargspec.accepts_args:
         return ''
-    # TODO pluralize
-    if posargspec.min_count:
-        return 'args ...'
-    return '[args ...]'
+    return get_cardinalized_args_label(posargspec.display.name, posargspec.min_count, posargspec.max_count)
+
+
+def get_cardinalized_args_label(name, min_count, max_count):
+    '''
+    Examples for parameter values: (min_count, max_count): output for name=arg:
+
+      1, 1: arg
+      0, 1: [arg]
+      0, None: [args ...]
+      1, 3: args ...
+    '''
+    if min_count == 1:
+        return name + ' ' + get_cardinalized_args_label(name,
+                                                        min_count=0,
+                                                        max_count=max_count - 1 if max_count is not None else None)
+
+    tmpl = '[%s]' if min_count == 0 else '%s'
+    if max_count == 1:
+        return tmpl % name
+    return tmpl % (pluralize(name) + ' ...')
+
+
+
 
 
 def format_flag_post_doc(flag):
@@ -645,6 +666,10 @@ def _ensure_posargspec(posargs, posargs_name):
         # take an exact number of posargs
         # (True and False are handled above, so only real ints get here)
         posargs = PosArgSpec(min_count=posargs, max_count=posargs)
+    elif isinstance(posargs, str):
+        posargs = PosArgSpec(display=posargs)
+    elif isinstance(posargs, dict):
+        posargs = PosArgSpec(**posargs)
     elif callable(posargs):
         # take any number of posargs of a given format
         posargs = PosArgSpec(parse_as=posargs)
@@ -844,11 +869,18 @@ class Parser(object):
         if not argv:
             raise ArgumentParseError('expected non-empty sequence of arguments, not: %r' % (argv,))
 
+        flag_map = None
         # first snip off the first argument, the command itself
         cmd_name, args = argv[0], list(argv)[1:]
 
+        # we record our progress as we parse to provide the most
+        # up-to-date info possible to the error and help handlers
+        cpr = CommandParseResult(cmd_name, parser=self, argv=argv)
+
         # then figure out the subcommand path
         subcmds, args = self._parse_subcmds(args)
+        cpr.subcmds = tuple(subcmds)
+
         prs = self.subprs_map[tuple(subcmds)] if subcmds else self
 
         try:
@@ -860,27 +892,30 @@ class Parser(object):
 
             # parse supported flags and validate their arguments
             flag_map, flagfile_map, posargs = self._parse_flags(cmd_flag_map, args)
+            cpr.flags = OrderedDict(flag_map)
+            cpr.posargs = tuple(posargs)
 
             # take care of dupes and check required flags
             resolved_flag_map = self._resolve_flags(cmd_flag_map, flag_map, flagfile_map)
+            cpr.flags = OrderedDict(resolved_flag_map)
 
             # separate out any trailing arguments from normal positional arguments
             post_posargs = None  # TODO: default to empty list?
             parsed_post_posargs = None
             if '--' in posargs:
                 posargs, post_posargs = split(posargs, '--', 1)
+                cpr.posargs, cpr.post_posargs = posargs, post_posargs
+
                 parsed_post_posargs = prs.post_posargs.parse(post_posargs)
+                cpr.post_posargs = tuple(parsed_post_posargs)
 
             parsed_posargs = prs.posargs.parse(posargs)
+            cpr.posargs = tuple(parsed_posargs)
         except ArgumentParseError as ape:
-            ape.parser = prs
-            ape.subcmds = subcmds
+            ape.prs_res = cpr
             raise
 
-        ret = CommandParseResult(cmd_name, subcmds, resolved_flag_map,
-                                 parsed_posargs, parsed_post_posargs,
-                                 parser=self, argv=argv)
-        return ret
+        return cpr
 
     def _parse_subcmds(self, args):
         """Expects arguments after the initial command (i.e., argv[1:])
@@ -1176,15 +1211,28 @@ class CommandParseResult(object):
     builtin in their Command handler function.
 
     """
-    def __init__(self, name, subcmds, flags, posargs, post_posargs,
-                 parser=None, argv=()):
+    def __init__(self, name, parser=None, argv=()):
         self.name = name
-        self.subcmds = tuple(subcmds)
-        self.flags = OrderedDict(flags)
-        self.posargs = tuple(posargs or ())
-        self.post_posargs = tuple(post_posargs or ())
         self.parser = parser
         self.argv = tuple(argv)
+
+        self.subcmds = None  # tuple
+        self.flags = None  # OrderedDict
+        self.posargs = None  # tuple
+        self.post_posargs = None  # tuple
+
+    def to_cmd_scope(self):
+        ret = {'args_': self,
+               'cmd_': self.parser,  # TODO: see also command_, should this be prs_res.name, or argv[0]?
+               'subcmds_': self.subcmds,
+               'flags_': self.flags,
+               'posargs_': self.posargs,
+               'post_posargs_': self.post_posargs,
+               'command_': self.parser}
+        if self.flags:
+            ret.update(self.flags)
+        return ret
+
 
 
 """# Problems with argparse

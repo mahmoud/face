@@ -23,6 +23,10 @@ class CommandLineError(FaceException, SystemExit):
         self.code = code
 
 
+class BadCommand(CommandLineError):
+    pass
+
+
 def _get_default_name(func):
     from functools import partial
     if isinstance(func, partial):
@@ -381,7 +385,17 @@ class Command(Parser):
         self.prepare(paths=[prs_res.subcmds])
         wrapped = self._path_wrapped_map.get(prs_res.subcmds, func)
 
-        return inject(wrapped, kwargs)
+        try:
+            ret = inject(wrapped, kwargs)
+        except BadCommand as bc:
+            if print_error:
+                msg = bc.args[0]
+                lines = msg.splitlines()
+                msg = '\n     '.join(lines)
+                print('error: ' + msg)
+            raise
+        return ret
+
 
 
 """Middleware thoughts:

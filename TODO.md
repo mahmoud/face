@@ -3,6 +3,9 @@
 * Allow setting of "name" alias on PosArgSpec. Specifies an alternate
   name by which posargs_ (or post_posargs_) will be injected into the
   target function.
+* Work PosArgSpec name into ArgumentArityError messages
+* Automatically add a message about the help subcommand or -h flag to
+  parse errors, when help handler is present.
 
 ## Big tickets
 

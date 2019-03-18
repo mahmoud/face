@@ -1235,7 +1235,6 @@ class CommandParseResult(object):
         return ret
 
 
-
 """# Problems with argparse
 
 argparse is a pretty solid library, and despite many competitors over

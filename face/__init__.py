@@ -9,6 +9,6 @@ from face.parser import (Flag,
                          ArgumentParseError,
                          ERROR)
 from face.parser import ListParam
-from face.command import Command, BadCommand
+from face.command import Command, UsageError
 from face.middleware import face_middleware
 from face.helpers import HelpHandler, StoutHelpFormatter

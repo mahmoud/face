@@ -17,14 +17,28 @@ from face.middleware import (inject,
 from boltons.strutils import camel2under
 from boltons.iterutils import unique
 
+
 class CommandLineError(FaceException, SystemExit):
     def __init__(self, msg, code=1):
         SystemExit.__init__(self, msg)
         self.code = code
 
 
-class BadCommand(CommandLineError):
-    pass
+class UsageError(CommandLineError):
+    """Application developers should raise this error (or a subtype) to
+    indicate to users that the application user has used the command
+    incorrectly.
+
+    Face will exit with a nonzero exit code, after printing an error
+    message and not an ugly stack trace.
+    """
+
+    def format_message(self):
+        msg = self.args[0]
+        lines = msg.splitlines()
+        msg = '\n       '.join(lines)
+        return 'error: ' + msg
+
 
 
 def _get_default_name(func):
@@ -387,12 +401,9 @@ class Command(Parser):
 
         try:
             ret = inject(wrapped, kwargs)
-        except BadCommand as bc:
+        except UsageError as ue:
             if print_error:
-                msg = bc.args[0]
-                lines = msg.splitlines()
-                msg = '\n     '.join(lines)
-                print('error: ' + msg)
+                print(ue.format_message())
             raise
         return ret
 

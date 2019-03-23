@@ -1,5 +1,20 @@
 
-from face import Command, Parser, ListParam, ArgumentParseError
+import datetime
+
+from pytest import raises
+
+from face import Command, Parser, ListParam, ArgumentParseError, face_middleware
+
+
+def _rg(glob, max_count):
+    "Great stuff from the regrep"
+    print('regrepping', glob, max_count)
+    return
+
+
+@face_middleware(provides=['timestamp'])
+def _timestamp_mw(next_, glob):
+    return next_(timestamp=datetime.datetime.now())
 
 
 def get_search_command(as_parser=False):
@@ -11,7 +26,7 @@ def get_search_command(as_parser=False):
     cmd = Command(None, 'search')
     cmd.add('--verbose', char='-V', parse_as=True)
 
-    rg_subcmd = Command(None, 'rg')
+    rg_subcmd = Command(_rg, 'rg')
     rg_subcmd.add('--glob', char='-g', multi=True, parse_as=str,
                    doc='Include or exclude files/directories for searching'
                    ' that match the given glob. Precede with ! to exclude.')
@@ -20,13 +35,15 @@ def get_search_command(as_parser=False):
 
     cmd.add(rg_subcmd)
 
+    cmd.add(_timestamp_mw)
+
     if as_parser:
         cmd.__class__ = Parser
 
     return cmd
 
 
-def test_search_cmd_basic():
+def test_search_prs_basic():
     prs = get_search_command(as_parser=True)
 
     res = prs.parse(['search', '--verbose'])
@@ -39,12 +56,39 @@ def test_search_cmd_basic():
     assert res.flags['glob'] == ['*.py', '*.md']
 
 
+def test_search_cmd_basic(capsys):
+    cmd = get_search_command()
+
+    cmd.run(['search', 'rg', '--glob', '*', '-m', '10'])
+
+    out, err = capsys.readouterr()
+    assert 'regrepping' in out
+
+    with raises(SystemExit):
+        cmd.run(['search', 'rg', 'badposarg'])
+    out, err = capsys.readouterr()
+    assert 'error:' in err
+
+    with raises(SystemExit):
+        cmd.run(['search', 'rg', '-h', 'badposarg'])
+    out, err = capsys.readouterr()
+    assert '[FLAGS]' in out
+
+
 def test_search_parse_errors():
-    from pytest import raises
     cmd = get_search_command(as_parser=True)
     with raises(ArgumentParseError):
         cmd.parse(['splorch', 'splarch'])
 
 
-def test_search_help():
+def test_search_help(capsys):
+    # pdb won't work in here bc of the captured stdout/err
     cmd = get_search_command()
+
+    with raises(SystemExit):
+        cmd.run(['search', '-h'])
+
+    out, err = capsys.readouterr()
+    assert '[FLAGS]' in out
+    assert '--help' in out
+    assert 'show this help message and exit' in out

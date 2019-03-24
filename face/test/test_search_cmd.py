@@ -4,7 +4,16 @@ import datetime
 
 from pytest import raises
 
-from face import Command, Parser, ListParam, ArgumentParseError, face_middleware, InvalidFlagArgument, DuplicateFlag, InvalidSubcommand, UnknownFlag, ChoicesParam, ListParam
+from face import (Command,
+                  Parser,
+                  ListParam,
+                  face_middleware,
+                  ArgumentParseError,
+                  InvalidFlagArgument,
+                  DuplicateFlag,
+                  InvalidSubcommand,
+                  UnknownFlag,
+                  ChoicesParam)
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 

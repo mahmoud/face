@@ -419,9 +419,6 @@ def get_cardinalized_args_label(name, min_count, max_count):
     return tmpl % (pluralize(name) + ' ...')
 
 
-
-
-
 def format_flag_post_doc(flag):
     "The default positional argument label formatter, used in help formatting"
     if flag.display.post_doc is not None:
@@ -877,13 +874,13 @@ class Parser(object):
         # up-to-date info possible to the error and help handlers
         cpr = CommandParseResult(cmd_name, parser=self, argv=argv)
 
-        # then figure out the subcommand path
-        subcmds, args = self._parse_subcmds(args)
-        cpr.subcmds = tuple(subcmds)
-
-        prs = self.subprs_map[tuple(subcmds)] if subcmds else self
-
         try:
+            # then figure out the subcommand path
+            subcmds, args = self._parse_subcmds(args)
+            cpr.subcmds = tuple(subcmds)
+
+            prs = self.subprs_map[tuple(subcmds)] if subcmds else self
+
             # then look up the subcommand's supported flags
             # NOTE: get_flag_map() is used so that inheritors, like Command,
             # can filter by actually-used arguments, not just
@@ -932,7 +929,8 @@ class Parser(object):
             arg = _arg_to_subcmd(arg)
             if tuple(ret + [arg]) not in self.subprs_map:
                 prs = self.subprs_map[tuple(ret)] if ret else self
-                if prs.posargs:
+                if prs.posargs.parse_as is not ERROR:
+                    # we actually have posargs from here
                     break
                 raise InvalidSubcommand.from_parse(prs, arg)
             ret.append(arg)
@@ -1162,7 +1160,7 @@ class ChoicesParam(object):
     def parse(self, text):
         choice = self.parse_as(text)
         if choice not in self.choices:
-            raise ValueError('expected one of %r, not: %r' % (self.choices, text))
+            raise ArgumentParseError('expected one of %r, not: %r' % (self.choices, text))
         return choice
 
     __call__ = parse

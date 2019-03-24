@@ -1,9 +1,12 @@
 
+import os
 import datetime
 
 from pytest import raises
 
-from face import Command, Parser, ListParam, ArgumentParseError, face_middleware
+from face import Command, Parser, ListParam, ArgumentParseError, face_middleware, InvalidFlagArgument, DuplicateFlag, InvalidSubcommand, UnknownFlag, ChoicesParam, ListParam
+
+CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 def _rg(glob, max_count):
@@ -32,6 +35,8 @@ def get_search_command(as_parser=False):
                    ' that match the given glob. Precede with ! to exclude.')
     rg_subcmd.add('--max-count', char='-m', parse_as=int,
                   doc='Limit the number of matching lines per file.')
+    rg_subcmd.add('--filetype', ChoicesParam(['py', 'js', 'html']))
+    rg_subcmd.add('--extensions', ListParam(strip=True))
 
     cmd.add(rg_subcmd)
 
@@ -54,6 +59,47 @@ def test_search_prs_basic():
     res = prs.parse(['search', 'rg', '--glob', '*.py', '-g', '*.md', '--max-count', '5'])
     assert res.subcmds == ('rg',)
     assert res.flags['glob'] == ['*.py', '*.md']
+
+    res = prs.parse(['search', 'rg', '--extensions', 'py,html,css'])
+    assert res.flags['extensions'] == ['py', 'html', 'css']
+
+
+def test_search_prs_errors():
+    prs = get_search_command(as_parser=True)
+
+    with raises(UnknownFlag):
+        prs.parse(['search', 'rg', '--unknown-flag'])
+
+    with raises(InvalidFlagArgument):
+        prs.parse(['search', 'rg', '--max-count', 'not-an-int'])
+
+    with raises(InvalidFlagArgument):
+        prs.parse(['search', 'rg', '--max-count', '--glob', '*'])  # max-count should have an arg but doesn't
+
+    with raises(InvalidFlagArgument):
+        prs.parse(['search', 'rg', '--max-count'])  # gets a slightly different error message than above
+
+    with raises(DuplicateFlag):
+        prs.parse(['search', 'rg', '--max-count', '4', '--max-count', '5'])
+
+    with raises(InvalidSubcommand):
+        prs.parse(['search', 'nonexistent-subcommand'])
+
+    with raises(ArgumentParseError):
+        prs.parse(['search', 'rg', '--filetype', 'c'])
+
+    return
+
+
+def test_search_flagfile():
+    prs = get_search_command(as_parser=True)
+
+    with raises(ArgumentParseError):
+        prs.parse(['search', 'rg', '--flagfile', '_nonexistent_flagfile'])
+
+    flagfile_path = CUR_PATH + '/_search_cmd_a.flags'
+
+    res = prs.parse(['search', 'rg', '--flagfile', flagfile_path])
 
 
 def test_search_cmd_basic(capsys):

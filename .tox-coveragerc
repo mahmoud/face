@@ -3,6 +3,9 @@ branch = True
 source =
     face
     ../face
+omit =
+    */flycheck_*
+
 
 [paths]
 source =

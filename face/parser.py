@@ -537,6 +537,11 @@ class PosArgDisplay(object):
             TypeError('unexpected keyword arguments: %r' % kw.keys())
         return
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        ret = ('<%s name=%r label=%r>' % (cn, self.name, self.label))
+        return ret
+
 
 class PosArgSpec(object):
     """Passed to Command/Parser as posargs and post_posargs parameters to
@@ -557,7 +562,7 @@ class PosArgSpec(object):
     PosArgSpec instances are stateless and safe to be used multiple
     times around the application.
     """
-    def __init__(self, parse_as=str, min_count=None, max_count=None, display=None):
+    def __init__(self, parse_as=str, min_count=None, max_count=None, display=None, provides=None):
         if not callable(parse_as) and parse_as is not ERROR:
             raise TypeError('expected callable or ERROR for parse_as, not %r' % parse_as)
         self.parse_as = parse_as
@@ -571,6 +576,7 @@ class PosArgSpec(object):
         if self.max_count and self.min_count > self.max_count:
             raise ValueError('expected min_count > max_count, not: %r > %r'
                              % (self.min_count, self.max_count))
+        self.provides = provides
 
         if display is None:
             display = {}
@@ -583,6 +589,12 @@ class PosArgSpec(object):
         self.display = display
 
         # TODO: default? type check that it's a sequence matching min/max reqs
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        ret = ('<%s parse_as=%r min_count=%r max_count=%r display=%r>'
+               % (cn, self.parse_as, self.min_count, self.max_count, self.display))
+        return ret
 
     @property
     def accepts_args(self):
@@ -664,7 +676,7 @@ def _ensure_posargspec(posargs, posargs_name):
         # (True and False are handled above, so only real ints get here)
         posargs = PosArgSpec(min_count=posargs, max_count=posargs)
     elif isinstance(posargs, str):
-        posargs = PosArgSpec(display=posargs)
+        posargs = PosArgSpec(display=posargs, provides=posargs)
     elif isinstance(posargs, dict):
         posargs = PosArgSpec(**posargs)
     elif callable(posargs):
@@ -1230,6 +1242,13 @@ class CommandParseResult(object):
                'command_': self.parser}
         if self.flags:
             ret.update(self.flags)
+
+        prs = self.parser if not self.subcmds else self.parser.subprs_map[self.subcmds]
+        if prs.posargs.provides:
+            ret[prs.posargs.provides] = self.posargs
+        if prs.post_posargs.provides:
+            ret[prs.post_posargs.provides] = self.post_posargs
+
         return ret
 
 

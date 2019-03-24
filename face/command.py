@@ -311,6 +311,13 @@ class Command(Parser):
             if func is None:
                 continue  # handled by run()
 
+            prs = self.subprs_map[path]
+            provides = []
+            if prs.posargs.provides:
+                provides += [prs.posargs.provides]
+            if prs.post_posargs.provides:
+                provides += [prs.post_posargs.provides]
+
             deps = self.get_dep_names(path)
             flag_names = [f.name for f in self.get_flags(path=path)]
             all_mws = self._path_mw_map[path]
@@ -318,7 +325,7 @@ class Command(Parser):
             # filter out unused middlewares
             mws = [mw for mw in all_mws if not mw._face_optional
                    or [p for p in mw._face_provides if p in deps]]
-            provides = _BUILTIN_PROVIDES + flag_names
+            provides += _BUILTIN_PROVIDES + flag_names
             try:
                 wrapped = get_middleware_chain(mws, func, provides)
             except NameError as ne:

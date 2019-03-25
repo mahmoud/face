@@ -59,6 +59,7 @@ def get_search_command(as_parser=False):
 
 def test_search_prs_basic():
     prs = get_search_command(as_parser=True)
+    assert repr(prs).startswith('<Parser')
 
     res = prs.parse(['search', '--verbose'])
 

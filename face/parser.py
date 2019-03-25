@@ -760,6 +760,11 @@ class Parser(object):
 
         return unique(flag_map.values())
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return ('<%s name=%r subcmd_count=%r flag_count=%r posargs=%r>'
+                % (cn, self.name, len(self.subprs_map), len(self.get_flags()), self.posargs))
+
 
     def _add_subparser(self, subprs):
         """Process subcommand name, check for subcommand conflicts, check for

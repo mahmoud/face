@@ -6,7 +6,8 @@ import textwrap
 
 from boltons.iterutils import unique
 
-from face.parser import Flag, format_flag_label, format_flag_post_doc, format_posargs_label
+from face.utils import format_flag_label, format_flag_post_doc, format_posargs_label
+from face.parser import Flag
 
 DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, char='-h', doc='show this help message and exit')
 

@@ -1,215 +1,27 @@
 
-import re
 import sys
 import shlex
 import codecs
-import keyword
 import os.path
-
 from collections import OrderedDict
 
-from boltons.strutils import pluralize
 from boltons.iterutils import split, unique
-from boltons.typeutils import make_sentinel
 from boltons.dictutils import OrderedMultiDict as OMD
 
-
-ERROR = make_sentinel('ERROR')
-
-
-class FaceException(Exception):
-    """The basest base exception Face has. Rarely directly instantiated
-    if ever, but useful for catching.
-    """
-    pass
-
-
-class ArgumentParseError(FaceException):
-    """A base exception used for all errors raised during argument
-    parsing.
-
-    Many subtypes have a ".from_parse()" classmethod that creates an
-    exception message from the values available during the parse
-    process.
-    """
-    pass
-
-
-class ArgumentArityError(ArgumentParseError):
-    """Raised when too many or too few positional arguments are passed to
-    the command. See PosArgSpec for more info.
-    """
-    pass
-
-
-class InvalidSubcommand(ArgumentParseError):
-    """
-    Raised when an unrecognized subcommand is passed.
-    """
-    @classmethod
-    def from_parse(cls, prs, subcmd_name):
-        # TODO: add edit distance calculation
-        valid_subcmds = unique([path[:1][0] for path in prs.subprs_map.keys()])
-        msg = ('unknown subcommand "%s", choose from: %s'
-               % (subcmd_name, ', '.join(valid_subcmds)))
-        return cls(msg)
-
-
-class UnknownFlag(ArgumentParseError):
-    """
-    Raised when an unrecognized flag is passed.
-    """
-    @classmethod
-    def from_parse(cls, cmd_flag_map, flag_name):
-        # TODO: add edit distance calculation
-        valid_flags = unique([format_flag_label(flag) for flag in
-                              cmd_flag_map.values() if not flag.display.hidden])
-        msg = ('unknown flag "%s", choose from: %s'
-               % (flag_name, ', '.join(valid_flags)))
-        return cls(msg)
-
-
-FRIENDLY_TYPE_NAMES = {int: 'integer',
-                       float: 'decimal'}
-
-
-class InvalidFlagArgument(ArgumentParseError):
-    """Raised when the argument passed to a flag (the value directly
-    after it in argv) fails to parse. Tries to automatically detect
-    when an argument is missing.
-    """
-    @classmethod
-    def from_parse(cls, cmd_flag_map, flag, arg, exc=None):
-        if arg is None:
-            return cls('expected argument for flag %s' % flag.name)
-
-        val_parser = flag.parse_as
-        vp_label = getattr(val_parser, 'display_name', FRIENDLY_TYPE_NAMES.get(val_parser))
-        if vp_label is None:
-            vp_label = repr(val_parser)
-            tmpl = 'flag %s converter (%r) failed to parse value: %r'
-        else:
-            tmpl = 'flag %s expected a valid %s value, not %r'
-        msg = tmpl % (flag.name, vp_label, arg)
-
-        if exc:
-            # TODO: put this behind a verbose flag?
-            msg += ' (got error: %r)' % exc
-        if arg.startswith('-'):
-            msg += '. (Did you forget to pass an argument?)'
-
-        return cls(msg)
-
-
-def _get_type_desc(parse_as):
-    "Kind of a hacky way to improve message readability around argument types"
-    if not callable(parse_as):
-        raise TypeError('expected parse_as to be callable, not %r' % parse_as)
-    try:
-        return 'as', FRIENDLY_TYPE_NAMES[parse_as]
-    except KeyError:
-        pass
-    try:
-        # return the type name if it looks like a type
-        return 'as', parse_as.__name__
-    except AttributeError:
-        pass
-    try:
-        # return the func name if it looks like a function
-        return 'with', parse_as.func_name
-    except AttributeError:
-        pass
-    # if all else fails
-    return 'with', repr(parse_as)
-
-
-
-class InvalidPositionalArgument(ArgumentParseError):
-    """Raised when one of the positional arguments does not
-    parse/validate as specified. See PosArgSpec for more info.
-    """
-    @classmethod
-    def from_parse(cls, posargspec, arg, exc):
-        prep, type_desc = _get_type_desc(posargspec.parse_as)
-        return cls('positional argument failed to parse %s'
-                   ' %s: %r (got error: %r)' % (prep, type_desc, arg, exc))
-
-
-class MissingRequiredFlags(ArgumentParseError):
-    """
-    Raised when a required flag is not passed. See Flag for more info.
-    """
-    @classmethod
-    def from_parse(cls, cmd_flag_map, parsed_flag_map, missing_flag_names):
-        msg = ('missing required arguments for flags: %s'
-               % ', '.join(missing_flag_names))
-        return cls(msg)
-
-
-class DuplicateFlag(ArgumentParseError):
-    """Raised when a flag is passed multiple times, and the flag's
-    "multi" setting is set to 'error'.
-    """
-    @classmethod
-    def from_parse(cls, flag, arg_val_list):
-        avl_text = ', '.join([repr(v) for v in arg_val_list])
-        if callable(flag.parse_as):
-            msg = ('more than one value was passed for flag "%s": %s'
-                   % (flag.name, avl_text))
-        else:
-            msg = ('flag "%s" was used multiple times, but can be used only once' % flag.name)
-        return cls(msg)
-
-
-
-# keep it just to subset of valid ASCII python identifiers for now
-_VALID_FLAG_RE = re.compile(r"^[A-z][-_A-z0-9]*\Z")
-
-
-def flag_to_identifier(flag):
-    """Validate and canonicalize a flag name to a valid Python identifier
-    (variable name).
-
-    Valid input strings include only letters, numbers, '-', and/or
-    '_'. Only single/double leading dash allowed (-/--). No trailing
-    dashes or underscores. Must not be a Python keyword.
-
-    Input case doesn't matter, output case will always be lower.
-    """
-    orig_flag = flag
-    if not flag or not isinstance(flag, str):
-        raise ValueError('expected non-zero length string for flag, not: %r' % flag)
-
-    if flag.endswith('-') or flag.endswith('_'):
-        raise ValueError('expected flag without trailing dashes'
-                         ' or underscores, not: %r' % orig_flag)
-
-    if flag[:2] == '--':
-        flag = flag[2:]
-
-    flag_match = _VALID_FLAG_RE.match(flag)
-    if not flag_match:
-        raise ValueError('valid flag names must begin with a letter, optionally'
-                         ' prefixed by two dashes, and consist only of letters,'
-                         ' digits, underscores, and dashes, not: %r' % orig_flag)
-
-    flag_name = _normalize_flag_name(flag)
-
-    if keyword.iskeyword(flag_name):
-        raise ValueError('valid flag names must not be Python keywords: %r'
-                         % orig_flag)
-
-    return flag_name
-
-
-def identifier_to_flag(identifier):
-    """
-    Turn an identifier back into its flag format (e.g., "Flag" -> --flag).
-    """
-    if identifier.startswith('-'):
-        raise ValueError('expected identifier, not flag name: %r' % identifier)
-    ret = identifier.lower().replace('_', '-')
-    return '--' + ret
+from face.utils import (ERROR,
+                        VALID_FLAG_RE,
+                        flag_to_identifier,
+                        normalize_flag_name,
+                        get_type_desc)
+from face.errors import (FaceException,
+                         ArgumentParseError,
+                         ArgumentArityError,
+                         InvalidSubcommand,
+                         UnknownFlag,
+                         DuplicateFlag,
+                         InvalidFlagArgument,
+                         InvalidPositionalArgument,
+                         MissingRequiredFlags)  # TODO: DuplicateFlag?
 
 
 def process_command_name(name):
@@ -231,24 +43,15 @@ def process_command_name(name):
         raise ValueError('expected subcommand name without trailing dashes'
                          ' or underscores, not: %r' % name)
 
-    name_match = _VALID_FLAG_RE.match(name)
+    name_match = VALID_FLAG_RE.match(name)
     if not name_match:
         raise ValueError('valid subcommand name must begin with a letter, and'
                          ' consist only of letters, digits, underscores, and'
                          ' dashes, not: %r' % name)
 
-    subcmd_name = _normalize_flag_name(name)
+    subcmd_name = normalize_flag_name(name)
 
     return subcmd_name
-
-
-def _normalize_flag_name(flag):
-    ret = flag.lstrip('-')
-    if (len(flag) - len(ret)) > 1:
-        # only single-character flags are considered case-sensitive (like an initial)
-        ret = ret.lower()
-    ret = ret.replace('-', '_')
-    return ret
 
 
 def _arg_to_subcmd(arg):
@@ -377,60 +180,6 @@ class Flag(object):
     # TODO: __eq__ and copy
 
 
-def format_flag_label(flag):
-    "The default flag label formatter, used in help and error formatting"
-    if flag.display.label is not None:
-        return flag.display.label
-    parts = [identifier_to_flag(flag.name)]
-    if flag.char:
-        parts.append('-' + flag.char)
-    ret = ' / '.join(parts)
-    if flag.display.value_name:
-        ret += ' ' + flag.display.value_name
-    return ret
-
-
-def format_posargs_label(posargspec):
-    "The default positional argument label formatter, used in help formatting"
-    if posargspec.display.label:
-        return posargspec.display.label
-    if not posargspec.accepts_args:
-        return ''
-    return get_cardinalized_args_label(posargspec.display.name, posargspec.min_count, posargspec.max_count)
-
-
-def get_cardinalized_args_label(name, min_count, max_count):
-    '''
-    Examples for parameter values: (min_count, max_count): output for name=arg:
-
-      1, 1: arg
-      0, 1: [arg]
-      0, None: [args ...]
-      1, 3: args ...
-    '''
-    if min_count == 1:
-        return name + ' ' + get_cardinalized_args_label(name,
-                                                        min_count=0,
-                                                        max_count=max_count - 1 if max_count is not None else None)
-
-    tmpl = '[%s]' if min_count == 0 else '%s'
-    if max_count == 1:
-        return tmpl % name
-    return tmpl % (pluralize(name) + ' ...')
-
-
-def format_flag_post_doc(flag):
-    "The default positional argument label formatter, used in help formatting"
-    if flag.display.post_doc is not None:
-        return flag.display.post_doc
-    if not flag.display.value_name:
-        return ''
-    if flag.missing is ERROR:
-        return '(required)'
-    if flag.missing is None or repr(flag.missing) == object.__repr__(flag.missing):
-        # avoid displaying unhelpful defaults
-        return '(optional)'
-    return '(defaults to %r)' % flag.missing
 
 
 class FlagDisplay(object):
@@ -474,7 +223,7 @@ class FlagDisplay(object):
 
         self.doc = flag.doc
         if self.doc is None and callable(flag.parse_as):
-            _prep, desc = _get_type_desc(flag.parse_as)
+            _prep, desc = get_type_desc(flag.parse_as)
             self.doc = 'Parsed with ' + desc
             if _prep == 'as':
                 self.doc = desc
@@ -956,7 +705,7 @@ class Parser(object):
 
     def _parse_single_flag(self, cmd_flag_map, args):
         arg = args[0]
-        flag = cmd_flag_map.get(_normalize_flag_name(arg))
+        flag = cmd_flag_map.get(normalize_flag_name(arg))
         if flag is None:
             raise UnknownFlag.from_parse(cmd_flag_map, arg)
         flag_conv = flag.parse_as

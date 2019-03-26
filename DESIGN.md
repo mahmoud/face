@@ -214,6 +214,84 @@ single subcommand being executed is checked.
 * iso8601 date/time/datetime
 * duration
 
+### Middleware thoughts
+
+* Clastic-like, but single function
+* Mark with a @middleware(provides=()) decorator for provides
+
+* Keywords (ParseResult members) end with _ (e.g., flags_), leaving
+  injection namespace wide open for flags. With clastic, argument
+  names are primarily internal, like a path parameter's name is not
+  exposed to the user. With face, the flag names are part of the
+  exposed API, and we don't want to reserve keywords or have
+  excessively long prefixes.
+
+* add() supports @middleware decorated middleware
+
+* add_middleware() exists for non-decorated middleware functions, and
+  just conveniently calls middleware decorator for you (decorator only
+  necessary for provides)
+
+Also Kurt says an easy way to access the subcommands to tweak them
+would be useful. I think it's better to build up from the leaves than
+to allow mutability that could trigger rechecks and failures across
+the whole subcommand tree. Better instead to make copies of
+subparsers/subcommands/flags and treat them as internal state.
+
+* Different error message for when the command's handler function is
+  unfulfilled vs middlewares.
+* In addition to the existing function-as-first-arg interface, Command
+  should take a list of add()-ables as the first argument. This allows
+  easy composition from subcommands and common flags.
+* DisplayOptions/DisplaySpec class? (display name and hidden)
+* Should Commands have resources like clastic?
+
+
+### What goes in a bound command?
+
+* name
+* doc
+* handler func
+* list of middlewares
+* parser (currently contains the following)
+    * flag map
+    * PosArgSpecs for posargs, post_posargs
+    * flagfile flag
+    * help flag (or help subcommand)
+
+TODO: allow user to configure the message for CommandLineErrors
+TODO: should Command take resources?
+TODO: should version_ be a built-in/injectable?
+
+Need to split up the checks. Basic verification of middleware
+structure OK. Can check for redefinitions of provides and
+conflicts. Need a final .check() method that checks that all
+subcommands have their requirements fulfilled. Technically a .run()
+only needs to run one specific subcommand, only thta one needs to get
+its middleware chain built. .check() would have to build/check them
+all.
+
+### Notes on making Command inherit from Parser
+
+The only fuzzy area is when to use prs.get_flag_map() vs
+prs._path_flag_map directly. Basically, when filtration-by-usage is
+desired, get_flag_map() (or get_flags()) should be used. Only Commands
+do this, so it looks a bit weird if you're only looking at the Parser,
+where this operation appears to do nothing. This only happens in 1-2
+places so probably safe to just comment it for now.
+
+Relatedly, there are some linting errors where it appears the private
+_path_flag_map is being accessed. I think these are ok, because these
+methods are operating on objects of the same type, so the members are
+still technically "protected", in the C++ OOP sense.
+
+### A question about weakdeps
+
+Should weak deps on builtins_ be treated differently than weak
+deps on flags? Should weak deps in handler functions be treated
+differently than that in the middleware (middleware implies more
+"passthrough")?
+
 
 ## zfs-style help
 

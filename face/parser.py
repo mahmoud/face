@@ -67,6 +67,60 @@ def _validate_char(char):
     return char
 
 
+class CommandParseResult(object):
+    """The result of :meth:`Parser.parse`, instances of this type
+    semantically store all that a command line can contain. Each
+    argument corresponds 1:1 with an attribute.
+
+    Args:
+       name (str): Top-level program name, typically the first
+          argument on the command line, i.e., ``sys.argv[0]``.
+       subcmds (tuple): Sequence of subcommand names.
+       flags (OrderedDict): Mapping of canonical flag names to matched values.
+       posargs (tuple): Sequence of parsed positional arguments.
+       post_posargs (tuple): Sequence of parsed post-positional
+          arguments (args following ``--``)
+       parser (Parser): The Parser instance that parsed this
+          result. Defaults to None.
+       argv (tuple): The sequence of strings parsed by the Parser to
+          yield this result. Defaults to ``()``.
+
+    Instances of this class can be injected by accepting the "args_"
+    builtin in their Command handler function.
+
+    """
+    def __init__(self, name, parser=None, argv=()):
+        self.name = name
+        self.parser = parser
+        self.argv = tuple(argv)
+
+        self.subcmds = None  # tuple
+        self.flags = None  # OrderedDict
+        self.posargs = None  # tuple
+        self.post_posargs = None  # tuple
+
+    def to_cmd_scope(self):
+        "returns a dict which can be used as kwargs in an inject call"
+        ret = {'args_': self,
+               'cmd_': self.parser,  # TODO: see also command_, should this be prs_res.name, or argv[0]?
+               'subcmds_': self.subcmds,
+               'flags_': self.flags,
+               'posargs_': self.posargs,
+               'post_posargs_': self.post_posargs,
+               'command_': self.parser}
+        if self.flags:
+            ret.update(self.flags)
+
+        prs = self.parser if not self.subcmds else self.parser.subprs_map[self.subcmds]
+        if prs.posargs.provides:
+            ret[prs.posargs.provides] = self.posargs
+        if prs.post_posargs.provides:
+            ret[prs.post_posargs.provides] = self.post_posargs
+
+        return ret
+
+
+
 # TODO: allow name="--flag / -F" and do the split for automatic
 # char form?
 class Flag(object):
@@ -921,232 +975,3 @@ class FileValueParam(object):
     or a password file mounted in. Read in and treated like it
     was on the argv.
     """
-
-
-class CommandParseResult(object):
-    """The result of :meth:`Parser.parse`, instances of this type
-    semantically store all that a command line can contain. Each
-    argument corresponds 1:1 with an attribute.
-
-    Args:
-       name (str): Top-level program name, typically the first
-          argument on the command line, i.e., ``sys.argv[0]``.
-       subcmds (tuple): Sequence of subcommand names.
-       flags (OrderedDict): Mapping of canonical flag names to matched values.
-       posargs (tuple): Sequence of parsed positional arguments.
-       post_posargs (tuple): Sequence of parsed post-positional
-          arguments (args following ``--``)
-       parser (Parser): The Parser instance that parsed this
-          result. Defaults to None.
-       argv (tuple): The sequence of strings parsed by the Parser to
-          yield this result. Defaults to ``()``.
-
-    Instances of this class can be injected by accepting the "args_"
-    builtin in their Command handler function.
-
-    """
-    def __init__(self, name, parser=None, argv=()):
-        self.name = name
-        self.parser = parser
-        self.argv = tuple(argv)
-
-        self.subcmds = None  # tuple
-        self.flags = None  # OrderedDict
-        self.posargs = None  # tuple
-        self.post_posargs = None  # tuple
-
-    def to_cmd_scope(self):
-        "returns a dict which can be used as kwargs in an inject call"
-        ret = {'args_': self,
-               'cmd_': self.parser,  # TODO: see also command_, should this be prs_res.name, or argv[0]?
-               'subcmds_': self.subcmds,
-               'flags_': self.flags,
-               'posargs_': self.posargs,
-               'post_posargs_': self.post_posargs,
-               'command_': self.parser}
-        if self.flags:
-            ret.update(self.flags)
-
-        prs = self.parser if not self.subcmds else self.parser.subprs_map[self.subcmds]
-        if prs.posargs.provides:
-            ret[prs.posargs.provides] = self.posargs
-        if prs.post_posargs.provides:
-            ret[prs.post_posargs.provides] = self.post_posargs
-
-        return ret
-
-
-"""# Problems with argparse
-
-argparse is a pretty solid library, and despite many competitors over
-the years, the best argument parsing library available. Until now, of
-course. Here's an inventory of problems argparse did not solve, and in
-many ways, created.
-
-* "Fuzzy" flag matching
-* Inconvenient subcommand interface
-* Flags at each level of the subcommand tree
-* Positional arguments acceptable everywhere
-* Bad help rendering (esp for subcommands)
-* Inheritance-based API for extension with a lot of _*
-
-At the end of the day, the real sin of argparse is that it enables the
-creation of bad CLIs, often at the expense of ease of making good UIs
-Despite this friction, argparse is far from infinitely powerful. As a
-library, it is still relatively opinionated, and can only model a
-somewhat-conventional UNIX-y CLI.
-
-"""
-
-x = 0
-
-"""
-clastic calls your function for you, should this do that, too?  is
-there an advantage to sticking to the argparse route of handing back
-a namespace? what would the signature of a CLI route be?
-"""
-
-x = 1
-
-"""
-
-* Specifying the CLI
-* Wiring up the routing/dispatch
-* OR Using the programmatic result of the parse (the Result object)
-* Formatting the help messages?
-* Using the actual CLI
-
-"""
-
-x = 2
-
-"""
-
-# "Types" discussion
-
-* Should we support arbitrary validators (schema?) or go the clastic route and only basic types:
-  * str
-  * int
-  * float
-  * bool (TODO: default to true/false, think store_true, store_false in argparse)
-  * list of the above
-  * (leaning toward just basic types)
-
-
-"""
-
-x = 3
-
-"""
-
-- autosuggest on incorrect subcommand
-- allow subcommand grouping
-- hyphens and underscores equivalent for flags and subcommands
-
-"""
-
-4
-
-"""A command cannot have positional arguments _and_ subcommands.
-
-Need to be able to set display name for posargs
-
-Which is the best default behavior for a flag? single flag where
-presence=True (e.g., --verbose) or flag which accepts single string
-arg (e.g., --path /a/b/c)
-
-What to do if there appears to be flags after positional arguments?
-How to differentiate between a bad flag and a positional argument that
-starts with a dash?
-
-"""
-
-x = 6
-
-""""Face: the CLI framework that's friendly to your end-user."
-
-* Flag-first design that ensures flags stay consistent across all
-  subcommands, for a more coherent API, less likely to surprise, more
-  likely to delight.
-
-(Note: need to do some research re: non-unicode flags to see how much
-non-US CLI users care about em.)
-
-Case-sensitive flags are bad for business *except for*
-single-character flags (single-dash flags like -v vs -V).
-
-TODO: normalizing subcommands
-
-Should parse_as=List() with multi=extend give one long list or
-a list of lists?
-
-Parser is unable to determine which subcommands are valid leaf
-commands, i.e., which ones can be handled as the last subcommand. The
-Command dispatcher will have to raise an error if a specific
-intermediary subcommand doesn't have a handler to dispatch to.
-
-TODO: Duplicate arguments passed at the command line with the same value = ok?
-
-"""
-
-x = 7
-
-"""strata-minded thoughts:
-
-* will need to disable and handle flagfiles separately if provenance
-is going to be retained?
-
-
-clastic-related thoughts:
-
-* middleware seems unavoidable for setting up logs and generic
-  teardowns/exit messages
-* Might need an error map that maps various errors to exit codes for
-  convenience. Neat idea, sort a list of classes by class hierarchy.
-
-"""
-
-x = 8
-
-"""There are certain parse errors, such as the omission of a value
-that takes a string argument which can semi-silently pass. For instance:
-
-copy --dest --verbose /a/b/c
-
-In this terrible CLI, --verbose could be absorbed as --dest's value
-and now there's a file called --verbose on the filesystem. Here are a
-few ideas to improve the situation:
-
-1. Raise an exception for all flags' string arguments which start with
-   a "-". Create a separate syntax for passing these args such as
-   --flag=--dashedarg.
-2. Similar to the above, but only raise exceptions on known
-   flags. This creates a bit of a moving API, as a new flag could cause
-   old values to fail.
-3. Let particularly bad APIs like the above fail, but keep closer
-   track of state to help identify missing arguments earlier in the line.
-
-"""
-
-x = 9
-
-"""One big difference between Clastic and Face is that with Face, you
-typically know your first and only request at startup time. With
-Clastic, you create an Application and have to wait for some remote
-user to issue a request.
-
-This translates to a different default behavior. With Clastic, all
-routes are checked for dependency satisfaction at Application
-creation. With Face, this check is performed on-demand, and only the
-single subcommand being executed is checked.
-
-"""
-
-x = 10
-
-"""
-ideas for flag types:
-
-* iso8601 date/time/datetime
-* duration
-"""

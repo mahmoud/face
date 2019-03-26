@@ -18,6 +18,36 @@ FRIENDLY_TYPE_NAMES = {int: 'integer',
                        float: 'decimal'}
 
 
+def process_command_name(name):
+    """Validate and canonicalize a Command's name, generally on
+    construction or at subcommand addition. Like
+    ``flag_to_identifier()``, only letters, numbers, '-', and/or
+    '_'. Must begin with a letter, and no trailing underscores or
+    dashes.
+
+    Python keywords are allowed, as subcommands are never used as
+    attributes or variables in injection.
+
+    """
+
+    if not name or not isinstance(name, str):
+        raise ValueError('expected non-zero length string for subcommand name, not: %r' % name)
+
+    if name.endswith('-') or name.endswith('_'):
+        raise ValueError('expected subcommand name without trailing dashes'
+                         ' or underscores, not: %r' % name)
+
+    name_match = VALID_FLAG_RE.match(name)
+    if not name_match:
+        raise ValueError('valid subcommand name must begin with a letter, and'
+                         ' consist only of letters, digits, underscores, and'
+                         ' dashes, not: %r' % name)
+
+    subcmd_name = normalize_flag_name(name)
+
+    return subcmd_name
+
+
 def normalize_flag_name(flag):
     ret = flag.lstrip('-')
     if (len(flag) - len(ret)) > 1:

@@ -9,10 +9,10 @@ from boltons.iterutils import split, unique
 from boltons.dictutils import OrderedMultiDict as OMD
 
 from face.utils import (ERROR,
-                        VALID_FLAG_RE,
+                        get_type_desc,
                         flag_to_identifier,
                         normalize_flag_name,
-                        get_type_desc)
+                        process_command_name)
 from face.errors import (FaceException,
                          ArgumentParseError,
                          ArgumentArityError,
@@ -21,37 +21,7 @@ from face.errors import (FaceException,
                          DuplicateFlag,
                          InvalidFlagArgument,
                          InvalidPositionalArgument,
-                         MissingRequiredFlags)  # TODO: DuplicateFlag?
-
-
-def process_command_name(name):
-    """Validate and canonicalize a Command's name, generally on
-    construction or at subcommand addition. Like
-    ``flag_to_identifier()``, only letters, numbers, '-', and/or
-    '_'. Must begin with a letter, and no trailing underscores or
-    dashes.
-
-    Python keywords are allowed, as subcommands are never used as
-    attributes or variables in injection.
-
-    """
-
-    if not name or not isinstance(name, str):
-        raise ValueError('expected non-zero length string for subcommand name, not: %r' % name)
-
-    if name.endswith('-') or name.endswith('_'):
-        raise ValueError('expected subcommand name without trailing dashes'
-                         ' or underscores, not: %r' % name)
-
-    name_match = VALID_FLAG_RE.match(name)
-    if not name_match:
-        raise ValueError('valid subcommand name must begin with a letter, and'
-                         ' consist only of letters, digits, underscores, and'
-                         ' dashes, not: %r' % name)
-
-    subcmd_name = normalize_flag_name(name)
-
-    return subcmd_name
+                         MissingRequiredFlags)
 
 
 def _arg_to_subcmd(arg):

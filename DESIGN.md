@@ -75,6 +75,146 @@ as a subcommand. Otherwise, it should be a longform flag like
 up when an invalid command is issued should recommend typing "cmd
 help" for more options.
 
+## OG Design Log
+
+### Problems with argparse
+
+argparse is a pretty solid library, and despite many competitors over
+the years, the best argument parsing library available. Until now, of
+course. Here's an inventory of problems argparse did not solve, and in
+many ways, created.
+
+* "Fuzzy" flag matching
+* Inconvenient subcommand interface
+* Flags at each level of the subcommand tree
+* Positional arguments acceptable everywhere
+* Bad help rendering (esp for subcommands)
+* Inheritance-based API for extension with a lot of _*
+
+At the end of the day, the real sin of argparse is that it enables the
+creation of bad CLIs, often at the expense of ease of making good UIs
+Despite this friction, argparse is far from infinitely powerful. As a
+library, it is still relatively opinionated, and can only model a
+somewhat-conventional UNIX-y CLI.
+
+### Should face be more than a parser?
+
+clastic calls your function for you, should this do that, too?  is
+there an advantage to sticking to the argparse route of handing back
+a namespace? what would the signature of a CLI route be?
+
+* Specifying the CLI
+* Wiring up the routing/dispatch
+* OR Using the programmatic result of the parse (the Result object)
+* Formatting the help messages?
+* Using the actual CLI
+
+### "Types" discussion
+
+* Should we support arbitrary validators (schema?) or go the clastic route and only basic types:
+  * str
+  * int
+  * float
+  * bool (TODO: default to true/false, think store_true, store_false in argparse)
+  * list of the above
+  * (leaning toward just basic types)
+
+
+### Some subcommand ideas
+
+- autosuggest on incorrect subcommand
+- allow subcommand grouping
+- hyphens and underscores equivalent for flags and subcommands
+
+A command cannot have positional arguments _and_ subcommands.
+
+Need to be able to set display name for posargs
+
+Which is the best default behavior for a flag? single flag where
+presence=True (e.g., --verbose) or flag which accepts single string
+arg (e.g., --path /a/b/c)
+
+What to do if there appears to be flags after positional arguments?
+How to differentiate between a bad flag and a positional argument that
+starts with a dash?
+
+### Design tag and philosophy
+
+"Face: the CLI framework that's friendly to your end-user."
+
+* Flag-first design that ensures flags stay consistent across all
+  subcommands, for a more coherent API, less likely to surprise, more
+  likely to delight.
+
+(Note: need to do some research re: non-unicode flags to see how much
+non-US CLI users care about em.)
+
+Case-sensitive flags are bad for business *except for*
+single-character flags (single-dash flags like -v vs -V).
+
+TODO: normalizing subcommands
+
+Should parse_as=List() with multi=extend give one long list or
+a list of lists?
+
+Parser is unable to determine which subcommands are valid leaf
+commands, i.e., which ones can be handled as the last subcommand. The
+Command dispatcher will have to raise an error if a specific
+intermediary subcommand doesn't have a handler to dispatch to.
+
+TODO: Duplicate arguments passed at the command line with the same value = ok?
+
+### Strata integration
+
+* will need to disable and handle flagfiles separately if provenance
+is going to be retained?
+
+
+### Should face have middleware or other clastic features?
+
+* middleware seems unavoidable for setting up logs and generic
+  teardowns/exit messages
+* Might need an error map that maps various errors to exit codes for
+  convenience. Neat idea, sort a list of classes by class hierarchy.
+
+### Re: parse error corner cases
+
+There are certain parse errors, such as the omission of a value
+that takes a string argument which can semi-silently pass. For instance:
+
+copy --dest --verbose /a/b/c
+
+In this terrible CLI, --verbose could be absorbed as --dest's value
+and now there's a file called --verbose on the filesystem. Here are a
+few ideas to improve the situation:
+
+1. Raise an exception for all flags' string arguments which start with
+   a "-". Create a separate syntax for passing these args such as
+   --flag=--dashedarg.
+2. Similar to the above, but only raise exceptions on known
+   flags. This creates a bit of a moving API, as a new flag could cause
+   old values to fail.
+3. Let particularly bad APIs like the above fail, but keep closer
+   track of state to help identify missing arguments earlier in the line.
+
+### A notable difference with Clastic
+
+One big difference between Clastic and Face is that with Face, you
+typically know your first and only request at startup time. With
+Clastic, you create an Application and have to wait for some remote
+user to issue a request.
+
+This translates to a different default behavior. With Clastic, all
+routes are checked for dependency satisfaction at Application
+creation. With Face, this check is performed on-demand, and only the
+single subcommand being executed is checked.
+
+### Ideas for flag types:
+
+* iso8601 date/time/datetime
+* duration
+
+
 ## zfs-style help
 
 zpool help is probably handwritten (as evidenced by multiple instances

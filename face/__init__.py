@@ -7,14 +7,15 @@ from face.parser import (Flag,
                          PosArgDisplay,
                          CommandParseResult)
 
-from face.parser import (FaceException,
+from face.errors import (FaceException,
                          ArgumentParseError,
                          UnknownFlag,
                          DuplicateFlag,
                          InvalidSubcommand,
-                         InvalidFlagArgument)
+                         InvalidFlagArgument,
+                         UsageError)
 
 from face.parser import (ListParam, ChoicesParam)
-from face.command import Command, UsageError
+from face.command import Command
 from face.middleware import face_middleware
 from face.helpers import HelpHandler, StoutHelpFormatter

@@ -5,7 +5,8 @@ import sys
 from collections import OrderedDict
 
 from face.utils import unwrap_text, get_rdep_map
-from face.parser import Parser, Flag, ArgumentParseError, FaceException, ERROR
+from face.errors import ArgumentParseError, CommandLineError, UsageError
+from face.parser import Parser, Flag
 from face.helpers import HelpHandler
 from face.middleware import (inject,
                              get_arg_names,
@@ -13,34 +14,10 @@ from face.middleware import (inject,
                              face_middleware,
                              check_middleware,
                              get_middleware_chain,
-                             resolve_middleware_chain,
                              _BUILTIN_PROVIDES)
 
 from boltons.strutils import camel2under
 from boltons.iterutils import unique
-
-
-class CommandLineError(FaceException, SystemExit):
-    def __init__(self, msg, code=1):
-        SystemExit.__init__(self, msg)
-        self.code = code
-
-
-class UsageError(CommandLineError):
-    """Application developers should raise this error (or a subtype) to
-    indicate to users that the application user has used the command
-    incorrectly.
-
-    Face will exit with a nonzero exit code, after printing an error
-    message and not an ugly stack trace.
-    """
-
-    def format_message(self):
-        msg = self.args[0]
-        lines = msg.splitlines()
-        msg = '\n       '.join(lines)
-        return 'error: ' + msg
-
 
 
 def _get_default_name(func):

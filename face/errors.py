@@ -118,3 +118,39 @@ class DuplicateFlag(ArgumentParseError):
         else:
             msg = ('flag "%s" was used multiple times, but can be used only once' % flag.name)
         return cls(msg)
+
+
+## Non-parse related exceptions (used primarily in command.py instead of parser.py)
+
+class CommandLineError(FaceException, SystemExit):
+    """A :exc:`~face.FaceException` and :exc:`SystemExit` subtype that
+    enables safely catching runtime errors that would otherwise cause
+    the process to exit.
+
+    If instances of this exception are left uncaught, they will exit
+    the process.
+
+    If raised from a :meth:`~face.Command.run()` call and
+    ``print_error`` is True, face will print the error before
+    reraising. See :meth:`face.Command.run()` for more details.
+    """
+    def __init__(self, msg, code=1):
+        SystemExit.__init__(self, msg)
+        self.code = code
+
+
+class UsageError(CommandLineError):
+    """Application developers should raise this :exc:`CommandLineError`
+    subtype to indicate to users that the application user has used
+    the command incorrectly.
+
+    Instead of printing an ugly stack trace, Face will print a
+    readable error message of your choosing, then exit with a nonzero
+    exit code.
+    """
+
+    def format_message(self):
+        msg = self.args[0]
+        lines = msg.splitlines()
+        msg = '\n       '.join(lines)
+        return 'error: ' + msg

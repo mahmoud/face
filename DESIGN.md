@@ -271,6 +271,17 @@ only needs to run one specific subcommand, only thta one needs to get
 its middleware chain built. .check() would have to build/check them
 all.
 
+* Command inherit from Parser
+* Enable middleware flags
+* Ensure top-level middleware flags like --verbose show up for subcommands
+* Ensure "builtin" flags like --flagfile and --help show up for all commands
+* Make help flag come from HelpHandler
+* What to do when the top-level command doesn't have a help_handler,
+  but a subcommand does? Maybe dispatch to the subcommand's help
+  handler? Would deferring adding the HelpHandler's flag/subcmd help?
+  Right now the help flag is parsed and ignored.
+
+
 ### Notes on making Command inherit from Parser
 
 The only fuzzy area is when to use prs.get_flag_map() vs

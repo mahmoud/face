@@ -197,19 +197,6 @@ def unwrap_text(text):
     return '\n'.join(all_grafs)
 
 
-def format_invocation(name='', args=(), kwargs=None):
-    kwargs = kwargs or {}
-    a_text = ', '.join([repr(a) for a in args])
-    kw_text = ', '.join(['%s=%r' % (k, v) for k, v in kwargs.items()])
-
-    star_args_text = a_text
-    if star_args_text and kw_text:
-        star_args_text += ', '
-    star_args_text += kw_text
-
-    return '%s(%s)' % (name, star_args_text)
-
-
 def get_rdep_map(dep_map):
     """
     expects and returns a dict of {item: set([deps])}
@@ -238,3 +225,72 @@ def get_rdep_map(dep_map):
 
         ret[key] = rdeps
     return ret
+
+
+def format_nonexp_repr(obj, req_names=None, opt_names=None, opt_key=None):
+    """Format a non-expression-style repr
+
+    Some object reprs look like object instantiation, e.g., App(r=[], mw=[]).
+
+    This makes sense for smaller, lower-level objects whose state
+    roundtrips. But a lot of objects contain values that don't
+    roundtrip, like types and functions.
+
+    For those objects, there is the non-expression style repr, which
+    mimic's Python's default style to make a repr like this:
+
+    <Flag name='abc' parse_as=<type 'int'>>
+    """
+    cn = obj.__class__.__name__
+    req_names = req_names or []
+    opt_names = opt_names or []
+    all_names = unique(req_names + opt_names)
+
+    if opt_key is None:
+        opt_key = lambda v: v is None
+    assert callable(opt_key)
+
+    items = [(name, getattr(obj, name, None)) for name in all_names]
+    labels = ['%s=%r' % (name, val) for name, val in items
+              if not (name in opt_names and opt_key(val))]
+    if not labels:
+        labels = ['id=%s' % id(obj)]
+    ret = '<%s %s>' % (cn, ' '.join(labels))
+    return ret
+
+
+def format_exp_repr(obj, pos_names, req_names=None, opt_names=None, opt_key=None):
+    cn = obj.__class__.__name__
+    req_names = req_names or []
+    opt_names = opt_names or []
+    all_names = unique(req_names + opt_names)
+
+    if opt_key is None:
+        opt_key = lambda v: v is None
+    assert callable(opt_key)
+
+    args = [getattr(obj, name, None) for name in pos_names]
+
+    kw_items = [(name, getattr(obj, name, None)) for name in all_names]
+    kw_items = [(name, val) for name, val in kw_items
+                if not (name in opt_names and opt_key(val))]
+
+    return format_invocation(cn, args, kw_items)
+
+
+
+def format_invocation(name='', args=(), kwargs=None):
+    kwargs = kwargs or {}
+    a_text = ', '.join([repr(a) for a in args])
+    if isinstance(kwargs, dict):
+        kwarg_items = kwargs.items()
+    else:
+        kwarg_items = kwargs
+    kw_text = ', '.join(['%s=%r' % (k, v) for k, v in kwarg_items])
+
+    star_args_text = a_text
+    if star_args_text and kw_text:
+        star_args_text += ', '
+    star_args_text += kw_text
+
+    return '%s(%s)' % (name, star_args_text)

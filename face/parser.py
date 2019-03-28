@@ -12,7 +12,9 @@ from face.utils import (ERROR,
                         get_type_desc,
                         flag_to_identifier,
                         normalize_flag_name,
-                        process_command_name)
+                        process_command_name,
+                        format_exp_repr,
+                        format_nonexp_repr)
 from face.errors import (FaceException,
                          ArgumentParseError,
                          ArgumentArityError,
@@ -119,6 +121,8 @@ class CommandParseResult(object):
 
         return ret
 
+    def __repr__(self):
+        return format_nonexp_repr(self, ['name', 'argv', 'parser'])
 
 
 # TODO: allow name="--flag / -F" and do the split for automatic
@@ -201,9 +205,8 @@ class Flag(object):
                             % display)
         self.display = display
 
-    # TODO: __eq__ and copy
-
-
+    def __repr__(self):
+        return format_nonexp_repr(self, ['name', 'parse_as'], ['missing', 'multi'])
 
 
 class FlagDisplay(object):
@@ -281,6 +284,9 @@ class FlagDisplay(object):
         # stay hidden if set to hidden, else hide if empty
         self.hidden = self.hidden or (not val)
 
+    def __repr__(self):
+        return format_nonexp_repr(self, ['label', 'doc'], ['group', 'hidden'], opt_key=bool)
+
 
 class PosArgDisplay(object):
     """Provides individual overrides for PosArgSpec display in automated
@@ -311,9 +317,7 @@ class PosArgDisplay(object):
         return
 
     def __repr__(self):
-        cn = self.__class__.__name__
-        ret = ('<%s name=%r label=%r>' % (cn, self.name, self.label))
-        return ret
+        return format_nonexp_repr(self, ['name', 'label'])
 
 
 class PosArgSpec(object):
@@ -364,10 +368,7 @@ class PosArgSpec(object):
         # TODO: default? type check that it's a sequence matching min/max reqs
 
     def __repr__(self):
-        cn = self.__class__.__name__
-        ret = ('<%s parse_as=%r min_count=%r max_count=%r display=%r>'
-               % (cn, self.parse_as, self.min_count, self.max_count, self.display))
-        return ret
+        return format_nonexp_repr(self, ['parse_as', 'min_count', 'max_count', 'display'])
 
     @property
     def accepts_args(self):
@@ -537,7 +538,6 @@ class Parser(object):
         cn = self.__class__.__name__
         return ('<%s name=%r subcmd_count=%r flag_count=%r posargs=%r>'
                 % (cn, self.name, len(self.subprs_map), len(self.get_flags()), self.posargs))
-
 
     def _add_subparser(self, subprs):
         """Process subcommand name, check for subcommand conflicts, check for
@@ -924,9 +924,7 @@ class ListParam(object):
     __call__ = parse
 
     def __repr__(self):
-        cn = self.__class__.__name__
-        return ("%s(%r, sep=%r, strip=%r)"
-                % (cn, self.parse_one_as, self.sep, self.strip))
+        return format_exp_repr(self, ['parse_one_as'], ['sep', 'strip'])
 
 
 class ChoicesParam(object):
@@ -956,8 +954,7 @@ class ChoicesParam(object):
     __call__ = parse
 
     def __repr__(self):
-        cn = self.__class__.__name__
-        return "%s(%r, parse_as=%r)" % (cn, self.choices, self.parse_as)
+        return format_exp_repr(self, ['choices'], ['parse_as'])
 
 
 class FilePathParam(object):

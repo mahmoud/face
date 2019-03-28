@@ -120,6 +120,9 @@ class CommandParseResult(object):
         return ret
 
 
+
+# TODO: allow name="--flag / -F" and do the split for automatic
+# char form?
 class Flag(object):
     """The Flag object represents all there is to know about a resource
     that can be parsed from argv and consumed by a Command
@@ -198,22 +201,7 @@ class Flag(object):
                             % display)
         self.display = display
 
-    def __eq__(self, other):
-        if not isinstance(other, Flag):
-            return NotImplemented
-        # these two should be enough to be semantically overlapping/conflicting
-        return (self.name, self.parse_as) == (other.name, other.parse_as)
-
-    def __ne__(self, other):
-        not_ret = self == other
-        if not_ret is NotImplemented:
-            return not_ret
-        return not not_ret
-
-    def __hash__(self):
-        return hash((self.name, self.parse_as))
-
-    # TODO: copy
+    # TODO: __eq__ and copy
 
 
 

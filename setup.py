@@ -6,7 +6,7 @@ from setuptools import setup
 
 
 __author__ = 'Mahmoud Hashemi'
-__version__ = '19.0.1dev'
+__version__ = '19.1.0'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/face'
 __license__ = 'BSD'

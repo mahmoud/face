@@ -134,6 +134,8 @@ def get_cardinalized_args_label(name, min_count, max_count):
       0, None: [args ...]
       1, 3: args ...
     '''
+    if min_count == max_count:
+        return ' '.join([name] * min_count)
     if min_count == 1:
         return name + ' ' + get_cardinalized_args_label(name,
                                                         min_count=0,

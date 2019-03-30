@@ -69,6 +69,31 @@ def _validate_char(char):
     return char
 
 
+def _posargs_to_provides(posargspec, posargs):
+    '''Automatically unwrap injectable posargs into a more intuitive
+    format, similar to an API a human might design. For instance, a
+    function which takes exactly one argument would not take a list of
+    exactly one argument.
+
+    Cases as follows:
+
+    1. min_count > 1 or max_count > 1, pass through posargs as a list
+    2. min_count == max_count == 1 -> single argument
+    3. min_count == 0 and max_count == 1 -> single argument or None
+
+    '''
+    # all of the following assumes a valid posargspec, with min_count
+    # <= max_count, etc.
+    pas = posargspec
+    if pas.min_count > 1 or pas.max_count > 1:
+        return posargs
+    if pas.min_count == pas.max_count == 1:
+        return posargs[0]
+    if pas.min_count == 0 and pas.max_count == 1:
+        return posargs[0] if posargs else None
+    raise RuntimeError('how did we get here again? %r -- %r' % (posargspec, posargs))
+
+
 class CommandParseResult(object):
     """The result of :meth:`Parser.parse`, instances of this type
     semantically store all that a command line can contain. Each
@@ -115,9 +140,11 @@ class CommandParseResult(object):
 
         prs = self.parser if not self.subcmds else self.parser.subprs_map[self.subcmds]
         if prs.posargs.provides:
-            ret[prs.posargs.provides] = self.posargs
+            posargs_provides = _posargs_to_provides(prs.posargs, self.posargs)
+            ret[prs.posargs.provides] = posargs_provides
         if prs.post_posargs.provides:
-            ret[prs.post_posargs.provides] = self.post_posargs
+            posargs_provides = _posargs_to_provides(prs.posargs, self.post_posargs)
+            ret[prs.post_posargs.provides] = posargs_provides
 
         return ret
 

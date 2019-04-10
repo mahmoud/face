@@ -78,9 +78,11 @@ def _posargs_to_provides(posargspec, posargs):
     Cases as follows:
 
     1. min_count > 1 or max_count > 1, pass through posargs as a list
-    2. min_count == max_count == 1 -> single argument
-    3. min_count == 0 and max_count == 1 -> single argument or None
+    2. max_count == 1 -> single argument or None
 
+    Even if min_count == 1, you can get a None back. This compromise
+    was made necessary to keep "to_cmd_scope" robust enough to pass to
+    help/error handler funcs when validation fails.
     '''
     # all of the following assumes a valid posargspec, with min_count
     # <= max_count, etc.

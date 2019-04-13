@@ -364,24 +364,41 @@ class PosArgSpec(object):
        display: Pass a string to customize the name in help output, or
           False to hide it completely. Also accepts a PosArgDisplay
           instance, or a dict of the respective arguments.
+       provides (str): name of an argument to be passed to a receptive
+          handler function.
+       name (str): A shortcut to set *display* name and *provides*
+       count (int): A shortcut to set min_count and max_count to a single value
+          when an exact number of arguments should be specified.
 
     PosArgSpec instances are stateless and safe to be used multiple
     times around the application.
+
     """
-    def __init__(self, parse_as=str, min_count=None, max_count=None, display=None, provides=None):
+    def __init__(self, parse_as=str, min_count=None, max_count=None, display=None, provides=None, **kwargs):
         if not callable(parse_as) and parse_as is not ERROR:
             raise TypeError('expected callable or ERROR for parse_as, not %r' % parse_as)
+        name = kwargs.pop('name', None)
+        count = kwargs.pop('count', None)
+        if kwargs:
+            raise TypeError('unexpected keyword arguments: %r' % list(kwargs.keys()))
         self.parse_as = parse_as
+
+        # count convenience alias
+        min_count = count if min_count is None else min_count
+        max_count = count if max_count is None else max_count
+
         self.min_count = int(min_count) if min_count else 0
         self.max_count = int(max_count) if max_count is not None else None
 
         if self.min_count < 0:
             raise ValueError('expected min_count >= 0, not: %r' % self.min_count)
-        if self.max_count is not None and self.max_count < 0:
-            raise ValueError('expected max_count >= 0, not: %r' % self.max_count)
+        if self.max_count is not None and self.max_count <= 0:
+            raise ValueError('expected max_count > 0, not: %r' % self.max_count)
         if self.max_count and self.min_count > self.max_count:
             raise ValueError('expected min_count > max_count, not: %r > %r'
                              % (self.min_count, self.max_count))
+
+        provides = name if provides is None else provides
         self.provides = provides
 
         if display is None:
@@ -391,6 +408,7 @@ class PosArgSpec(object):
         elif isinstance(display, str):
             display = {'name': display}
         if isinstance(display, dict):
+            display.setdefault('name', name)
             display = PosArgDisplay(self, **display)
         self.display = display
 

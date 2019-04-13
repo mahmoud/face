@@ -16,8 +16,20 @@ face Project Log
   * debug/info/warn/critical
     * '..', '--', '!!', '**'
     * attach your own sinks for fun and profit
+  * some hook for testing endpoints that use stdin/stdout
+  * middleware + flag type that prompts the user for a value if it
+    wasn't passed as a flag.
 * Built-in entrypoints-based plugin convention?
   * How to add subcommands mostly, but maybe middleware
+* Better error message around misordered middlewares
+  * (check if mw_unres is in any of the mw provides)
+* What to do if flag and posargs provide the same thing?
+  * If one is on parent and the other is on subcommand, pick the most
+    local one?
+  * If both are at the same level, raise an error as soon as one is set.
+
+19.1.0
+------
 * posargspec aliases:
   * count (exact min and max count)
   * name (display name and provides name)

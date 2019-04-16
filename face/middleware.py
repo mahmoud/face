@@ -213,21 +213,6 @@ def face_middleware(func=None, **kwargs):
     return decorate_face_middleware
 
 
-def resolve_middleware_chain(middlewares, innermost, preprovided):
-    """Same as :func:`get_middleware_chain()`, but without the exception
-    raising. Again, mostly for internal use.
-
-    Returns:
-       A tuple of ``(tentative_chain_func, args_required_by_chain,
-       unresolved_arg_names)``.
-
-    """
-    mw_avail = set(preprovided) - set([INNER_NAME])
-    mw_provides = [mw._face_provides for mw in middlewares]
-
-    return make_chain(middlewares, mw_provides, innermost, mw_avail, INNER_NAME)
-
-
 def get_middleware_chain(middlewares, innermost, preprovided):
     """Perform basic validation of innermost function, wrap it in
     middlewares, and raise a :exc:`NameError` on any unresolved
@@ -252,14 +237,18 @@ def get_middleware_chain(middlewares, innermost, preprovided):
     if INNER_NAME in get_arg_names(innermost):
         raise NameError(_inner_exc_msg % (INNER_NAME, innermost))
 
-    mw_chain, mw_chain_args, mw_unres = resolve_middleware_chain(middlewares,
-                                                                 innermost,
-                                                                 preprovided)
+    mw_builtins = set(preprovided) - set([INNER_NAME])
+    mw_provides = [list(mw._face_provides) for mw in middlewares]
+
+    mw_chain, mw_chain_args, mw_unres = make_chain(middlewares, mw_provides, innermost, mw_builtins, INNER_NAME)
 
     if mw_unres:
-        # TODO: enhance error message
-        raise NameError("unresolved request middleware arguments: %r"
-                        % sorted(mw_unres))
+        msg = "unresolved middleware or handler arguments: %r" % sorted(mw_unres)
+        avail_unres = mw_unres & (mw_builtins | set(sum(mw_provides, [])))
+        if avail_unres:
+            msg += (' (%r provided but not resolvable, check middleware order.)'
+                    % sorted(avail_unres))
+        raise NameError(msg)
     return mw_chain
 
 

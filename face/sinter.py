@@ -155,7 +155,6 @@ def compile_code(code_str, name, env=None, verbose=_VERBOSE):
     return env[name]
 
 
-
 def make_chain(funcs, provides, final_func, preprovided, inner_name):
     funcs = list(funcs)
     provides = list(provides)

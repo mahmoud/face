@@ -27,6 +27,12 @@ face Project Log
   * If one is on parent and the other is on subcommand, pick the most
     local one?
   * If both are at the same level, raise an error as soon as one is set.
+* Allow middlewares to "override", "update", or "transform"
+  injectables, aka provide an injectable which has already been
+  provided. We don't want to invite conflicts, so they would need to
+  explicitly accept that injectable as well as provide it.
+* Better document that if middleware arguments have a default value,
+  they will not pull in flags.
 
 19.1.0
 ------

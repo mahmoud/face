@@ -881,7 +881,7 @@ class Parser(object):
             else:
                 pfm[flag_name] = flag.missing
         if missing_flags:
-            raise MissingRequiredFlags(cfm, pfm, missing_flags)
+            raise MissingRequiredFlags.from_parse(cfm, pfm, missing_flags)
 
         # ... resolve dupes
         for flag_name in pfm:

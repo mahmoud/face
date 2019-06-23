@@ -293,7 +293,7 @@ class Command(Parser):
             if func is None:
                 continue  # handled by run()
 
-            prs = self.subprs_map[path]
+            prs = self.subprs_map[path] if path else self
             provides = []
             if prs.posargs.provides:
                 provides += [prs.posargs.provides]

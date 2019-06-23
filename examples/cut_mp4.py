@@ -36,6 +36,9 @@ def main():
     cmd.add('--start', doc='starting timestamp in hh:mm:ss format')
     cmd.add('--end', doc='ending timestamp in hh:mm:ss format')
 
+    cmd.add('--filter-audio', parse_as=True,
+            doc='skip high-pass/low-pass noise filtration of audio.'
+            ' good for noisy meetup recordings.')
     cmd.add('--no-align-keyframes', parse_as=True,
             doc="don't align to the nearest keyframe, potentially"
             " creating an unclean cut with video artifacts")
@@ -43,7 +46,7 @@ def main():
     cmd.run()
 
 
-def cut_mp4(input, output, start, end, no_align_keyframes=False):
+def cut_mp4(input, output, start, end, no_align_keyframes=False, filter_audio=False):
     """Losslessly cut an mp4 video to a time range using ffmpeg. Note that
     ffmpeg must be preinstalled on the system.
     """
@@ -61,8 +64,12 @@ def cut_mp4(input, output, start, end, no_align_keyframes=False):
     if not no_align_keyframes:
         cmd.append('-noaccurate_seek')
 
-    cmd.extend(['-i', input, '-vcodec', 'copy', '-acodec', 'copy',
-                '-t', duration_ts, '-avoid_negative_ts', 'make_zero', output])
+    audio_flags = ['-acodec', 'copy']
+    if filter_audio:
+        audio_flags = ['-af', 'highpass=f=300,lowpass=f=3000']
+
+    cmd.extend(['-i', input, '-vcodec', 'copy'] + audio_flags +
+               ['-t', duration_ts, '-avoid_negative_ts', 'make_zero', '-strict', '-2', output])
 
     print('# ' + ' '.join(cmd))
 

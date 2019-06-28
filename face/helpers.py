@@ -390,7 +390,7 @@ class HelpHandler(object):
         # TODO: assert self.formatter has a get_help_text() method?
         return
 
-    def default_help_func(self, cmd_, subcmds_, args_):
+    def default_help_func(self, cmd_, subcmds_, args_, command_):
         """The default help handler function. Called when either the help flag
         or subcommand is passed.
 
@@ -398,35 +398,8 @@ class HelpHandler(object):
         this HelpHandler and exits with exit code 0.
 
         """
-        try:
-            program_name = args_.argv[0]
-        except IndexError:
-            program_name = cmd_.name
-        else:
-            # TODO: review
-            path, basename = os.path.split(program_name)
-            if basename == '__main__.py':
-                pkg_name = os.path.basename(path)
-                executable_path = get_minimal_executable()
-                program_name = '%s -m %s' % (executable_path, pkg_name)
-
-        print(self.formatter.get_help_text(cmd_, subcmds=subcmds_, program_name=program_name))
+        print(self.formatter.get_help_text(command_, subcmds=subcmds_, program_name=cmd_))
         sys.exit(0)
-
-
-def get_minimal_executable(executable=None, path=None):
-    executable = sys.executable if executable is None else executable
-    path = os.getenv('PATH', '') if path is None else path
-    if isinstance(path, str):
-        path = path.split(':')
-
-    executable_basename = os.path.basename(executable)
-    for p in path:
-        if os.path.relpath(executable, p) == executable_basename:
-            return executable_basename
-        # TODO: support "../python" as a return?
-    return executable
-
 
 
 """Usage: cmd_name sub_cmd [..as many subcommands as the max] --flags args ...

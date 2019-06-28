@@ -14,7 +14,8 @@ from face.utils import (ERROR,
                         normalize_flag_name,
                         process_command_name,
                         format_exp_repr,
-                        format_nonexp_repr)
+                        format_nonexp_repr,
+                        get_minimal_executable)
 from face.errors import (FaceException,
                          ArgumentParseError,
                          ArgumentArityError,
@@ -130,12 +131,25 @@ class CommandParseResult(object):
 
     def to_cmd_scope(self):
         "returns a dict which can be used as kwargs in an inject call"
+        _subparser = self.parser.subprs_map[self.subcmds] if self.subcmds else self.parser
+
+        if not self.argv:
+            cmd_ = self.parser.name
+        else:
+            cmd_ = self.argv[0]
+            path, basename = os.path.split(cmd_)
+            if basename == '__main__.py':
+                pkg_name = os.path.basename(path)
+                executable_path = get_minimal_executable()
+                cmd_ = '%s -m %s' % (executable_path, pkg_name)
+
         ret = {'args_': self,
-               'cmd_': self.parser,  # TODO: see also command_, should this be prs_res.name, or argv[0]?
+               'cmd_': cmd_,
                'subcmds_': self.subcmds,
                'flags_': self.flags,
                'posargs_': self.posargs,
                'post_posargs_': self.post_posargs,
+               'subcommand_': _subparser,
                'command_': self.parser}
         if self.flags:
             ret.update(self.flags)
@@ -614,9 +628,9 @@ class Parser(object):
 
         # with checks complete, add parser and all subparsers
         self.subprs_map[(subprs_name,)] = subprs
-        for subprs_path in subprs.subprs_map:
-            new_path = (subprs_name,) + subprs_path
-            self.subprs_map[new_path] = subprs
+        for path, cur_subprs in subprs.subprs_map.items():
+            new_path = (subprs_name,) + path
+            self.subprs_map[new_path] = cur_subprs
 
         # Flags inherit down (a parent's flags are usable by the child)
         for path, flags in subprs._path_flag_map.items():

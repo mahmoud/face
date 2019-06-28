@@ -1,5 +1,7 @@
 
+import os
 import re
+import sys
 import keyword
 
 from boltons.strutils import pluralize
@@ -296,3 +298,17 @@ def format_invocation(name='', args=(), kwargs=None):
     star_args_text += kw_text
 
     return '%s(%s)' % (name, star_args_text)
+
+
+def get_minimal_executable(executable=None, path=None):
+    executable = sys.executable if executable is None else executable
+    path = os.getenv('PATH', '') if path is None else path
+    if isinstance(path, str):
+        path = path.split(':')
+
+    executable_basename = os.path.basename(executable)
+    for p in path:
+        if os.path.relpath(executable, p) == executable_basename:
+            return executable_basename
+        # TODO: support "../python" as a return?
+    return executable

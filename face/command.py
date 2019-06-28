@@ -349,16 +349,17 @@ class Command(Parser):
                             % print_error)
 
         kwargs = dict(extras) if extras else {}
-        # TODO: turn parse exceptions into nice error messages
+
         try:
             prs_res = self.parse(argv=argv)
         except ArgumentParseError as ape:
             prs_res = ape.prs_res
 
             # even if parsing failed, check if the caller was trying to access the help flag
-            if self.help_handler and prs_res.flags and prs_res.flags.get(self.help_handler.flag.name):
+            cmd = prs_res.to_cmd_scope()['subcommand_']
+            if cmd.help_handler and prs_res.flags and prs_res.flags.get(cmd.help_handler.flag.name):
                 kwargs.update(prs_res.to_cmd_scope())
-                return inject(self.help_handler.func, kwargs)
+                return inject(cmd.help_handler.func, kwargs)
 
             msg = 'error: ' + self.name
             if prs_res.subcmds:
@@ -380,10 +381,11 @@ class Command(Parser):
         # default in case no middlewares have been installed
         func = self._path_func_map[prs_res.subcmds]
 
-        if self.help_handler and (prs_res.flags.get(self.help_handler.flag.name) or not func):
-            return inject(self.help_handler.func, kwargs)
+        cmd = kwargs['subcommand_']
+        if cmd.help_handler and (not func or (prs_res.flags and prs_res.flags.get(cmd.help_handler.flag.name))):
+            return inject(cmd.help_handler.func, kwargs)
         elif not func:
-            return None  # TODO: what to do with commands that do nothing and also have no help?
+            return None  # TODO what to do when no help handler and no func?
 
         self.prepare(paths=[prs_res.subcmds])
         wrapped = self._path_wrapped_map.get(prs_res.subcmds, func)

@@ -26,6 +26,11 @@ from face.errors import (FaceException,
                          InvalidPositionalArgument,
                          MissingRequiredFlags)
 
+try:
+    unicode
+except NameError:
+    unicode = str
+
 
 def _arg_to_subcmd(arg):
     return arg.lower().replace('-', '_')
@@ -687,7 +692,6 @@ class Parser(object):
             flag_map[flag_name] = flag
             if flag.char:
                 flag_map[flag.char] = flag
-
         return
 
     def parse(self, argv):
@@ -716,6 +720,9 @@ class Parser(object):
             argv = sys.argv
         if not argv:
             raise ArgumentParseError('expected non-empty sequence of arguments, not: %r' % (argv,))
+        for arg in argv:
+            if not isinstance(arg, (str, unicode)):
+                raise TypeError('parse expected all args as strings, not: %r (%s)' % (arg, type(arg).__name__))
 
         flag_map = None
         # first snip off the first argument, the command itself

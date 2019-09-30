@@ -37,7 +37,7 @@ def main():
     cmd.add('--end', doc='ending timestamp in hh:mm:ss format')
 
     cmd.add('--filter-audio', parse_as=True,
-            doc='skip high-pass/low-pass noise filtration of audio.'
+            doc='do high-pass/low-pass noise filtration of audio.'
             ' good for noisy meetup recordings.')
     cmd.add('--no-align-keyframes', parse_as=True,
             doc="don't align to the nearest keyframe, potentially"

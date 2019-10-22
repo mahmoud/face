@@ -24,8 +24,13 @@ def _rg(glob, max_count):
     return
 
 
+def _ls(file_paths):
+    print(file_paths)
+    return file_paths
+
+
 @face_middleware(provides=['timestamp'])
-def _timestamp_mw(next_, glob):
+def _timestamp_mw(next_):
     return next_(timestamp=datetime.datetime.now())
 
 
@@ -38,6 +43,8 @@ def get_search_command(as_parser=False):
     cmd = Command(None, 'search')
     cmd.add('--verbose', char='-V', parse_as=True)
 
+    # posargs = None if not with_posargs else {'display': 'file_paths', 'provides': 'file_paths'}
+
     rg_subcmd = Command(_rg, 'rg')
     rg_subcmd.add('--glob', char='-g', multi=True, parse_as=str,
                    doc='Include or exclude files/directories for searching'
@@ -48,6 +55,9 @@ def get_search_command(as_parser=False):
     rg_subcmd.add('--extensions', ListParam(strip=True))
 
     cmd.add(rg_subcmd)
+
+    ls_subcmd = Command(_ls, 'ls', posargs={'display': 'file_paths', 'provides': 'file_paths'})
+    cmd.add(ls_subcmd)
 
     cmd.add(_timestamp_mw)
 
@@ -128,7 +138,7 @@ def test_search_cmd_basic(capsys):
     with raises(SystemExit):
         cmd.run(['search', 'rg', '-h', 'badposarg'])
     out, err = capsys.readouterr()
-    assert '[FLAGS]' in out
+    assert '[FLAGS]' in err
 
 
 def test_search_parse_errors():
@@ -145,6 +155,14 @@ def test_search_help(capsys):
         cmd.run(['search', '-h'])
 
     out, err = capsys.readouterr()
-    assert '[FLAGS]' in out
-    assert '--help' in out
-    assert 'show this help message and exit' in out
+    assert '[FLAGS]' in err
+    assert '--help' in err
+    assert 'show this help message and exit' in err
+
+
+def test_search_ls():
+    cmd = get_search_command()
+
+    res = cmd.run(['search', 'ls', 'a', 'b'])
+
+    assert res == ('a', 'b')

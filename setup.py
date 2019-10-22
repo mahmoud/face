@@ -14,7 +14,7 @@ __license__ = 'BSD'
 
 setup(name='face',
       version=__version__,
-      description="A command-line interface parser and framework, friendly for users, full-featured for developers.",
+      description="A command-line application framework (and CLI parser). Friendly for users, full-featured for developers.",
       long_description=__doc__,
       author=__author__,
       author_email=__contact__,

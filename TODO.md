@@ -113,3 +113,10 @@ Related:
 
 * Recommended practice for exiting with an error?
 * Need to also wrap command-level doc to width
+
+## Common errors
+
+Errors a face-using developer might run into.
+
+* Flag nested under one command not available under another. Could do
+  a quick look around and give a "did you mean"

@@ -93,7 +93,7 @@ def _posargs_to_provides(posargspec, posargs):
     # all of the following assumes a valid posargspec, with min_count
     # <= max_count, etc.
     pas = posargspec
-    if pas.min_count > 1 or pas.max_count > 1:
+    if pas.max_count is None or pas.min_count > 1 or pas.max_count > 1:
         return posargs
     if pas.max_count == 1:
         # None is considered sufficiently unambiguous, even for cases when pas.min_count==1
@@ -723,7 +723,13 @@ class Parser(object):
         for arg in argv:
             if not isinstance(arg, (str, unicode)):
                 raise TypeError('parse expected all args as strings, not: %r (%s)' % (arg, type(arg).__name__))
-
+        '''
+        for subprs_path, subprs in self.subprs_map.items():
+            if len(subprs_path) == 1:
+                # _add_subparser takes care of recurring so we only
+                # need direct subparser descendants
+                self._add_subparser(subprs, overwrite=True)
+        '''
         flag_map = None
         # first snip off the first argument, the command itself
         cmd_name, args = argv[0], list(argv)[1:]

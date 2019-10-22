@@ -166,7 +166,7 @@ class Command(Parser):
             return self.add_middleware(target)
 
         subcmd = a[0]
-        if not isinstance(subcmd, Command) and callable(subcmd):
+        if not isinstance(subcmd, Command) and callable(subcmd) or subcmd is None:
             subcmd = Command(*a, **kw)  # attempt to construct a new subcmd
 
         if isinstance(subcmd, Command):
@@ -318,7 +318,7 @@ class Command(Parser):
 
         return
 
-    def run(self, argv=None, extras=None, print_error=None):
+    def run(self, argv=None, extras=None, print_error=None, parse_or_help=False):
         """Parses arguments and dispatches to the appropriate subcommand
         handler. If there is a parse error due to invalid user input,
         an error is printed and a CommandLineError is raised. If not
@@ -349,6 +349,7 @@ class Command(Parser):
                             % print_error)
 
         kwargs = dict(extras) if extras else {}
+        kwargs['print_error_'] = print_error
 
         try:
             prs_res = self.parse(argv=argv)
@@ -383,9 +384,14 @@ class Command(Parser):
 
         cmd = kwargs['subcommand_']
         if cmd.help_handler and (not func or (prs_res.flags and prs_res.flags.get(cmd.help_handler.flag.name))):
+            # import pdb;pdb.set_trace()
             return inject(cmd.help_handler.func, kwargs)
         elif not func:
             return None  # TODO what to do when no help handler and no func?
+
+        if parse_or_help:
+            # import pdb;pdb.set_trace()
+            return prs_res
 
         self.prepare(paths=[prs_res.subcmds])
         wrapped = self._path_wrapped_map.get(prs_res.subcmds, func)
@@ -394,6 +400,6 @@ class Command(Parser):
             ret = inject(wrapped, kwargs)
         except UsageError as ue:
             if print_error:
-                print(ue.format_message())
+                print_error(ue.format_message())
             raise
         return ret

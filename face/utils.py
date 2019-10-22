@@ -10,6 +10,10 @@ from boltons.typeutils import make_sentinel
 
 import face
 
+try:
+    unicode
+except NameError:
+    unicode = str
 
 ERROR = make_sentinel('ERROR')  # used for parse_as=ERROR
 
@@ -32,7 +36,7 @@ def process_command_name(name):
 
     """
 
-    if not name or not isinstance(name, str):
+    if not name or not isinstance(name, (str, unicode)):
         raise ValueError('expected non-zero length string for subcommand name, not: %r' % name)
 
     if name.endswith('-') or name.endswith('_'):
@@ -70,7 +74,7 @@ def flag_to_identifier(flag):
     Input case doesn't matter, output case will always be lower.
     """
     orig_flag = flag
-    if not flag or not isinstance(flag, str):
+    if not flag or not isinstance(flag, (str, unicode)):
         raise ValueError('expected non-zero length string for flag, not: %r' % flag)
 
     if flag.endswith('-') or flag.endswith('_'):
@@ -303,7 +307,7 @@ def format_invocation(name='', args=(), kwargs=None):
 def get_minimal_executable(executable=None, path=None):
     executable = sys.executable if executable is None else executable
     path = os.getenv('PATH', '') if path is None else path
-    if isinstance(path, str):
+    if isinstance(path, (str, unicode)):
         path = path.split(':')
 
     executable_basename = os.path.basename(executable)

@@ -43,8 +43,6 @@ def get_search_command(as_parser=False):
     cmd = Command(None, 'search')
     cmd.add('--verbose', char='-V', parse_as=True)
 
-    # posargs = None if not with_posargs else {'display': 'file_paths', 'provides': 'file_paths'}
-
     rg_subcmd = Command(_rg, 'rg')
     rg_subcmd.add('--glob', char='-g', multi=True, parse_as=str,
                    doc='Include or exclude files/directories for searching'
@@ -56,7 +54,7 @@ def get_search_command(as_parser=False):
 
     cmd.add(rg_subcmd)
 
-    ls_subcmd = Command(_ls, 'ls', posargs={'display': 'file_paths', 'provides': 'file_paths'})
+    ls_subcmd = Command(_ls, 'ls', posargs={'display': 'file_path', 'provides': 'file_paths'})
     cmd.add(ls_subcmd)
 
     cmd.add(_timestamp_mw)
@@ -135,10 +133,9 @@ def test_search_cmd_basic(capsys):
     out, err = capsys.readouterr()
     assert 'error:' in err
 
-    with raises(SystemExit):
-        cmd.run(['search', 'rg', '-h', 'badposarg'])
+    cmd.run(['search', 'rg', '-h', 'badposarg'])
     out, err = capsys.readouterr()
-    assert '[FLAGS]' in err
+    assert '[FLAGS]' in out  # help printed bc flag
 
 
 def test_search_parse_errors():
@@ -151,18 +148,22 @@ def test_search_help(capsys):
     # pdb won't work in here bc of the captured stdout/err
     cmd = get_search_command()
 
-    with raises(SystemExit):
-        cmd.run(['search', '-h'])
+    cmd.run(['search', '-h'])
 
     out, err = capsys.readouterr()
-    assert '[FLAGS]' in err
-    assert '--help' in err
-    assert 'show this help message and exit' in err
+    assert '[FLAGS]' in out
+    assert '--help' in out
+    assert 'show this help message and exit' in out
 
 
-def test_search_ls():
+def test_search_ls(capsys):
     cmd = get_search_command()
 
     res = cmd.run(['search', 'ls', 'a', 'b'])
 
     assert res == ('a', 'b')
+
+    cmd.run(['search', 'ls', '-h'])
+
+    out, err = capsys.readouterr()
+    assert 'file_paths' in out

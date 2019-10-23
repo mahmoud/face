@@ -390,7 +390,7 @@ class HelpHandler(object):
         # TODO: assert self.formatter has a get_help_text() method?
         return
 
-    def default_help_func(self, cmd_, subcmds_, args_, command_, print_error_):
+    def default_help_func(self, cmd_, subcmds_, args_, command_):
         """The default help handler function. Called when either the help flag
         or subcommand is passed.
 
@@ -398,8 +398,7 @@ class HelpHandler(object):
         this HelpHandler and exits with exit code 0.
 
         """
-        print_error_(self.formatter.get_help_text(command_, subcmds=subcmds_, program_name=cmd_))
-        sys.exit(0)  # TODO: should this be here, or in cmd.run()?
+        print(self.formatter.get_help_text(command_, subcmds=subcmds_, program_name=cmd_))
 
 
 """Usage: cmd_name sub_cmd [..as many subcommands as the max] --flags args ...

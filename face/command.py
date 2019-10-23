@@ -318,7 +318,7 @@ class Command(Parser):
 
         return
 
-    def run(self, argv=None, extras=None, print_error=None, parse_or_help=False):
+    def run(self, argv=None, extras=None, print_error=None):
         """Parses arguments and dispatches to the appropriate subcommand
         handler. If there is a parse error due to invalid user input,
         an error is printed and a CommandLineError is raised. If not
@@ -349,7 +349,7 @@ class Command(Parser):
                             % print_error)
 
         kwargs = dict(extras) if extras else {}
-        kwargs['print_error_'] = print_error
+        kwargs['print_error_'] = print_error  # TODO: print_error_ in builtin provides?
 
         try:
             prs_res = self.parse(argv=argv)
@@ -384,14 +384,9 @@ class Command(Parser):
 
         cmd = kwargs['subcommand_']
         if cmd.help_handler and (not func or (prs_res.flags and prs_res.flags.get(cmd.help_handler.flag.name))):
-            # import pdb;pdb.set_trace()
             return inject(cmd.help_handler.func, kwargs)
         elif not func:
             return None  # TODO what to do when no help handler and no func?
-
-        if parse_or_help:
-            # import pdb;pdb.set_trace()
-            return prs_res
 
         self.prepare(paths=[prs_res.subcmds])
         wrapped = self._path_wrapped_map.get(prs_res.subcmds, func)

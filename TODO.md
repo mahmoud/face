@@ -120,3 +120,5 @@ Errors a face-using developer might run into.
 
 * Flag nested under one command not available under another. Could do
   a quick look around and give a "did you mean"
+* posargs display expects name to be singular bc it's going to be
+  pluralized. too smart?

@@ -24,7 +24,7 @@ setup(name='face',
       zip_safe=False,
       license=__license__,
       platforms='any',
-      install_requires=['boltons'],
+      install_requires=['boltons>=19.3.0'],
       classifiers=[
           'Topic :: Utilities',
           'Intended Audience :: Developers',

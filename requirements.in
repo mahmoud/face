@@ -1,4 +1,4 @@
-boltons
+boltons>=19.3.0
 
 # dev deps
 pip-tools

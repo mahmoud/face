@@ -14,8 +14,6 @@ from face.utils import (ERROR,
                         flag_to_identifier,
                         normalize_flag_name,
                         process_command_name,
-                        format_exp_repr,
-                        format_nonexp_repr,
                         get_minimal_executable)
 from face.errors import (FaceException,
                          ArgumentParseError,

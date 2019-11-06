@@ -7,6 +7,7 @@ from collections import OrderedDict
 
 from boltons.iterutils import split, unique
 from boltons.dictutils import OrderedMultiDict as OMD
+from boltons.funcutils import format_exp_repr, format_nonexp_repr
 
 from face.utils import (ERROR,
                         get_type_desc,

@@ -311,7 +311,7 @@ class Command(Parser):
             try:
                 wrapped = get_middleware_chain(mws, func, provides)
             except NameError as ne:
-                ne.args = (ne.args[0] + ' (in path: %r)' % path,)
+                ne.args = (ne.args[0] + ' (in path: %r)' % (path,),)
                 raise
 
             self._path_wrapped_map[path] = wrapped

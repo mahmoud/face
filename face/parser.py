@@ -123,11 +123,11 @@ class CommandParseResult(object):
     builtin in their Command handler function.
 
     """
-    def __init__(self, name, parser=None, argv=()):
-        self.name = name
+    def __init__(self, parser=None, argv=()):
         self.parser = parser
         self.argv = tuple(argv)
 
+        self.name = None  # str
         self.subcmds = None  # tuple
         self.flags = None  # OrderedDict
         self.posargs = None  # tuple
@@ -717,8 +717,11 @@ class Parser(object):
         """
         if argv is None:
             argv = sys.argv
+        cpr = CommandParseResult(parser=self, argv=argv)
         if not argv:
-            raise ArgumentParseError('expected non-empty sequence of arguments, not: %r' % (argv,))
+            ape = ArgumentParseError('expected non-empty sequence of arguments, not: %r' % (argv,))
+            ape.prs_res = cpr
+            raise ape
         for arg in argv:
             if not isinstance(arg, (str, unicode)):
                 raise TypeError('parse expected all args as strings, not: %r (%s)' % (arg, type(arg).__name__))
@@ -732,10 +735,10 @@ class Parser(object):
         flag_map = None
         # first snip off the first argument, the command itself
         cmd_name, args = argv[0], list(argv)[1:]
+        cpr.name = cmd_name
 
         # we record our progress as we parse to provide the most
         # up-to-date info possible to the error and help handlers
-        cpr = CommandParseResult(cmd_name, parser=self, argv=argv)
 
         try:
             # then figure out the subcommand path

@@ -1,10 +1,13 @@
 
 import pytest
 
-from face import (Command,
+from face import (Flag,
+                  ERROR,
+                  Command,
                   Parser,
                   PosArgSpec,
                   ArgumentParseError)
+from face.utils import format_flag_post_doc
 
 
 def get_subcmd_cmd():
@@ -17,7 +20,10 @@ def get_subcmd_cmd():
 
 
 def _subsubcmd():
-    "the subsubcmd help"
+    """the subsubcmd help
+
+    another line
+    """
     pass
 
 
@@ -61,7 +67,13 @@ def test_help(subcmd_cmd, argv, contains, exit_code, capsys):
     return
 
 
-
 # TODO: need to have commands reload their own subcommands if
 # we're going to allow adding subcommands to subcommands after
 # initial addition to the parent command
+
+
+def test_flag_post_doc():
+    assert format_flag_post_doc(Flag('flag')) == '(optional)'
+    assert format_flag_post_doc(Flag('flag', missing=42)) == '(defaults to 42)'
+    assert format_flag_post_doc(Flag('flag', missing=ERROR)) == '(required)'
+    assert format_flag_post_doc(Flag('flag', display={'post_doc': '(fun)'})) == '(fun)'

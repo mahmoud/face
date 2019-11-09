@@ -319,8 +319,9 @@ class StoutHelpFormatter(object):
         if flags:
             append('[FLAGS]')
 
-        fmt_posargs_label = ctx['format_posargs_label']
-        append(fmt_posargs_label(parser.posargs))
+        if not parser.posargs.display.hidden:
+            fmt_posargs_label = ctx['format_posargs_label']
+            append(fmt_posargs_label(parser.posargs))
 
         return ' '.join(parts)
 

@@ -346,16 +346,20 @@ class PosArgDisplay(object):
          often describes default behavior.
 
     """
-    def __init__(self, spec, **kw):
-        self.spec = spec
+    def __init__(self, **kw):
         self.name = kw.pop('name', 'arg')
         self.doc = kw.pop('doc', '')
         self.post_doc = kw.pop('post_doc', '')
+        self._hide = kw.pop('hidden', False)  # bool
         self.label = kw.pop('label', None)
 
         if kw:
-            TypeError('unexpected keyword arguments: %r' % kw.keys())
+            raise TypeError('unexpected keyword arguments: %r' % kw.keys())
         return
+
+    @property
+    def hidden(self):
+        return self._hide or self.label == ''
 
     def __repr__(self):
         return format_nonexp_repr(self, ['name', 'label'])
@@ -421,7 +425,12 @@ class PosArgSpec(object):
             display = {'name': display}
         if isinstance(display, dict):
             display.setdefault('name', name)
-            display = PosArgDisplay(self, **display)
+            display = PosArgDisplay(**display)
+        if not isinstance(display, PosArgDisplay):
+            raise TypeError('expected bool, text name, dict of display'
+                            ' options, or PosArgDisplay instance, not: %r'
+                            % display)
+
         self.display = display
 
         # TODO: default? type check that it's a sequence matching min/max reqs
@@ -434,11 +443,7 @@ class PosArgSpec(object):
         """True if this PosArgSpec is configured to accept one or
         more arguments.
         """
-        if self.parse_as is ERROR:
-            return False
-        if self.max_count is not None and self.max_count == 0:
-            return False
-        return True
+        return self.parse_as is not ERROR
 
     def parse(self, posargs):
         """Parse a list of strings as positional arguments.
@@ -461,10 +466,8 @@ class PosArgSpec(object):
             raise ArgumentArityError('unexpected positional arguments: %r' % posargs)
         min_count, max_count = self.min_count, self.max_count
         if min_count == max_count:
-            if min_count == 0:
-                arg_range_text = 'no arguments'
-            else:
-                arg_range_text = '%s argument' % min_count
+            # min_count must be >0 because max_count cannot be 0
+            arg_range_text = '%s argument' % min_count
             if min_count > 1:
                 arg_range_text += 's'
         else:
@@ -506,7 +509,7 @@ def _ensure_posargspec(posargs, posargs_name):
         posargs = PosArgSpec()
     elif isinstance(posargs, int):
         # take an exact number of posargs
-        # (True and False are handled above, so only real ints get here)
+        # (True and False are handled above, so only real nonzero ints get here)
         posargs = PosArgSpec(min_count=posargs, max_count=posargs)
     elif isinstance(posargs, str):
         posargs = PosArgSpec(display=posargs, provides=posargs)
@@ -517,8 +520,9 @@ def _ensure_posargspec(posargs, posargs_name):
         posargs = PosArgSpec(parse_as=posargs)
 
     if not isinstance(posargs, PosArgSpec):
-        raise ValueError('expected %s as True, False,'
-                         ' or instance of PosArgSpec, not: %r' % (posargs_name, posargs))
+        raise TypeError('expected %s as True, False, number of args, text name of args,'
+                        ' dict of PosArgSpec options, or instance of PosArgSpec, not: %r'
+                        % (posargs_name, posargs))
 
     return posargs
 

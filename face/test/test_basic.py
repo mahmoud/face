@@ -2,7 +2,7 @@
 
 import pytest
 
-from face import Command, Flag, ERROR, FlagDisplay
+from face import Command, Flag, ERROR, FlagDisplay, PosArgSpec, PosArgDisplay
 from face.utils import format_flag_label, identifier_to_flag, get_minimal_executable
 
 def test_cmd_name():
@@ -71,6 +71,7 @@ def test_flag_char():
 
 
 def test_flag_hidden():
+    # TODO: is display='' sufficient for hiding (do we need hidden=True)
     cmd = Command(lambda tiger, dragon: None, 'cmd')
     cmd.add('--tiger', display='')
     flags = cmd.get_flags(with_hidden=False)
@@ -114,3 +115,40 @@ def test_minimal_exe():
     # TODO: where is PATH not a string?
     res = get_minimal_executable(venv_exe_path, environ={'PATH': []})
     assert res == venv_exe_path
+
+
+def test_posargspec_init():
+    with pytest.raises(TypeError, match='expected callable or ERROR'):
+        PosArgSpec(parse_as=object())
+    with pytest.raises(TypeError, match='unexpected keyword'):
+        PosArgSpec(badkw='val')
+
+    with pytest.raises(ValueError, match='expected min_count >= 0'):
+        PosArgSpec(min_count=-1)
+
+    with pytest.raises(ValueError, match='expected max_count > 0'):
+        PosArgSpec(max_count=-1)
+
+    with pytest.raises(ValueError, match='expected min_count > max_count'):
+        PosArgSpec(max_count=3, min_count=4)
+
+    with pytest.raises(TypeError, match='.*PosArgDisplay instance.*'):
+        PosArgSpec(display=object())
+
+    # cmd = Command(lambda posargs_: posargs_, posargs=PosArgSpec(display=False))
+    assert PosArgSpec(display=False).display.hidden == True
+    assert PosArgSpec(display=PosArgDisplay(name='posargs'))
+
+    cmd = Command(lambda: None, name='cmd', posargs=1)
+    assert cmd.posargs.min_count == 1
+    assert cmd.posargs.max_count == 1
+
+    cmd = Command(lambda targs: None, name='cmd', posargs='targs')
+    assert cmd.posargs.display.name == 'targs'
+    assert cmd.posargs.provides == 'targs'
+
+    cmd = Command(lambda targs: None, name='cmd', posargs=int)
+    assert cmd.posargs.parse_as == int
+
+    with pytest.raises(TypeError, match='.*instance of PosArgSpec.*'):
+        Command(lambda targs: None, name='cmd', posargs=object())

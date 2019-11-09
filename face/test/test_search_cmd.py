@@ -51,6 +51,7 @@ def get_search_command(as_parser=False):
                   doc='Limit the number of matching lines per file.')
     rg_subcmd.add('--filetype', ChoicesParam(['py', 'js', 'html']))
     rg_subcmd.add('--extensions', ListParam(strip=True))
+    rg_subcmd.add('--strategy', multi='override', missing='fast')
 
     cmd.add(rg_subcmd)
 
@@ -80,6 +81,9 @@ def test_search_prs_basic():
 
     res = prs.parse(['search', 'rg', '--extensions', 'py,html,css'])
     assert res.flags['extensions'] == ['py', 'html', 'css']
+
+    res = prs.parse(['search', 'rg', '--strategy', 'fast', '--strategy', 'slow'])
+    assert res.flags['strategy'] == 'slow'
 
 
 def test_search_prs_errors():

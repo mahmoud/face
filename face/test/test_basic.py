@@ -36,6 +36,7 @@ def test_flag_name():
     assert format_flag_label(Flag('name', display='--nAmE')) == '--nAmE'
 
     assert Flag('name', display='').display.hidden == True
+    assert repr(Flag('name', display='').display).startswith('<FlagDisplay')
 
     with pytest.raises(TypeError, match='or FlagDisplay instance'):
         Flag('name', display=object())
@@ -134,6 +135,8 @@ def test_posargspec_init():
 
     with pytest.raises(TypeError, match='.*PosArgDisplay instance.*'):
         PosArgSpec(display=object())
+    with pytest.raises(TypeError, match='unexpected keyword'):
+        PosArgSpec(display={'badkw': 'val'})
 
     # cmd = Command(lambda posargs_: posargs_, posargs=PosArgSpec(display=False))
     assert PosArgSpec(display=False).display.hidden == True

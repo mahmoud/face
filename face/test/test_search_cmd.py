@@ -71,9 +71,12 @@ def test_search_prs_basic():
     assert repr(prs).startswith('<Parser')
 
     res = prs.parse(['search', '--verbose'])
-
+    assert repr(res).startswith('<CommandParseResult')
     assert res.name == 'search'
     assert res.flags['verbose'] is True
+
+    assert prs.parse(['/search_pkg/__main__.py']).to_cmd_scope()['cmd_'] == 'python -m search_pkg'
+
 
     res = prs.parse(['search', 'rg', '--glob', '*.py', '-g', '*.md', '--max-count', '5'])
     assert res.subcmds == ('rg',)
@@ -122,6 +125,7 @@ def test_search_flagfile():
     flagfile_path = CUR_PATH + '/_search_cmd_a.flags'
 
     res = prs.parse(['search', 'rg', '--flagfile', flagfile_path])
+
 
 
 def test_search_cmd_basic(capsys):

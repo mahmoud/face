@@ -527,7 +527,6 @@ def _ensure_posargspec(posargs, posargs_name):
     return posargs
 
 
-# TODO: should post_posargs default to True?
 class Parser(object):
     """The Parser lies at the center of face, primarily providing a
     configurable validation logic on top of the conventional grammar

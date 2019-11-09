@@ -123,7 +123,7 @@ class CommandParseResult(object):
     builtin in their Command handler function.
 
     """
-    def __init__(self, parser=None, argv=()):
+    def __init__(self, parser, argv=()):
         self.parser = parser
         self.argv = tuple(argv)
 
@@ -293,7 +293,6 @@ class FlagDisplay(object):
     # value_name -> arg_name?
     def __init__(self, flag, **kw):
         self.flag = flag
-        self._label = kw.pop('label', None)
 
         self.doc = flag.doc
         if self.doc is None and callable(flag.parse_as):
@@ -311,25 +310,20 @@ class FlagDisplay(object):
             self.value_name = kw.pop('value_name', None) or self.flag.name.upper()
 
         self.group = kw.pop('group', 0)   # int or str
-        self.hidden = kw.pop('hidden', False)  # bool
+        self._hide = kw.pop('hidden', False)  # bool
+        self.label = kw.pop('label', None)  # see hidden property below for more info
         self.sort_key = kw.pop('sort_key', 0)  # int or str
         # TODO: sort_key is gonna need to be partitioned on type for py3
         # TODO: maybe sort_key should be a counter so that flags sort
         # in the order they are created
 
         if kw:
-            TypeError('unexpected keyword arguments: %r' % kw.keys())
+            raise TypeError('unexpected keyword arguments: %r' % kw.keys())
         return
 
     @property
-    def label(self):
-        return self._label
-
-    @label.setter
-    def _set_label(self, val):
-        self._label = val
-        # stay hidden if set to hidden, else hide if empty
-        self.hidden = self.hidden or (not val)
+    def hidden(self):
+        return self._hide or self.label == ''
 
     def __repr__(self):
         return format_nonexp_repr(self, ['label', 'doc'], ['group', 'hidden'], opt_key=bool)

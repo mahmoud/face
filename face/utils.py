@@ -189,7 +189,6 @@ def get_type_desc(parse_as):
     return 'with', repr(parse_as)
 
 
-
 def unwrap_text(text):
     all_grafs = []
     cur_graf = []
@@ -202,7 +201,7 @@ def unwrap_text(text):
             cur_graf = []
     if cur_graf:
         all_grafs.append(' '.join(cur_graf))
-    return '\n'.join(all_grafs)
+    return '\n\n'.join(all_grafs)
 
 
 def get_rdep_map(dep_map):
@@ -235,9 +234,9 @@ def get_rdep_map(dep_map):
     return ret
 
 
-def get_minimal_executable(executable=None, path=None):
+def get_minimal_executable(executable=None, path=None, environ=os.environ):
     executable = sys.executable if executable is None else executable
-    path = os.getenv('PATH', '') if path is None else path
+    path = environ.get('PATH', '') if path is None else path
     if isinstance(path, (str, unicode)):
         path = path.split(':')
 

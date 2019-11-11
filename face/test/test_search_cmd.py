@@ -2,12 +2,14 @@
 import os
 import sys
 import datetime
+# from StringIO import StringIO
 
 from pytest import raises
 
 from face import (Command,
                   Parser,
                   Flag,
+                  ERROR,
                   ListParam,
                   face_middleware,
                   ArgumentParseError,
@@ -126,6 +128,9 @@ def test_search_prs_errors():
     with raises(UnknownFlag):
         prs.parse(['search', 'rg', '--unknown-flag'])
 
+    with raises(ArgumentParseError):
+        prs.parse(['splorch', 'splarch'])
+
     with raises(InvalidFlagArgument):
         prs.parse(['search', 'rg', '--max-count', 'not-an-int'])
 
@@ -144,9 +149,17 @@ def test_search_prs_errors():
     with raises(ArgumentParseError):
         prs.parse(['search', 'rg', '--filetype', 'c'])
 
+    with raises(DuplicateFlag, match="was used multiple times"):
+        # TODO: is this really so bad?
+        prs.parse(['search', '--verbose', '--verbose'])
+
     with raises(ArgumentParseError, match='expected non-empty') as exc_info:
         prs.parse(argv=[])
     assert exc_info.value.prs_res.to_cmd_scope()['cmd_'] == 'search'
+
+    prs.add('--req-flag', missing=ERROR)
+    with raises(ArgumentParseError, match='missing required'):
+        prs.parse(argv=['search', 'rg', '--filetype', 'py'])
 
     return
 
@@ -171,6 +184,11 @@ def test_search_flagfile():
     cmd = Command(lambda: None, name='cmd', flagfile=Flag('--flags'))
     assert cmd.flagfile_flag.name == 'flags'
 
+    with open(flagfile_path) as f:
+        flagfile_text = f.read()
+
+    # flagfile_strio = StringIO(flagfile_text)
+
     with raises(TypeError, match='Flag instance for flagfile'):
         Command(lambda: None, name='cmd', flagfile=object())
 
@@ -191,12 +209,6 @@ def test_search_cmd_basic(capsys):
     cmd.run(['search', 'rg', '-h', 'badposarg'])
     out, err = capsys.readouterr()
     assert '[FLAGS]' in out  # help printed bc flag
-
-
-def test_search_parse_errors():
-    cmd = get_search_command(as_parser=True)
-    with raises(ArgumentParseError):
-        cmd.parse(['splorch', 'splarch'])
 
 
 def test_search_help(capsys):

@@ -157,13 +157,11 @@ def format_flag_post_doc(flag):
     "The default positional argument label formatter, used in help formatting"
     if flag.display.post_doc is not None:
         return flag.display.post_doc
-    if not flag.display.value_name:
-        return ''
     if flag.missing is face.ERROR:
         return '(required)'
     if flag.missing is None or repr(flag.missing) == object.__repr__(flag.missing):
         # avoid displaying unhelpful defaults
-        return '(optional)'
+        return ''
     return '(defaults to %r)' % (flag.missing,)
 
 

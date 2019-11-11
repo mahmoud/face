@@ -73,7 +73,7 @@ def test_help(subcmd_cmd, argv, contains, exit_code, capsys):
 
 
 def test_flag_post_doc():
-    assert format_flag_post_doc(Flag('flag')) == '(optional)'
+    assert format_flag_post_doc(Flag('flag')) == ''
     assert format_flag_post_doc(Flag('flag', missing=42)) == '(defaults to 42)'
     assert format_flag_post_doc(Flag('flag', missing=ERROR)) == '(required)'
     assert format_flag_post_doc(Flag('flag', display={'post_doc': '(fun)'})) == '(fun)'

@@ -349,7 +349,7 @@ class PosArgDisplay(object):
     def __init__(self, **kw):
         self.name = kw.pop('name', 'arg')
         self.doc = kw.pop('doc', '')
-        self.post_doc = kw.pop('post_doc', '')
+        self.post_doc = kw.pop('post_doc', None)
         self._hide = kw.pop('hidden', False)  # bool
         self.label = kw.pop('label', None)
 
@@ -562,8 +562,6 @@ class Parser(object):
         self.name = process_command_name(name)
         self.doc = doc
         flags = list(flags or [])
-        for flag in flags:
-            self.add(flag)
 
         self.posargs = _ensure_posargspec(posargs, 'posargs')
         self.post_posargs = _ensure_posargspec(post_posargs, 'post_posargs')
@@ -575,13 +573,15 @@ class Parser(object):
         elif not flagfile:
             self.flagfile_flag = None
         else:
-            raise ValueError('expected True, False, or Flag instance for'
-                             ' flagfile, not: %r' % flagfile)
+            raise TypeError('expected True, False, or Flag instance for'
+                            ' flagfile, not: %r' % flagfile)
 
         self.subprs_map = OrderedDict()
         self._path_flag_map = OrderedDict()
         self._path_flag_map[()] = OrderedDict()
 
+        for flag in flags:
+            self.add(flag)
         if self.flagfile_flag:
             self.add(self.flagfile_flag)
         return

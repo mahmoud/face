@@ -267,6 +267,8 @@ class StoutHelpFormatter(object):
         append(ctx['group_break'])
         for flag in shown_flags:
             disp = flag.display
+            if flag.name == 'debug':
+                import pdb;pdb.set_trace()
             if disp.full_doc is not None:
                 doc = disp.full_doc
             else:

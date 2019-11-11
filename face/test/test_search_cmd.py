@@ -1,11 +1,13 @@
 
 import os
+import sys
 import datetime
 
 from pytest import raises
 
 from face import (Command,
                   Parser,
+                  Flag,
                   ListParam,
                   face_middleware,
                   ArgumentParseError,
@@ -43,7 +45,8 @@ def get_search_command(as_parser=False):
     cmd = Command(None, 'search')
     cmd.add('--verbose', char='-V', parse_as=True)
 
-    rg_subcmd = Command(_rg, 'rg')
+    strat_flag = Flag('--strategy', multi='override', missing='fast')
+    rg_subcmd = Command(_rg, 'rg', flags=[strat_flag])
     rg_subcmd.add('--glob', char='-g', multi=True, parse_as=str,
                    doc='Include or exclude files/directories for searching'
                    ' that match the given glob. Precede with ! to exclude.')
@@ -51,11 +54,12 @@ def get_search_command(as_parser=False):
                   doc='Limit the number of matching lines per file.')
     rg_subcmd.add('--filetype', ChoicesParam(['py', 'js', 'html']))
     rg_subcmd.add('--extensions', ListParam(strip=True))
-    rg_subcmd.add('--strategy', multi='override', missing='fast')
 
     cmd.add(rg_subcmd)
 
-    ls_subcmd = Command(_ls, 'ls', posargs={'display': 'file_path', 'provides': 'file_paths'})
+    ls_subcmd = Command(_ls, 'ls',
+                        posargs={'display': 'file_path', 'provides': 'file_paths'},
+                        post_posargs={'provides': 'diff_paths'})
     cmd.add(ls_subcmd)
 
     cmd.add(_timestamp_mw)
@@ -77,7 +81,6 @@ def test_search_prs_basic():
 
     assert prs.parse(['/search_pkg/__main__.py']).to_cmd_scope()['cmd_'] == 'python -m search_pkg'
 
-
     res = prs.parse(['search', 'rg', '--glob', '*.py', '-g', '*.md', '--max-count', '5'])
     assert res.subcmds == ('rg',)
     assert res.flags['glob'] == ['*.py', '*.md']
@@ -89,8 +92,36 @@ def test_search_prs_basic():
     assert res.flags['strategy'] == 'slow'
 
 
+def test_prs_sys_argv():
+    prs = get_search_command(as_parser=True)
+    old_argv = sys.argv
+    try:
+        sys.argv = ['search', 'ls', 'a', 'b', 'c']
+        res = prs.parse(argv=None)
+        scope = res.to_cmd_scope()
+        assert scope['file_paths'] == ('a', 'b', 'c')
+    finally:
+        sys.argv = old_argv
+
+
+def test_post_posargs():
+    prs = get_search_command(as_parser=True)
+
+    res = prs.parse(['search', 'ls', 'path1', '--', 'diff_path1', 'diff_path2'])
+
+    scope = res.to_cmd_scope()
+    assert scope['file_paths'] == ('path1',)
+    assert scope['diff_paths'] == ('diff_path1', 'diff_path2')
+
+
 def test_search_prs_errors():
     prs = get_search_command(as_parser=True)
+
+    with raises(ValueError, match='expected Parser, Flag, or Flag parameters'):
+        prs.add('bad_arg', name='bad_kwarg')
+
+    with raises(ValueError, match='duplicate definition for flag'):
+        prs.add('verbose')
 
     with raises(UnknownFlag):
         prs.parse(['search', 'rg', '--unknown-flag'])
@@ -113,6 +144,10 @@ def test_search_prs_errors():
     with raises(ArgumentParseError):
         prs.parse(['search', 'rg', '--filetype', 'c'])
 
+    with raises(ArgumentParseError, match='expected non-empty') as exc_info:
+        prs.parse(argv=[])
+    assert exc_info.value.prs_res.to_cmd_scope()['cmd_'] == 'search'
+
     return
 
 
@@ -126,6 +161,18 @@ def test_search_flagfile():
 
     res = prs.parse(['search', 'rg', '--flagfile', flagfile_path])
 
+    cmd = Command(lambda: None, name='cmd', flagfile=False)
+    assert cmd.flagfile_flag is None
+
+    # check that flagfile being passed False causes the flag to error
+    with raises(ArgumentParseError):
+        cmd.parse(['cmd', '--flagfile', 'doesnt_have_to_exist'])
+
+    cmd = Command(lambda: None, name='cmd', flagfile=Flag('--flags'))
+    assert cmd.flagfile_flag.name == 'flags'
+
+    with raises(TypeError, match='Flag instance for flagfile'):
+        Command(lambda: None, name='cmd', flagfile=object())
 
 
 def test_search_cmd_basic(capsys):

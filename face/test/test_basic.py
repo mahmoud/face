@@ -90,7 +90,7 @@ def test_flag_init():
         cmd.add('--flag', missing=ERROR, parse_as=True)
 
     # test custom callable multi
-    cmd.add('--part', multi=lambda flag, vals: ''.join(vals))
+    cmd.add(Flag('--part', multi=lambda flag, vals: ''.join(vals)))
     res = cmd.parse(['cmd', '--part', 'a', '--part', 'b'])
     assert res.flags['part'] == 'ab'
 
@@ -155,3 +155,15 @@ def test_posargspec_init():
 
     with pytest.raises(TypeError, match='.*instance of PosArgSpec.*'):
         Command(lambda targs: None, name='cmd', posargs=object())
+
+
+def test_bad_subprs():
+    with pytest.raises(ValueError,
+                       match='commands accepting positional arguments cannot take subcommands'):
+        posarg_cmd = Command(lambda: None, 'pa', posargs=True)
+        posarg_cmd.add(lambda: None, 'bad_subcmd')
+
+    cmd = Command(lambda: None, 'base')
+    cmd.add(lambda: None, 'twin')
+    with pytest.raises(ValueError, match='conflicting subcommand name'):
+        cmd.add(lambda: None, 'twin')

@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
+from random import shuffle
+
 import pytest
 
-from face import Command, Flag, ERROR, FlagDisplay, PosArgSpec, PosArgDisplay
+from face import Command, Flag, ERROR, FlagDisplay, PosArgSpec, PosArgDisplay, ChoicesParam
 from face.utils import format_flag_label, identifier_to_flag, get_minimal_executable
 
 def test_cmd_name():
@@ -167,3 +169,18 @@ def test_bad_subprs():
     cmd.add(lambda: None, 'twin')
     with pytest.raises(ValueError, match='conflicting subcommand name'):
         cmd.add(lambda: None, 'twin')
+
+
+def test_choices_init():
+    with pytest.raises(ValueError, match='expected at least one'):
+        ChoicesParam(choices=[])
+
+    class Unsortable(object):
+        def __gt__(self, other):
+            raise TypeError()
+        __cmp__ = __lt__ = __gt__
+
+    choices = [Unsortable() for _ in range(100)]
+    choices_param = ChoicesParam(choices=choices)
+    assert choices == choices_param.choices
+    assert choices is not choices_param.choices

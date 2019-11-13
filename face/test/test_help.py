@@ -6,6 +6,7 @@ from face import (Flag,
                   Command,
                   Parser,
                   PosArgSpec,
+                  HelpHandler,
                   ArgumentParseError)
 from face.utils import format_flag_post_doc
 
@@ -65,6 +66,19 @@ def test_help(subcmd_cmd, argv, contains, exit_code, capsys):
         assert cont in output
 
     return
+
+
+def test_help_subcmd():
+    hhandler = HelpHandler(subcmd='help')
+    cmd = Command(None, 'cmd', help=hhandler)
+
+    try:
+        cmd.run(['cmd', 'help'])
+    except SystemExit as se:
+        assert se.code == 0
+
+    with pytest.raises(ValueError, match='requires a handler function or help handler'):
+        Command(None, help=None)
 
 
 # TODO: need to have commands reload their own subcommands if

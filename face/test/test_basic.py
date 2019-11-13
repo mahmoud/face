@@ -4,7 +4,7 @@ from random import shuffle
 
 import pytest
 
-from face import Command, Flag, ERROR, FlagDisplay, PosArgSpec, PosArgDisplay, ChoicesParam
+from face import Command, Flag, ERROR, FlagDisplay, PosArgSpec, PosArgDisplay, ChoicesParam, CommandLineError, ArgumentParseError
 from face.utils import format_flag_label, identifier_to_flag, get_minimal_executable
 
 def test_cmd_name():
@@ -169,6 +169,9 @@ def test_bad_subprs():
     cmd.add(lambda: None, 'twin')
     with pytest.raises(ValueError, match='conflicting subcommand name'):
         cmd.add(lambda: None, 'twin')
+
+    with pytest.raises(TypeError, match='expected Command instance'):
+        cmd.add_command(object())
 
 
 def test_choices_init():

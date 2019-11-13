@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from face import face_middleware, Command
+from face import face_middleware, Command, Flag
 
 
 def test_mw_basic_sig():
@@ -47,24 +47,23 @@ def test_mw_unres():
         return unresolved_arg
 
     cmd = Command(unres_cmd)
+    assert cmd.func is unres_cmd
 
     with pytest.raises(NameError, match="unresolved middleware or handler arguments: .*unresolved_arg.*"):
         cmd.run(['unres_cmd'])
 
-    @face_middleware
     def inner_mw(next_, arg):
         return next_()
 
-    @face_middleware(provides='arg')
+    @face_middleware(provides='arg', flags=[Flag('--verbose', parse_as=True)])
     def outer_mw(next_):
         return next_(arg=1)
 
     def ok_cmd(arg):
         return None
 
-    cmd = Command(ok_cmd)
-    cmd.add(outer_mw)
-    cmd.add(inner_mw)
+    cmd = Command(ok_cmd, middlewares=[outer_mw])
+    cmd.add_middleware(inner_mw)
 
     with pytest.raises(NameError, match="unresolved middleware or handler arguments: .*arg.* check middleware order."):
         cmd.run(['ok_cmd'])

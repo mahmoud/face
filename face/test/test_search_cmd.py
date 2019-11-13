@@ -15,8 +15,10 @@ from face import (Command,
                   ArgumentParseError,
                   InvalidFlagArgument,
                   DuplicateFlag,
+                  CommandLineError,
                   InvalidSubcommand,
                   UnknownFlag,
+                  UsageError,
                   ChoicesParam)
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -30,6 +32,9 @@ def _rg(glob, max_count):
 
 def _ls(file_paths):
     print(file_paths)
+    for fp in file_paths:
+        if '*' in fp:
+            raise UsageError('no wildcards, ya hear?')
     return file_paths
 
 
@@ -214,14 +219,21 @@ def test_search_cmd_basic(capsys):
     out, err = capsys.readouterr()
     assert 'regrepping' in out
 
-    with raises(SystemExit):
+    with raises(SystemExit) as exc_info:
         cmd.run(['search', 'rg', 'badposarg'])
     out, err = capsys.readouterr()
     assert 'error:' in err
 
+    with raises(CommandLineError):
+        cmd.run(['search', 'rg', '--no-such-flag'])
+    out, err = capsys.readouterr()
+    assert 'error: search rg: unknown flag "--no-such-flag",' in err
+
     cmd.run(['search', 'rg', '-h', 'badposarg'])
     out, err = capsys.readouterr()
     assert '[FLAGS]' in out  # help printed bc flag
+
+    cmd.prepare()  # prepares all paths/subcmds
 
 
 def test_search_help(capsys):
@@ -247,3 +259,13 @@ def test_search_ls(capsys):
 
     out, err = capsys.readouterr()
     assert 'file_paths' in out
+
+
+def test_usage_error(capsys):
+    cmd = get_search_command()
+
+    with raises(UsageError, match='no wildcards'):
+        cmd.run(['search', 'ls', '*'])
+
+    out, err = capsys.readouterr()
+    assert 'no wildcards' in err

@@ -809,17 +809,17 @@ class Parser(object):
         flag = cmd_flag_map.get(normalize_flag_name(arg))
         if flag is None:
             raise UnknownFlag.from_parse(cmd_flag_map, arg)
-        flag_conv = flag.parse_as
-        if not callable(flag_conv):
+        parse_as = flag.parse_as
+        if not callable(parse_as):
             # e.g., True is effectively store_true, False is effectively store_false
-            return flag, flag_conv, args[1:]
+            return flag, parse_as, args[1:]
 
         try:
             arg_text = args[1]
         except IndexError:
             raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg=None)
         try:
-            arg_val = flag_conv(arg_text)
+            arg_val = parse_as(arg_text)
         except Exception as e:
             raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg_text, exc=e)
 

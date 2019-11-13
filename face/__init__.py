@@ -8,6 +8,7 @@ from face.parser import (Flag,
                          CommandParseResult)
 
 from face.errors import (FaceException,
+                         CommandLineError,
                          ArgumentParseError,
                          UnknownFlag,
                          DuplicateFlag,

@@ -103,18 +103,10 @@ class Command(Parser):
                                       post_posargs=kwargs.pop('post_posargs', None),
                                       flagfile=kwargs.pop('flagfile', True))
 
-        help = kwargs.pop('help', DEFAULT_HELP_HANDLER)
-        self.help_handler = help
-        if help:
-            if help.flag:
-                self.add(help.flag)
-            if help.subcmd:
-                self.add(help.func, help.subcmd)  # for 'help' as a subcmd
+        _help = kwargs.pop('help', DEFAULT_HELP_HANDLER)
+        self.help_handler = _help
 
-        if not func and not help:
-            raise ValueError('Command requires a help handler or handler function'
-                             ' to be set, not: %r' % func)
-
+        # TODO: if func is callable, check that "next_" isn't taken
         self._path_func_map = OrderedDict()
         self._path_func_map[()] = func
 
@@ -128,6 +120,16 @@ class Command(Parser):
 
         if kwargs:
             raise TypeError('unexpected keyword arguments: %r' % sorted(kwargs.keys()))
+
+        if _help:
+            if _help.flag:
+                self.add(_help.flag)
+            if _help.subcmd:
+                self.add(_help.func, _help.subcmd)  # for 'help' as a subcmd
+
+        if not func and not _help:
+            raise ValueError('Command requires a handler function or help handler'
+                             ' to be set, not: %r' % func)
 
         return
 
@@ -365,11 +367,10 @@ class Command(Parser):
             msg = 'error: ' + self.name
             if prs_res.subcmds:
                 msg += ' ' + ' '.join(prs_res.subcmds or ())
-            try:
-                e_msg = ape.args[0]  # this is the standard-issue Exception
-                                     # args attribute, nothing to do with cmdline args
-            except (AttributeError, IndexError):
-                e_msg = ''
+
+            # args attribute, nothing to do with cmdline args this is
+            # the standard-issue Exception
+            e_msg = ape.args[0]
             if e_msg:
                 msg += ': ' + e_msg
             cle = CommandLineError(msg)
@@ -385,8 +386,8 @@ class Command(Parser):
         cmd = kwargs['subcommand_']
         if cmd.help_handler and (not func or (prs_res.flags and prs_res.flags.get(cmd.help_handler.flag.name))):
             return inject(cmd.help_handler.func, kwargs)
-        elif not func:
-            return None  # TODO what to do when no help handler and no func?
+        elif not func:  # pragma: no cover
+            raise RuntimeError('expected command handler or help handler to be set')
 
         self.prepare(paths=[prs_res.subcmds])
         wrapped = self._path_wrapped_map.get(prs_res.subcmds, func)

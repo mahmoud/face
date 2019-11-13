@@ -253,7 +253,8 @@ class Flag(object):
         self.display = display
 
     def __repr__(self):
-        return format_nonexp_repr(self, ['name', 'parse_as'], ['missing', 'multi'])
+        return format_nonexp_repr(self, ['name', 'parse_as'], ['missing', 'multi'],
+                                  opt_key=lambda v: v not in (None, _multi_error))
 
 
 class FlagDisplay(object):
@@ -671,21 +672,24 @@ class Parser(object):
                                  ' not: %r, %r (got %r)' % (a, kw, te))
 
         # first check there are no conflicts...
-        flag_name = flag.name
+        flag.name = flag.name
 
         for subcmds, flag_map in self._path_flag_map.items():
-            if flag_name in flag_map:
-                # TODO: need a better error message here, one that
-                # properly exposes the existing flag (same goes for
-                # aliases below)
-                raise ValueError('duplicate definition for flag name: %r' % flag_name)
-            if False:
-                # TODO
-                raise ValueError('conflicting short form for flag %r: %r' % (flag_name, flag.char))
+            # if flag.name == 'verbosity':
+            #     import pdb;pdb.set_trace()
+            conflict_flag = flag_map.get(flag.name) or (flag.char and flag_map.get(flag.char))
+            if conflict_flag is None:
+                continue
+            if flag.name in (conflict_flag.name, conflict_flag.char):
+                raise ValueError('pre-existing flag %r conflicts with name of new flag %r'
+                                 % (conflict_flag, flag.name))
+            if flag.char and flag.char in (conflict_flag.name, conflict_flag.char):
+                raise ValueError('pre-existing flag %r conflicts with short form for new flag %r'
+                                 % (conflict_flag, flag))
 
         # ... then we add the flags
         for flag_map in self._path_flag_map.values():
-            flag_map[flag_name] = flag
+            flag_map[flag.name] = flag
             if flag.char:
                 flag_map[flag.char] = flag
         return

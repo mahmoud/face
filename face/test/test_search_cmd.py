@@ -64,6 +64,8 @@ def get_search_command(as_parser=False):
                         post_posargs={'provides': 'diff_paths'})
     cmd.add(ls_subcmd)
 
+    cmd.add(lambda args_: None, name='two-four', posargs=dict(min_count=2, max_count=4))
+
     cmd.add(_timestamp_mw)
 
     if as_parser:
@@ -122,8 +124,11 @@ def test_search_prs_errors():
     with raises(ValueError, match='expected Parser, Flag, or Flag parameters'):
         prs.add('bad_arg', name='bad_kwarg')
 
-    with raises(ValueError, match='duplicate definition for flag'):
+    with raises(ValueError, match='conflicts with name of new flag'):
         prs.add('verbose')
+
+    with raises(ValueError, match='conflicts with short form for new flag'):
+        prs.add('--verbosity', char='V')
 
     with raises(UnknownFlag):
         prs.parse(['search', 'rg', '--unknown-flag'])
@@ -157,6 +162,9 @@ def test_search_prs_errors():
         prs.parse(argv=[])
     assert exc_info.value.prs_res.to_cmd_scope()['cmd_'] == 'search'
 
+    with raises(ArgumentParseError, match='2 - 4 arguments'):
+        prs.parse(argv=['search', 'two-four', '1', '2', '3', '4', '5'])
+
     prs.add('--req-flag', missing=ERROR)
     with raises(ArgumentParseError, match='missing required'):
         prs.parse(argv=['search', 'rg', '--filetype', 'py'])
@@ -187,6 +195,7 @@ def test_search_flagfile():
     with open(flagfile_path) as f:
         flagfile_text = f.read()
 
+    # does this even make sense as a case?
     # flagfile_strio = StringIO(flagfile_text)
 
     with raises(TypeError, match='Flag instance for flagfile'):

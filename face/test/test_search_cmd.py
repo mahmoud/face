@@ -64,7 +64,11 @@ def get_search_command(as_parser=False):
                         post_posargs={'provides': 'diff_paths'})
     cmd.add(ls_subcmd)
 
-    cmd.add(lambda args_: None, name='two-four', posargs=dict(min_count=2, max_count=4))
+    class TwoFour(object):
+        def __call__(self, posargs_):
+            return ', '.join(posargs_)
+
+    cmd.add(TwoFour(), posargs=dict(min_count=2, max_count=4))
 
     cmd.add(_timestamp_mw)
 

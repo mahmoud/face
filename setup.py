@@ -6,7 +6,7 @@ from setuptools import setup
 
 
 __author__ = 'Mahmoud Hashemi'
-__version__ = '19.1.3dev'
+__version__ = '20.0.0'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/face'
 __license__ = 'BSD'
@@ -24,7 +24,7 @@ setup(name='face',
       zip_safe=False,
       license=__license__,
       platforms='any',
-      install_requires=['boltons>=19.3.0'],
+      install_requires=['boltons>=20.0.0'],
       classifiers=[
           'Topic :: Utilities',
           'Intended Audience :: Developers',

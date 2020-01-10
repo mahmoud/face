@@ -7,7 +7,8 @@ from face import (Flag,
                   Parser,
                   PosArgSpec,
                   HelpHandler,
-                  ArgumentParseError)
+                  ArgumentParseError,
+                  StoutHelpFormatter)
 from face.utils import format_flag_post_doc
 
 
@@ -69,7 +70,7 @@ def test_help(subcmd_cmd, argv, contains, exit_code, capsys):
 
 
 def test_help_subcmd():
-    hhandler = HelpHandler(subcmd='help')
+    hhandler = HelpHandler(flag=False, subcmd='help')
     cmd = Command(None, 'cmd', help=hhandler)
 
     try:
@@ -79,6 +80,28 @@ def test_help_subcmd():
 
     with pytest.raises(ValueError, match='requires a handler function or help handler'):
         Command(None, help=None)
+
+
+def test_stout_help():
+    with pytest.raises(TypeError, match='unexpected formatter arguments'):
+        StoutHelpFormatter(bad_kwarg=True)
+
+    return
+
+
+def test_handler():
+    with pytest.raises(TypeError, match='expected help handler func to be callable'):
+        HelpHandler(func=object())
+
+    with pytest.raises(TypeError, match='expected Formatter type or instance'):
+        HelpHandler(formatter=None)
+
+    with pytest.raises(TypeError, match='only accepts extra formatter'):
+        HelpHandler(usage_label='Fun: ', formatter=StoutHelpFormatter())
+
+    with pytest.raises(TypeError, match='expected valid formatter'):
+        HelpHandler(formatter=object())
+
 
 
 # TODO: need to have commands reload their own subcommands if

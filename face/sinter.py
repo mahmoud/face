@@ -30,7 +30,7 @@ def get_fb(f, drop_self=True):
 
     ret = FunctionBuilder.from_func(f)
 
-    if not all([isinstance(a, str) for a in ret.args]):
+    if not all([isinstance(a, str) for a in ret.args]):  # pragma: no cover (2 only)
         raise TypeError('does not support anonymous tuple arguments'
                         ' or any other strange args for that matter.')
     if drop_self and isinstance(f, types.MethodType):
@@ -140,7 +140,7 @@ def compile_code(code_str, name, env=None, verbose=_VERBOSE):
     unique_filename = "<sinter generated %s %s>" % (name, code_hash)
     code = compile(code_str, unique_filename, 'single')
     if verbose:
-        print(code_str)
+        print(code_str)  # pragma: no cover
     if PY3:
         exec(code, env)
     else:

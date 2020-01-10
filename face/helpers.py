@@ -377,7 +377,7 @@ class HelpHandler(object):
         self.subcmd = subcmd
         self.func = func if func is not None else self.default_help_func
         if not callable(self.func):
-            raise TypeError('expected func to be callable, not %r' % func)
+            raise TypeError('expected help handler func to be callable, not %r' % func)
 
         self.formatter = formatter
         if not formatter:
@@ -388,7 +388,10 @@ class HelpHandler(object):
             raise TypeError('only accepts extra formatter kwargs (%r) if'
                             ' formatter argument is a Formatter type, not: %r'
                             % (sorted(formatter_kwargs.keys()), formatter))
-        # TODO: assert self.formatter has a get_help_text() method?
+        _has_get_help_text = callable(getattr(self.formatter, 'get_help_text', None))
+        if not _has_get_help_text:
+            raise TypeError('expected valid formatter, or other object with a'
+                            ' get_help_text() method, not %r' % (self.formatter,))
         return
 
     def default_help_func(self, cmd_, subcmds_, args_, command_):

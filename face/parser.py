@@ -97,8 +97,8 @@ def _posargs_to_provides(posargspec, posargs):
     if pas.max_count == 1:
         # None is considered sufficiently unambiguous, even for cases when pas.min_count==1
         return posargs[0] if posargs else None
-    # shouldn't get here
-    raise RuntimeError('invalid posargspec/posargs configuration %r -- %r' % (posargspec, posargs))
+    raise RuntimeError('invalid posargspec/posargs configuration %r -- %r'
+                       % (posargspec, posargs))  # pragma: no cover (shouldn't get here)
 
 
 class CommandParseResult(object):

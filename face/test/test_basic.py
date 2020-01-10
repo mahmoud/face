@@ -85,6 +85,11 @@ def test_flag_hidden():
     assert 'dragon' not in [f.name for f in flags]
 
 
+def test_command_misc_api():
+    with pytest.raises(TypeError, match='unexpected keyword'):
+        Command(lambda: None, name='ok', bad_kwarg=True)
+
+
 def test_flag_init():
     cmd = Command(lambda flag, part: None, name='cmd')
 

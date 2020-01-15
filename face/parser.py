@@ -675,8 +675,6 @@ class Parser(object):
         flag.name = flag.name
 
         for subcmds, flag_map in self._path_flag_map.items():
-            # if flag.name == 'verbosity':
-            #     import pdb;pdb.set_trace()
             conflict_flag = flag_map.get(flag.name) or (flag.char and flag_map.get(flag.char))
             if conflict_flag is None:
                 continue
@@ -796,12 +794,11 @@ class Parser(object):
             arg = _arg_to_subcmd(arg)
             if tuple(ret + [arg]) not in self.subprs_map:
                 prs = self.subprs_map[tuple(ret)] if ret else self
-                if prs.posargs.parse_as is not ERROR:
+                if prs.posargs.parse_as is not ERROR or not prs.subprs_map:
                     # we actually have posargs from here
                     break
                 raise InvalidSubcommand.from_parse(prs, arg)
             ret.append(arg)
-
         return ret, args[len(ret):]
 
     def _parse_single_flag(self, cmd_flag_map, args):

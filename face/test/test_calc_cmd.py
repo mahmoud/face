@@ -8,7 +8,8 @@ import pytest
 from face import (Command,
                   Parser,
                   PosArgSpec,
-                  ArgumentParseError)
+                  ArgumentParseError,
+                  CommandLineError)
 
 from face.testing import TestClient
 
@@ -24,7 +25,7 @@ def get_calc_cmd(as_parser=False):
     cmd.add(_add_cmd, name='add', posargs={'min_count': 2, 'parse_as': float})
     cmd.add(_add_two_ints, name='add_two_ints', posargs={'count': 2, 'parse_as': int, 'provides': 'ints'})
     cmd.add(_is_odd, name='is_odd', posargs={'count': 1, 'parse_as': int, 'provides': 'target_int'})
-    cmd.add(_ask_times_two, name='times-two')
+    cmd.add(_ask_halve, name='halve', posargs=False)
 
     if as_parser:
         cmd.__class__ = Parser
@@ -47,10 +48,10 @@ def _add_two_ints(ints):
     return ret
 
 
-def _ask_times_two():
+def _ask_halve():
     val = float(raw_input('Enter a number: '))
     print()
-    ret = val * float(os.getenv('CALC_TWO', 2))
+    ret = val / float(os.getenv('CALC_TWO', 2))
     print(ret)
     return ret
 
@@ -93,8 +94,31 @@ def test_calc_stream():
 
     assert res.stdout.strip() == '3.0'
 
-    res = tc.invoke(['calc', 'times-two'], input='14.5')
-    assert res.stdout.strip() == 'Enter a number: \n29.0'
+    res = tc.invoke(['calc', 'halve'], input='30')
+    assert res.stdout.strip() == 'Enter a number: \n15.0'
 
-    res = tc.invoke('calc times-two', input='2', env={'CALC_TWO': '-2'})
-    assert res.stdout.strip() == 'Enter a number: \n-4.0'
+    res = tc.invoke('calc halve', input='4', env={'CALC_TWO': '-2'})
+    assert res.stdout.strip() == 'Enter a number: \n-2.0'
+    assert not res.exception
+
+    with pytest.raises(ZeroDivisionError):
+        tc.invoke('calc halve', input='4', env={'CALC_TWO': '0'})
+    return
+
+
+def test_tc_exc():
+    cmd = get_calc_cmd()
+    tc_no_reraise = TestClient(cmd, reraise=False, echo_stdin=True)
+    res = tc_no_reraise.invoke('calc halve', input='4', env={'CALC_TWO': '0'})
+    assert res.exception
+    assert res.stdout == 'Enter a number: 4\n'
+
+    res = tc_no_reraise.invoke('calc halve nonexistentarg')
+    assert type(res.exception) is CommandLineError
+
+    # NB: expect to update these as error messaging improves
+    assert str(res.exception) == "error: calc halve: unexpected positional arguments: ['nonexistentarg']"
+    assert res.stderr.startswith("error: calc halve: unexpected positional arguments: ['nonexistentarg']")
+
+    with pytest.raises(TypeError):
+        tc_no_reraise.invoke('calc halve', input=object())

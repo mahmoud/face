@@ -1,6 +1,31 @@
 # Design (and some implementation) of this owes heavily to Click's
 # CliRunner (TODO: bring in license?)
 
+"""Porting notes:
+
+* EchoingStdin.read1() needed to exist for py3 and raw_input
+
+* Not sure why the isolate context manager deals in byte streams and
+  then relegates to the Result to do late encoding (in properties no
+  less). This is especially troublesome because sys.stdout/stderr
+  isn't the same stream as stdout/stderr as returned by the context
+  manager. (see the extra flush calls in invoke's finally block.) Is
+  it just for parity with py2? There was a related bug, sys.stdout was
+  flushed, but not sys.stderr, which caused py3's error_bytes to come
+  through as blank.
+* Result.exception was redundant with exc_info
+* Result.stderr raised a ValueError when stderr was empty, not just
+  when it wasn't captured.
+* Instead of isolated_filesystem, I just added chdir to invoke,
+  because pytest already does temporary directories.
+
+TODO: test with more than one input line (confirm that \n works across raw_inputs)
+TODO: Remove ability to pass input in as a stream
+TODO: test chdir
+TODO: test mix_stderr;
+
+"""
+
 import os
 import sys
 import shlex
@@ -12,23 +37,16 @@ if PY2:
     from cStringIO import StringIO
 else:
     import io
+    unicode = str
 
 
 def make_input_stream(input, encoding):
-    # Is already an input stream.
-    if callable(getattr(input, 'read', None)):
-        if PY2:
-            return input
-        # TODO
-        #rv = _find_binary_reader(input)
-        #if rv is not None:
-        #    return rv
-        raise TypeError('Could not find binary reader for input stream: %r' % (input,))
-
     if input is None:
         input = b''
-    elif not isinstance(input, bytes):
+    elif isinstance(input, unicode):
         input = input.encode(encoding)
+    elif not isinstance(input, bytes):
+        raise TypeError('expected bytes, text, or None, not: %r' % input)
     if PY2:
         return StringIO(input)
     return io.BytesIO(input)
@@ -48,7 +66,7 @@ class Result(object):
 
     @property
     def exception(self):
-        return self.exc_info[0] if self.exc_info else None
+        return self.exc_info[1] if self.exc_info else None
 
     @property
     def stdout(self):
@@ -60,7 +78,7 @@ class Result(object):
     def stderr(self):
         """The standard error as unicode string."""
         # TODO: differentiate between mixed stderr and blank stderr
-        if not self.stderr_bytes:
+        if self.stderr_bytes is None:
             raise ValueError("stderr not separately captured")
         return self.stderr_bytes.decode(self.test_client.encoding, 'replace') \
             .replace('\r\n', '\n')
@@ -102,6 +120,7 @@ class TestClient(object):
                 #    exception = e
 
                 if not isinstance(exit_code, int):
+                    # TODO: I think this is done just to break the test?
                     sys.stdout.write(str(exit_code))
                     sys.stdout.write('\n')
                     exit_code = 1
@@ -112,15 +131,16 @@ class TestClient(object):
                 exc_info = sys.exc_info()
             finally:
                 sys.stdout.flush()
-                stdout = stdout.getvalue()
-                stderr = stderr and stderr.getvalue()
+                sys.stderr.flush()
+                stdout_bytes = stdout.getvalue()
+                stderr_bytes = stderr.getvalue() if not self.mix_stderr else None
 
-            # TODO: unconsumed stdin?
-            return Result(test_client=self,
-                          stdout_bytes=stdout,
-                          stderr_bytes=stderr,
-                          exit_code=exit_code,
-                          exc_info=exc_info)
+        # TODO: unconsumed stdin?
+        return Result(test_client=self,
+                      stdout_bytes=stdout_bytes,
+                      stderr_bytes=stderr_bytes,
+                      exit_code=exit_code,
+                      exc_info=exc_info)
 
     @contextlib.contextmanager
     def isolate(self, input=None, env=None, chdir=None):
@@ -171,6 +191,8 @@ class TestClient(object):
 
             _sync_env(os.environ, old_env)
 
+            sys.stdout.flush()
+            sys.stderr.flush()
             sys.stdout = old_stdout
             sys.stderr = old_stderr
             sys.stdin = old_stdin
@@ -208,6 +230,8 @@ class _EchoingStdin(object):
 
     def read(self, n=-1):
         return self._echo(self._input.read(n))
+
+    read1 = read
 
     def readline(self, n=-1):
         return self._echo(self._input.readline(n))

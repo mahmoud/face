@@ -119,6 +119,7 @@ def test_cc_exc():
     # NB: expect to update these as error messaging improves
     assert str(res.exception) == "error: calc halve: unexpected positional arguments: ['nonexistentarg']"
     assert res.stderr.startswith("error: calc halve: unexpected positional arguments: ['nonexistentarg']")
+    assert 'stderr=' in repr(res)
 
     with pytest.raises(TypeError):
         cc_no_reraise.run('calc halve', input=object())

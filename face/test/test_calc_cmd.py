@@ -9,9 +9,8 @@ from face import (Command,
                   Parser,
                   PosArgSpec,
                   ArgumentParseError,
-                  CommandLineError)
-
-from face.testing import TestClient
+                  CommandLineError,
+                  CommandChecker)
 
 try:
     raw_input
@@ -88,33 +87,33 @@ def test_calc_basic():
 def test_calc_stream():
     cmd = get_calc_cmd()
 
-    tc = TestClient(cmd)
+    tc = CommandChecker(cmd)
 
-    res = tc.invoke(['calc', 'add', '1', '2'])
+    res = tc.run(['calc', 'add', '1', '2'])
 
     assert res.stdout.strip() == '3.0'
 
-    res = tc.invoke(['calc', 'halve'], input='30')
+    res = tc.run(['calc', 'halve'], input='30')
     assert res.stdout.strip() == 'Enter a number: 30\n15.0'
 
-    res = tc.invoke('calc halve', input='4', env={'CALC_TWO': '-2'})
+    res = tc.run('calc halve', input='4', env={'CALC_TWO': '-2'})
     assert res.stdout.strip() == 'Enter a number: 4\n-2.0'
     assert not res.exception
 
     with pytest.raises(ZeroDivisionError):
-        tc.invoke('calc halve', input='4', env={'CALC_TWO': '0'})
+        tc.run('calc halve', input='4', env={'CALC_TWO': '0'})
 
     return
 
 
-def test_tc_exc():
+def test_cc_exc():
     cmd = get_calc_cmd()
-    tc_no_reraise = TestClient(cmd, reraise=False)
-    res = tc_no_reraise.invoke('calc halve', input='4', env={'CALC_TWO': '0'})
+    cc_no_reraise = CommandChecker(cmd, reraise=False)
+    res = cc_no_reraise.run('calc halve', input='4', env={'CALC_TWO': '0'})
     assert res.exception
     assert res.stdout == 'Enter a number: 4\n'
 
-    res = tc_no_reraise.invoke('calc halve nonexistentarg')
+    res = cc_no_reraise.run('calc halve nonexistentarg')
     assert type(res.exception) is CommandLineError
 
     # NB: expect to update these as error messaging improves
@@ -122,16 +121,17 @@ def test_tc_exc():
     assert res.stderr.startswith("error: calc halve: unexpected positional arguments: ['nonexistentarg']")
 
     with pytest.raises(TypeError):
-        tc_no_reraise.invoke('calc halve', input=object())
+        cc_no_reraise.run('calc halve', input=object())
     return
 
 
-def test_tc_mixed(tmpdir):
+def test_cc_mixed(tmpdir):
     cmd = get_calc_cmd()
-    tc_mixed = TestClient(cmd, reraise=False, mix_stderr=True)
-    res = tc_mixed.invoke('calc halve nonexistentarg', chdir=tmpdir)
+    cc_mixed = CommandChecker(cmd, reraise=False, mix_stderr=True)
+    res = cc_mixed.run('calc halve nonexistentarg', chdir=tmpdir)
     assert type(res.exception) is CommandLineError
     assert res.stdout.startswith("error: calc halve: unexpected positional arguments: ['nonexistentarg']")
+    assert repr(res)
 
     with pytest.raises(ValueError):
         res.stderr

@@ -8,7 +8,7 @@
   then relegates to the Result to do late encoding (in properties no
   less). This is especially troublesome because sys.stdout/stderr
   isn't the same stream as stdout/stderr as returned by the context
-  manager. (see the extra flush calls in invoke's finally block.) Is
+  manager. (see the extra flush calls in run's finally block.) Is
   it just for parity with py2? There was a related bug, sys.stdout was
   flushed, but not sys.stderr, which caused py3's error_bytes to come
   through as blank.
@@ -16,7 +16,7 @@
 * Result.exception was redundant with exc_info
 * Result.stderr raised a ValueError when stderr was empty, not just
   when it wasn't captured.
-* Instead of isolated_filesystem, I just added chdir to invoke,
+* Instead of isolated_filesystem, I just added chdir to run,
   because pytest already does temporary directories.
 * Removed echo_stdin (stdin always echos)
 
@@ -50,7 +50,7 @@ def make_input_stream(input, encoding):
 
 
 class Result(object):
-    """Holds the captured result of an invoked CLI script."""
+    """Holds the captured result of running a command."""
 
     def __init__(self, test_client, stdout_bytes, stderr_bytes, exit_code, exc_info):
         self.test_client = test_client
@@ -87,7 +87,7 @@ class Result(object):
         )
 
 
-class TestClient(object):
+class CommandChecker(object):
     def __init__(self, cmd, env=None, mix_stderr=False, reraise=True):
         self.cmd = cmd
         self.base_env = env or {}
@@ -96,7 +96,7 @@ class TestClient(object):
         self.encoding = 'utf8'  # not clear if this should be an arg yet
 
     @contextlib.contextmanager
-    def isolate(self, input=None, env=None, chdir=None):
+    def _isolate(self, input=None, env=None, chdir=None):
         input_stream = make_input_stream(input, self.encoding)
         old_cwd = os.getcwd()
         old_stdin, old_stdout, old_stderr = sys.stdin, sys.stdout, sys.stderr
@@ -150,8 +150,8 @@ class TestClient(object):
 
         return
 
-    def invoke(self, args, input=None, env=None, chdir=None):
-        with self.isolate(input=input, env=env, chdir=chdir) as (stdout, stderr):
+    def run(self, args, input=None, env=None, chdir=None):
+        with self._isolate(input=input, env=env, chdir=chdir) as (stdout, stderr):
             exc_info = None
             exit_code = 0
 

@@ -20,3 +20,4 @@ from face.parser import (ListParam, ChoicesParam)
 from face.command import Command
 from face.middleware import face_middleware
 from face.helpers import HelpHandler, StoutHelpFormatter
+from face.testing import CommandChecker

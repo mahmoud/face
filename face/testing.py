@@ -77,7 +77,6 @@ class Result(object):
     @property
     def stderr(self):
         """The standard error as unicode string."""
-        # TODO: differentiate between mixed stderr and blank stderr
         if self.stderr_bytes is None:
             raise ValueError("stderr not separately captured")
         return self.stderr_bytes.decode(self.test_client.encoding, 'replace') \
@@ -99,6 +98,64 @@ class TestClient(object):
         self.reraise = reraise
         self.mix_stderr = mix_stderr
         self.encoding = 'utf8'  # not clear if this should be an arg yet
+
+    @contextlib.contextmanager
+    def isolate(self, input=None, env=None, chdir=None):
+        input_stream = make_input_stream(input, self.encoding)
+        old_cwd = os.getcwd()
+        old_stdin, old_stdout, old_stderr = sys.stdin, sys.stdout, sys.stderr
+
+        full_env = dict(self.base_env)
+        if env:
+            full_env.update(env)
+
+        if PY2:
+            bytes_output = StringIO()
+            input = input_stream
+            if self.echo_stdin:
+                input = _EchoingStdin(input_stream, bytes_output)
+            sys.stdout = bytes_output  # TODO: move these assignments below
+            if not self.mix_stderr:
+                bytes_error = StringIO()
+                sys.stderr = bytes_error
+        else:
+            bytes_output = io.BytesIO()
+            if self.echo_stdin:
+                input_stream = _EchoingStdin(input_stream, bytes_output)
+            input = io.TextIOWrapper(input_stream, encoding=self.encoding)
+            sys.stdout = io.TextIOWrapper(
+                bytes_output, encoding=self.encoding)
+            if not self.mix_stderr:
+                bytes_error = io.BytesIO()
+                sys.stderr = io.TextIOWrapper(
+                    bytes_error, encoding=self.encoding)
+
+        if self.mix_stderr:
+            sys.stderr = sys.stdout
+        sys.stdin = input
+
+        old_env = {}
+        try:
+            if chdir:
+                os.chdir(str(chdir))
+
+            _sync_env(os.environ, full_env, old_env)
+
+            yield (bytes_output, bytes_error if not self.mix_stderr else None)
+        finally:
+            if chdir:
+                os.chdir(old_cwd)
+
+            _sync_env(os.environ, old_env)
+
+            # see note above
+            sys.stdout.flush()
+            sys.stderr.flush()
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+            sys.stdin = old_stdin
+
+        return
 
     def invoke(self, args, input=None, env=None, chdir=None):
         with self.isolate(input=input, env=env, chdir=chdir) as (stdout, stderr):
@@ -142,62 +199,6 @@ class TestClient(object):
                       exit_code=exit_code,
                       exc_info=exc_info)
 
-    @contextlib.contextmanager
-    def isolate(self, input=None, env=None, chdir=None):
-        input_stream = make_input_stream(input, self.encoding)
-        old_cwd = os.getcwd()
-        old_stdin, old_stdout, old_stderr = sys.stdin, sys.stdout, sys.stderr
-
-        full_env = dict(self.base_env)
-        if env:
-            full_env.update(env)
-
-        if PY2:
-            bytes_output = StringIO()
-            input = input_stream
-            if self.echo_stdin:
-                input = _EchoingStdin(input_stream, bytes_output)
-            sys.stdout = bytes_output  # TODO: move these assignments below
-            if not self.mix_stderr:
-                bytes_error = StringIO()
-                sys.stderr = bytes_error
-        else:
-            bytes_output = io.BytesIO()
-            if self.echo_stdin:
-                input_stream = _EchoingStdin(input_stream, bytes_output)
-            input = io.TextIOWrapper(input_stream, encoding=self.encoding)
-            sys.stdout = io.TextIOWrapper(
-                bytes_output, encoding=self.encoding)
-            if not self.mix_stderr:
-                bytes_error = io.BytesIO()
-                sys.stderr = io.TextIOWrapper(
-                    bytes_error, encoding=self.encoding)
-
-        if self.mix_stderr:
-            sys.stderr = sys.stdout
-        sys.stdin = input
-
-        old_env = {}
-        try:
-            if chdir:
-                os.chdir(chdir)
-
-            _sync_env(os.environ, full_env, old_env)
-
-            yield (bytes_output, bytes_error if not self.mix_stderr else None)
-        finally:
-            if chdir:
-                os.chdir(old_cwd)
-
-            _sync_env(os.environ, old_env)
-
-            sys.stdout.flush()
-            sys.stderr.flush()
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            sys.stdin = old_stdin
-
-        return
 
 
 def _sync_env(env, new, backup=None):

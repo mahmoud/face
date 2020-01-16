@@ -103,6 +103,7 @@ def test_calc_stream():
 
     with pytest.raises(ZeroDivisionError):
         tc.invoke('calc halve', input='4', env={'CALC_TWO': '0'})
+
     return
 
 
@@ -122,3 +123,13 @@ def test_tc_exc():
 
     with pytest.raises(TypeError):
         tc_no_reraise.invoke('calc halve', input=object())
+
+def test_tc_mixed(tmpdir):
+    cmd = get_calc_cmd()
+    tc_mixed = TestClient(cmd, reraise=False, mix_stderr=True, echo_stdin=True)
+    res = tc_mixed.invoke('calc halve nonexistentarg', chdir=tmpdir)
+    assert type(res.exception) is CommandLineError
+    assert res.stdout.startswith("error: calc halve: unexpected positional arguments: ['nonexistentarg']")
+
+    with pytest.raises(ValueError):
+        res.stderr

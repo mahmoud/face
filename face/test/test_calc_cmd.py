@@ -94,10 +94,10 @@ def test_calc_stream():
     assert res.stdout.strip() == '3.0'
 
     res = tc.run(['calc', 'halve'], input='30')
-    assert res.stdout.strip() == 'Enter a number: 30\n15.0'
+    assert res.stdout.strip() == 'Enter a number: \n15.0'
 
     res = tc.run('calc halve', input='4', env={'CALC_TWO': '-2'})
-    assert res.stdout.strip() == 'Enter a number: 4\n-2.0'
+    assert res.stdout.strip() == 'Enter a number: \n-2.0'
     assert not res.exception
 
     with pytest.raises(ZeroDivisionError):
@@ -111,7 +111,7 @@ def test_cc_exc():
     cc_no_reraise = CommandChecker(cmd, reraise=False)
     res = cc_no_reraise.run('calc halve', input='4', env={'CALC_TWO': '0'})
     assert res.exception
-    assert res.stdout == 'Enter a number: 4\n'
+    assert res.stdout == 'Enter a number: \n'
 
     res = cc_no_reraise.run('calc halve nonexistentarg')
     assert type(res.exception) is CommandLineError

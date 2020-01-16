@@ -37,7 +37,7 @@ else:
     unicode = str
 
 
-def make_input_stream(input, encoding):
+def _make_input_stream(input, encoding):
     if input is None:
         input = b''
     elif isinstance(input, unicode):
@@ -49,11 +49,11 @@ def make_input_stream(input, encoding):
     return io.BytesIO(input)
 
 
-class Result(object):
+class CheckResult(object):
     """Holds the captured result of running a command."""
 
-    def __init__(self, test_client, stdout_bytes, stderr_bytes, exit_code, exc_info):
-        self.test_client = test_client
+    def __init__(self, checker, stdout_bytes, stderr_bytes, exit_code, exc_info):
+        self.checker = checker
         self.stdout_bytes = stdout_bytes
         self.stderr_bytes = stderr_bytes
         self.exit_code = exit_code  # integer
@@ -68,7 +68,7 @@ class Result(object):
     @property
     def stdout(self):
         """The standard output as unicode string."""
-        return self.stdout_bytes.decode(self.test_client.encoding, 'replace') \
+        return self.stdout_bytes.decode(self.checker.encoding, 'replace') \
             .replace('\r\n', '\n')
 
     @property
@@ -76,7 +76,7 @@ class Result(object):
         """The standard error as unicode string."""
         if self.stderr_bytes is None:
             raise ValueError("stderr not separately captured")
-        return self.stderr_bytes.decode(self.test_client.encoding, 'replace') \
+        return self.stderr_bytes.decode(self.checker.encoding, 'replace') \
             .replace('\r\n', '\n')
 
 
@@ -97,42 +97,39 @@ class CommandChecker(object):
 
     @contextlib.contextmanager
     def _isolate(self, input=None, env=None, chdir=None):
-        input_stream = make_input_stream(input, self.encoding)
         old_cwd = os.getcwd()
         old_stdin, old_stdout, old_stderr = sys.stdin, sys.stdout, sys.stderr
+
+        tmp_stdin = _make_input_stream(input, self.encoding)
 
         full_env = dict(self.base_env)
         if env:
             full_env.update(env)
 
         if PY2:
-            bytes_output = StringIO()
-            input = _EchoingStdin(input_stream, bytes_output)
-            sys.stdout = bytes_output  # TODO: move these assignments below
-            if not self.mix_stderr:
-                bytes_error = StringIO()
-                sys.stderr = bytes_error
+            tmp_stdout = bytes_output = StringIO()
+            if self.mix_stderr:
+                tmp_stderr = tmp_stdout
+            else:
+                bytes_error = tmp_stderr = StringIO()
         else:
             bytes_output = io.BytesIO()
-            input_stream = _EchoingStdin(input_stream, bytes_output)
-            input = io.TextIOWrapper(input_stream, encoding=self.encoding)
-            sys.stdout = io.TextIOWrapper(
+            tmp_stdin = io.TextIOWrapper(tmp_stdin, encoding=self.encoding)
+            tmp_stdout = io.TextIOWrapper(
                 bytes_output, encoding=self.encoding)
-            if not self.mix_stderr:
+            if self.mix_stderr:
+                tmp_stderr = tmp_stdout
+            else:
                 bytes_error = io.BytesIO()
-                sys.stderr = io.TextIOWrapper(
+                tmp_stderr = io.TextIOWrapper(
                     bytes_error, encoding=self.encoding)
-
-        if self.mix_stderr:
-            sys.stderr = sys.stdout
-        sys.stdin = input
 
         old_env = {}
         try:
+            _sync_env(os.environ, full_env, old_env)
             if chdir:
                 os.chdir(str(chdir))
-
-            _sync_env(os.environ, full_env, old_env)
+            sys.stdin, sys.stdout, sys.stderr = tmp_stdin, tmp_stdout, tmp_stderr
 
             yield (bytes_output, bytes_error if not self.mix_stderr else None)
         finally:
@@ -142,11 +139,9 @@ class CommandChecker(object):
             _sync_env(os.environ, old_env)
 
             # see note above
-            sys.stdout.flush()
-            sys.stderr.flush()
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            sys.stdin = old_stdin
+            tmp_stdout.flush()
+            tmp_stderr.flush()
+            sys.stdin, sys.stdout, sys.stderr = old_stdin, old_stdout, old_stderr
 
         return
 
@@ -186,14 +181,15 @@ class CommandChecker(object):
                 stderr_bytes = stderr.getvalue() if not self.mix_stderr else None
 
         # TODO: unconsumed stdin?
-        return Result(test_client=self,
+        return CheckResult(checker=self,
                       stdout_bytes=stdout_bytes,
                       stderr_bytes=stderr_bytes,
                       exit_code=exit_code,
                       exc_info=exc_info)
 
 
-
+# syncing os.environ (as opposed to modifying a copy and setting it
+# back) takes care of cases when someone has a reference to environ
 def _sync_env(env, new, backup=None):
     for key, value in new.items():
         if backup is not None:
@@ -206,36 +202,3 @@ def _sync_env(env, new, backup=None):
         except Exception:
             pass
     return backup
-
-
-
-class _EchoingStdin(object):
-
-    def __init__(self, input, output):
-        self._input = input
-        self._output = output
-
-    def __getattr__(self, x):
-        return getattr(self._input, x)
-
-    def _echo(self, rv):
-        self._output.write(rv)
-        return rv
-
-    def read(self, n=-1):
-        return self._echo(self._input.read(n))
-
-    read1 = read
-
-    def readline(self, n=-1):
-        return self._echo(self._input.readline(n))
-
-    def readlines(self):
-        return [self._echo(x) for x in self._input.readlines()]
-
-    def __iter__(self):
-        return iter(self._echo(x) for x in self._input)
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s(%r)' % (cn, self._input)

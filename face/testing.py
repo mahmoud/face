@@ -18,7 +18,7 @@
   when it wasn't captured.
 * Instead of isolated_filesystem, I just added chdir to run,
   because pytest already does temporary directories.
-* Removed echo_stdin (stdin always echos)
+* Removed echo_stdin (stdin never echos, as it wouldn't with subprocess)
 
 TODO: test with more than one input line (confirm that \n works across raw_inputs)
 """
@@ -49,10 +49,11 @@ def _make_input_stream(input, encoding):
     return io.BytesIO(input)
 
 
-class CheckResult(object):
-    """Holds the captured result of running a command."""
+class RunResult(object):
+    "Holds the captured result of CommandChecker running a command."
 
-    def __init__(self, checker, stdout_bytes, stderr_bytes, exit_code, exc_info):
+    def __init__(self, args, exit_code, stdout_bytes, stderr_bytes, exc_info=None, checker=None):
+        self.args = args
         self.checker = checker
         self.stdout_bytes = stdout_bytes
         self.stderr_bytes = stderr_bytes
@@ -60,31 +61,50 @@ class CheckResult(object):
 
         # if an exception occurred:
         self.exc_info = exc_info
+        # TODO: exc_info won't be available in subprocess... maybe the
+        # text of a parsed-out traceback? But in general, tracebacks
+        # aren't usually part of CLI UX...
 
     @property
     def exception(self):
         return self.exc_info[1] if self.exc_info else None
 
     @property
+    def returncode(self):  # for parity with subprocess.CompletedProcess
+        return self.exit_code
+
+    @property
     def stdout(self):
-        """The standard output as unicode string."""
-        return self.stdout_bytes.decode(self.checker.encoding, 'replace') \
-            .replace('\r\n', '\n')
+        "The standard output as unicode string."
+        return (self.stdout_bytes
+                .decode(self.checker.encoding, 'replace')
+                .replace('\r\n', '\n'))
 
     @property
     def stderr(self):
-        """The standard error as unicode string."""
+        "The standard error as unicode string."
         if self.stderr_bytes is None:
             raise ValueError("stderr not separately captured")
-        return self.stderr_bytes.decode(self.checker.encoding, 'replace') \
-            .replace('\r\n', '\n')
+        return (self.stderr_bytes
+                .decode(self.checker.encoding, 'replace')
+                .replace('\r\n', '\n'))
 
+    # TODO:
+    # def check(self):
+    #    if self.exit_code != 0:
+    #        raise CommandRunError(repr(self))
 
     def __repr__(self):
-        return '<%s %s>' % (
-            self.__class__.__name__,
-            repr(self.exception) if self.exception else ('exit_code=%s' % self.exit_code),
-        )
+        # very similar to subprocess.CompleteProcess repr
+        args = ['args={!r}'.format(self.args),
+                'returncode={!r}'.format(self.returncode)]
+        if self.stdout_bytes:
+            args.append('stdout=%r' % (self.stdout,))
+        if self.stderr_bytes is not None:
+            args.append('stderr=%r' % (self.stderr,))
+        if self.exception:
+            args.append('exception=%r' % (self.exception,))
+        return "%s(%s)" % (self.__class__.__name__, ', '.join(args))
 
 
 class CommandChecker(object):
@@ -157,18 +177,7 @@ class CommandChecker(object):
                 res = self.cmd.run(args or ())
             except SystemExit as se:
                 exc_info = sys.exc_info()
-                exit_code = se.code
-                if exit_code is None:
-                    exit_code = 0
-
-                #if exit_code != 0:
-                #    exception = e
-
-                if not isinstance(exit_code, int):
-                    # TODO: I think this is done just to break the test?
-                    sys.stdout.write(str(exit_code))
-                    sys.stdout.write('\n')
-                    exit_code = 1
+                exit_code = se.code if exit_code is not None else 0
             except Exception:
                 if self.reraise:
                     raise
@@ -181,11 +190,12 @@ class CommandChecker(object):
                 stderr_bytes = stderr.getvalue() if not self.mix_stderr else None
 
         # TODO: unconsumed stdin?
-        return CheckResult(checker=self,
-                      stdout_bytes=stdout_bytes,
-                      stderr_bytes=stderr_bytes,
-                      exit_code=exit_code,
-                      exc_info=exc_info)
+        return RunResult(checker=self,
+                         args=args,
+                         stdout_bytes=stdout_bytes,
+                         stderr_bytes=stderr_bytes,
+                         exit_code=exit_code,
+                         exc_info=exc_info)
 
 
 # syncing os.environ (as opposed to modifying a copy and setting it

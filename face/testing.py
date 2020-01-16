@@ -4,7 +4,6 @@
 """Porting notes:
 
 * EchoingStdin.read1() needed to exist for py3 and raw_input
-
 * Not sure why the isolate context manager deals in byte streams and
   then relegates to the Result to do late encoding (in properties no
   less). This is especially troublesome because sys.stdout/stderr
@@ -13,17 +12,15 @@
   it just for parity with py2? There was a related bug, sys.stdout was
   flushed, but not sys.stderr, which caused py3's error_bytes to come
   through as blank.
+* sys.stderr had to be flushed, too, on py3 (in invoke's finally)
 * Result.exception was redundant with exc_info
 * Result.stderr raised a ValueError when stderr was empty, not just
   when it wasn't captured.
 * Instead of isolated_filesystem, I just added chdir to invoke,
   because pytest already does temporary directories.
+* Removed echo_stdin (stdin always echos)
 
 TODO: test with more than one input line (confirm that \n works across raw_inputs)
-TODO: Remove ability to pass input in as a stream
-TODO: test chdir
-TODO: test mix_stderr;
-
 """
 
 import os
@@ -91,10 +88,9 @@ class Result(object):
 
 
 class TestClient(object):
-    def __init__(self, cmd, env=None, echo_stdin=False, mix_stderr=False, reraise=True):
+    def __init__(self, cmd, env=None, mix_stderr=False, reraise=True):
         self.cmd = cmd
         self.base_env = env or {}
-        self.echo_stdin = echo_stdin
         self.reraise = reraise
         self.mix_stderr = mix_stderr
         self.encoding = 'utf8'  # not clear if this should be an arg yet
@@ -111,17 +107,14 @@ class TestClient(object):
 
         if PY2:
             bytes_output = StringIO()
-            input = input_stream
-            if self.echo_stdin:
-                input = _EchoingStdin(input_stream, bytes_output)
+            input = _EchoingStdin(input_stream, bytes_output)
             sys.stdout = bytes_output  # TODO: move these assignments below
             if not self.mix_stderr:
                 bytes_error = StringIO()
                 sys.stderr = bytes_error
         else:
             bytes_output = io.BytesIO()
-            if self.echo_stdin:
-                input_stream = _EchoingStdin(input_stream, bytes_output)
+            input_stream = _EchoingStdin(input_stream, bytes_output)
             input = io.TextIOWrapper(input_stream, encoding=self.encoding)
             sys.stdout = io.TextIOWrapper(
                 bytes_output, encoding=self.encoding)

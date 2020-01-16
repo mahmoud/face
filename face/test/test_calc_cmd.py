@@ -95,10 +95,10 @@ def test_calc_stream():
     assert res.stdout.strip() == '3.0'
 
     res = tc.invoke(['calc', 'halve'], input='30')
-    assert res.stdout.strip() == 'Enter a number: \n15.0'
+    assert res.stdout.strip() == 'Enter a number: 30\n15.0'
 
     res = tc.invoke('calc halve', input='4', env={'CALC_TWO': '-2'})
-    assert res.stdout.strip() == 'Enter a number: \n-2.0'
+    assert res.stdout.strip() == 'Enter a number: 4\n-2.0'
     assert not res.exception
 
     with pytest.raises(ZeroDivisionError):
@@ -109,7 +109,7 @@ def test_calc_stream():
 
 def test_tc_exc():
     cmd = get_calc_cmd()
-    tc_no_reraise = TestClient(cmd, reraise=False, echo_stdin=True)
+    tc_no_reraise = TestClient(cmd, reraise=False)
     res = tc_no_reraise.invoke('calc halve', input='4', env={'CALC_TWO': '0'})
     assert res.exception
     assert res.stdout == 'Enter a number: 4\n'
@@ -123,13 +123,17 @@ def test_tc_exc():
 
     with pytest.raises(TypeError):
         tc_no_reraise.invoke('calc halve', input=object())
+    return
+
 
 def test_tc_mixed(tmpdir):
     cmd = get_calc_cmd()
-    tc_mixed = TestClient(cmd, reraise=False, mix_stderr=True, echo_stdin=True)
+    tc_mixed = TestClient(cmd, reraise=False, mix_stderr=True)
     res = tc_mixed.invoke('calc halve nonexistentarg', chdir=tmpdir)
     assert type(res.exception) is CommandLineError
     assert res.stdout.startswith("error: calc halve: unexpected positional arguments: ['nonexistentarg']")
 
     with pytest.raises(ValueError):
         res.stderr
+
+    return

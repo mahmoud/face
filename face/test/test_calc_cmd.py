@@ -87,7 +87,7 @@ def test_calc_basic():
 def test_calc_stream():
     cmd = get_calc_cmd()
 
-    tc = CommandChecker(cmd)
+    tc = CommandChecker(cmd, reraise=True)
 
     res = tc.run(['calc', 'add', '1', '2'])
 
@@ -108,7 +108,7 @@ def test_calc_stream():
 
 def test_cc_exc():
     cmd = get_calc_cmd()
-    cc_no_reraise = CommandChecker(cmd, reraise=False)
+    cc_no_reraise = CommandChecker(cmd)
     res = cc_no_reraise.run('calc halve', input='4', env={'CALC_TWO': '0'})
     assert res.exception
     assert res.stdout == 'Enter a number: \n'
@@ -128,7 +128,7 @@ def test_cc_exc():
 
 def test_cc_mixed(tmpdir):
     cmd = get_calc_cmd()
-    cc_mixed = CommandChecker(cmd, reraise=False, mix_stderr=True)
+    cc_mixed = CommandChecker(cmd, mix_stderr=True)
     res = cc_mixed.run('calc halve nonexistentarg', chdir=tmpdir)
     assert type(res.exception) is CommandLineError
     assert res.stdout.startswith("error: calc halve: unexpected positional arguments: ['nonexistentarg']")

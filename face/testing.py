@@ -89,11 +89,6 @@ class RunResult(object):
                 .decode(self.checker.encoding, 'replace')
                 .replace('\r\n', '\n'))
 
-    # TODO:
-    # def check(self):
-    #    if self.exit_code != 0:
-    #        raise CommandRunError(repr(self))
-
     def __repr__(self):
         # very similar to subprocess.CompleteProcess repr
         args = ['args={!r}'.format(self.args),
@@ -106,14 +101,20 @@ class RunResult(object):
             args.append('exception=%r' % (self.exception,))
         return "%s(%s)" % (self.__class__.__name__, ', '.join(args))
 
+    # TODO:
+    # def check(self):
+    #    if self.exit_code != 0:
+    #        raise CommandRunError(repr(self))
+
 
 class CommandChecker(object):
-    def __init__(self, cmd, env=None, mix_stderr=False, reraise=True):
+    def __init__(self, cmd, env=None, chdir=None, mix_stderr=False, reraise=False):
         self.cmd = cmd
         self.base_env = env or {}
         self.reraise = reraise
         self.mix_stderr = mix_stderr
         self.encoding = 'utf8'  # not clear if this should be an arg yet
+        self.chdir = chdir
 
     @contextlib.contextmanager
     def _isolate(self, input=None, env=None, chdir=None):
@@ -123,6 +124,7 @@ class CommandChecker(object):
         tmp_stdin = _make_input_stream(input, self.encoding)
 
         full_env = dict(self.base_env)
+        chdir = chdir or self.chdir
         if env:
             full_env.update(env)
 
@@ -181,7 +183,7 @@ class CommandChecker(object):
             except Exception:
                 if self.reraise:
                     raise
-                exit_code = 1
+                exit_code = -1  # TODO: something better?
                 exc_info = sys.exc_info()
             finally:
                 sys.stdout.flush()

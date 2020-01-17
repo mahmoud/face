@@ -26,6 +26,7 @@ TODO: test with more than one input line (confirm that \n works across raw_input
 import os
 import sys
 import shlex
+import getpass
 import contextlib
 
 PY2 = sys.version_info[0] == 2
@@ -47,6 +48,22 @@ def _make_input_stream(input, encoding):
     if PY2:
         return StringIO(input)
     return io.BytesIO(input)
+
+
+def _fake_getpass(prompt='Password: ', stream=None):
+    if not stream:
+        stream = sys.stderr
+    input = sys.stdin
+    prompt = str(prompt)
+    if prompt:
+        stream.write(prompt)
+        stream.flush()
+    line = input.readline()
+    if not line:
+        raise EOFError
+    if line[-1] == '\n':
+        line = line[:-1]
+    return line
 
 
 class RunResult(object):
@@ -120,6 +137,7 @@ class CommandChecker(object):
     def _isolate(self, input=None, env=None, chdir=None):
         old_cwd = os.getcwd()
         old_stdin, old_stdout, old_stderr = sys.stdin, sys.stdout, sys.stderr
+        old_getpass = getpass.getpass
 
         tmp_stdin = _make_input_stream(input, self.encoding)
 
@@ -152,6 +170,7 @@ class CommandChecker(object):
             if chdir:
                 os.chdir(str(chdir))
             sys.stdin, sys.stdout, sys.stderr = tmp_stdin, tmp_stdout, tmp_stderr
+            getpass.getpass = _fake_getpass
 
             yield (bytes_output, bytes_error if not self.mix_stderr else None)
         finally:
@@ -164,10 +183,13 @@ class CommandChecker(object):
             tmp_stdout.flush()
             tmp_stderr.flush()
             sys.stdin, sys.stdout, sys.stderr = old_stdin, old_stdout, old_stderr
+            getpass.getpass = old_getpass
 
         return
 
     def run(self, args, input=None, env=None, chdir=None):
+        if isinstance(input, (list, tuple)):
+            input = '\n'.join(input)
         with self._isolate(input=input, env=env, chdir=chdir) as (stdout, stderr):
             exc_info = None
             exit_code = 0

@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import os
+import getpass
 
 import pytest
 
@@ -25,6 +26,7 @@ def get_calc_cmd(as_parser=False):
     cmd.add(_add_two_ints, name='add_two_ints', posargs={'count': 2, 'parse_as': int, 'provides': 'ints'})
     cmd.add(_is_odd, name='is_odd', posargs={'count': 1, 'parse_as': int, 'provides': 'target_int'})
     cmd.add(_ask_halve, name='halve', posargs=False)
+    cmd.add(_ask_blackjack, name='blackjack')
 
     if as_parser:
         cmd.__class__ = Parser
@@ -57,6 +59,20 @@ def _ask_halve():
 
 def _is_odd(target_int):
     return bool(target_int % 2)
+
+
+def _ask_blackjack():
+    bottom = int(getpass.getpass('Bottom card: '))
+    top = int(raw_input('Top card: '))
+    total = top + bottom
+    if total > 21:
+        res = 'bust'
+    elif total == 21:
+        res = 'blackjack!'
+    else:
+        res = 'hit (if you feel lucky)'
+    print(res)
+    return
 
 
 def test_calc_basic():
@@ -138,3 +154,10 @@ def test_cc_mixed(tmpdir):
         res.stderr
 
     return
+
+
+def test_cc_getpass():
+    cmd = get_calc_cmd()
+    cc = CommandChecker(cmd, mix_stderr=True)
+    res = cc.run('calc blackjack', input=['20', '1'])
+    assert res.stdout.endswith('blackjack!\n')

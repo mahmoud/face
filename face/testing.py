@@ -20,7 +20,6 @@
   because pytest already does temporary directories.
 * Removed echo_stdin (stdin never echos, as it wouldn't with subprocess)
 
-TODO: test with more than one input line (confirm that \n works across raw_inputs)
 """
 
 import os
@@ -142,6 +141,7 @@ class CommandChecker(object):
         tmp_stdin = _make_input_stream(input, self.encoding)
 
         full_env = dict(self.base_env)
+
         chdir = chdir or self.chdir
         if env:
             full_env.update(env)
@@ -194,14 +194,14 @@ class CommandChecker(object):
             exc_info = None
             exit_code = 0
 
-            if isinstance(args, str):
+            if isinstance(args, (str, unicode)):
                 args = shlex.split(args)
 
             try:
                 res = self.cmd.run(args or ())
             except SystemExit as se:
                 exc_info = sys.exc_info()
-                exit_code = se.code if exit_code is not None else 0
+                exit_code = se.code if se.code is not None else 0
             except Exception:
                 if self.reraise:
                     raise
@@ -225,6 +225,11 @@ class CommandChecker(object):
 # syncing os.environ (as opposed to modifying a copy and setting it
 # back) takes care of cases when someone has a reference to environ
 def _sync_env(env, new, backup=None):
+    if PY2:
+        # py2 expects bytes in os.environ
+        encode = lambda x: x.encode('utf8') if isinstance(x, unicode) else x
+        new = {encode(k): encode(v) for k, v in new.items()}
+
     for key, value in new.items():
         if backup is not None:
             backup[key] = env.get(key)

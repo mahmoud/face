@@ -12,7 +12,7 @@ from face import (Command,
                   ArgumentParseError,
                   CommandLineError,
                   CommandChecker,
-                  RunError)
+                  CheckError)
 
 try:
     raw_input
@@ -180,12 +180,13 @@ def test_cc_edge_cases():
     res = cc.run('calc blackjack', input=['20', '1'], exit_code=None)
     assert res.exit_code == 0
 
+    # CheckError is also an AssertionError
     with pytest.raises(AssertionError) as exc_info:
         cc.run('calc halve nonexistentarg', input='tldr')
     assert exc_info.value.result.stderr.startswith('error: calc halve: unexpected')
 
-    with pytest.raises(RunError):
+    with pytest.raises(CheckError):
         cc.fail('calc halve', input='4')
 
-    with pytest.raises(RunError):
+    with pytest.raises(CheckError):
         cc.fail('calc halve', input='4', exit_code=(1, 2))

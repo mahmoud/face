@@ -131,7 +131,7 @@ class RunResult(object):
     # TODO:
     # def check(self):
     #    if self.exit_code != 0:
-    #        raise RunError(repr(self))
+    #        raise CheckError(repr(self))
 
 
 def _get_exp_code_text(exp_codes):
@@ -149,7 +149,7 @@ def _get_exp_code_text(exp_codes):
     return 'one of %r' % (tuple(exp_codes),)
 
 
-class RunError(AssertionError):
+class CheckError(AssertionError):
     def __init__(self, result, exit_codes):
         self.result = result
         exp_code = _get_exp_code_text(exit_codes)
@@ -293,7 +293,7 @@ class CommandChecker(object):
                             exit_code=exit_code,
                             exc_info=exc_info)
         if exit_codes and exit_code not in exit_codes:
-            exc = RunError(run_res, exit_codes)
+            exc = CheckError(run_res, exit_codes)
             raise exc
         return run_res
 

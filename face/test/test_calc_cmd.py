@@ -11,7 +11,8 @@ from face import (Command,
                   PosArgSpec,
                   ArgumentParseError,
                   CommandLineError,
-                  CommandChecker)
+                  CommandChecker,
+                  RunError)
 
 try:
     raw_input
@@ -125,11 +126,11 @@ def test_calc_stream():
 def test_cc_exc():
     cmd = get_calc_cmd()
     cc_no_reraise = CommandChecker(cmd)
-    res = cc_no_reraise.run('calc halve', input='4', env={'CALC_TWO': '0'})
+    res = cc_no_reraise.fail('calc halve', input='4', env={'CALC_TWO': '0'})
     assert res.exception
     assert res.stdout == 'Enter a number: \n'
 
-    res = cc_no_reraise.run('calc halve nonexistentarg')
+    res = cc_no_reraise.fail('calc halve nonexistentarg')
     assert type(res.exception) is CommandLineError
 
     # NB: expect to update these as error messaging improves
@@ -145,7 +146,7 @@ def test_cc_exc():
 def test_cc_mixed(tmpdir):
     cmd = get_calc_cmd()
     cc_mixed = CommandChecker(cmd, mix_stderr=True)
-    res = cc_mixed.run('calc halve nonexistentarg', chdir=tmpdir)
+    res = cc_mixed.fail_1('calc halve nonexistentarg', chdir=tmpdir)
     assert type(res.exception) is CommandLineError
     assert res.stdout.startswith("error: calc halve: unexpected positional arguments: ['nonexistentarg']")
     assert repr(res)
@@ -161,3 +162,30 @@ def test_cc_getpass():
     cc = CommandChecker(cmd, mix_stderr=True)
     res = cc.run('calc blackjack', input=['20', '1'])
     assert res.stdout.endswith('blackjack!\n')
+
+
+def test_cc_edge_cases():
+    cmd = get_calc_cmd()
+    cc = CommandChecker(cmd)
+
+    with pytest.raises(AttributeError):
+        cc.nonexistentattr
+    with pytest.raises(AttributeError, match='end in integers'):
+        cc.fail_x
+
+    with pytest.raises(TypeError, match='Container of ints'):
+        cc.run('calc blackjack', exit_code=object())
+
+    # disable automatic checking
+    res = cc.run('calc blackjack', input=['20', '1'], exit_code=None)
+    assert res.exit_code == 0
+
+    with pytest.raises(AssertionError) as exc_info:
+        cc.run('calc halve nonexistentarg', input='tldr')
+    assert exc_info.value.result.stderr.startswith('error: calc halve: unexpected')
+
+    with pytest.raises(RunError):
+        cc.fail('calc halve', input='4')
+
+    with pytest.raises(RunError):
+        cc.fail('calc halve', input='4', exit_code=(1, 2))

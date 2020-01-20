@@ -27,6 +27,13 @@ import sys
 import shlex
 import getpass
 import contextlib
+from subprocess import list2cmdline
+from functools import partial
+
+try:
+    from collections.abc import Container
+except ImportError:
+    from collections import Container
 
 PY2 = sys.version_info[0] == 2
 
@@ -35,6 +42,9 @@ if PY2:
 else:
     import io
     unicode = str
+
+
+from boltons.setutils import complement
 
 
 def _make_input_stream(input, encoding):
@@ -68,8 +78,9 @@ def _fake_getpass(prompt='Password: ', stream=None):
 class RunResult(object):
     "Holds the captured result of CommandChecker running a command."
 
-    def __init__(self, args, exit_code, stdout_bytes, stderr_bytes, exc_info=None, checker=None):
+    def __init__(self, args, input, exit_code, stdout_bytes, stderr_bytes, exc_info=None, checker=None):
         self.args = args
+        self.input = input
         self.checker = checker
         self.stdout_bytes = stdout_bytes
         self.stderr_bytes = stderr_bytes
@@ -120,7 +131,43 @@ class RunResult(object):
     # TODO:
     # def check(self):
     #    if self.exit_code != 0:
-    #        raise CommandRunError(repr(self))
+    #        raise RunError(repr(self))
+
+
+def _get_exp_code_text(exp_codes):
+    try:
+        codes_len = len(exp_codes)
+    except Exception:
+        comp_codes = complement(exp_codes)
+        try:
+            comp_codes = tuple(comp_codes)
+            return 'any code but %r' % (comp_codes[0] if len(comp_codes) == 1 else comp_codes)
+        except Exception:
+            return repr(exp_codes)
+    if codes_len == 1:
+        return repr(exp_codes[0])
+    return 'one of %r' % (tuple(exp_codes),)
+
+
+class RunError(AssertionError):
+    def __init__(self, result, exit_codes):
+        self.result = result
+        exp_code = _get_exp_code_text(exit_codes)
+        msg = ('Got exit code %r (expected %s) when running command: %s'
+               % (result.exit_code, exp_code, list2cmdline(result.args)))
+        if result.stdout:
+            msg += '\nstdout = """\n'
+            msg += result.stdout
+            msg += '"""\n'
+        if result.stderr_bytes:
+            msg += '\nstderr = """\n'
+            msg += result.stderr
+            msg += '"""\n'
+        if result.input:
+            msg += '\nstdin = """\n'
+            msg += result.input
+            msg += '"""\n'
+        AssertionError.__init__(self, msg)
 
 
 class CommandChecker(object):
@@ -187,9 +234,34 @@ class CommandChecker(object):
 
         return
 
-    def run(self, args, input=None, env=None, chdir=None):
+    def fail(self, *a, **kw):
+        kw.setdefault('exit_code', complement(set([0])))
+        return self.run(*a, **kw)
+
+    def __getattr__(self, name):
+        if not name.startswith('fail_'):
+            return super(CommandChecker, self).__getattr__(name)
+        _, _, code_str = name.partition('fail_')
+        try:
+            code = [int(cs) for cs in code_str.split('_')]
+        except Exception:
+            raise AttributeError('fail_* shortcuts must end in integers, not %r'
+                                 % code_str)
+        return partial(self.fail, exit_code=code)
+
+    def run(self, args, input=None, env=None, chdir=None, exit_code=0):
         if isinstance(input, (list, tuple)):
             input = '\n'.join(input)
+        if exit_code is None:
+            exit_codes = ()
+        elif isinstance(exit_code, int):
+            exit_codes = (exit_code,)
+        elif not isinstance(exit_code, Container):
+            raise TypeError('expected exit_code to be None, int, or'
+                            ' Container of ints, representing expected'
+                            ' exit_codes, not: %r' % (exit_code,))
+        else:
+            exit_codes = exit_code
         with self._isolate(input=input, env=env, chdir=chdir) as (stdout, stderr):
             exc_info = None
             exit_code = 0
@@ -213,13 +285,17 @@ class CommandChecker(object):
                 stdout_bytes = stdout.getvalue()
                 stderr_bytes = stderr.getvalue() if not self.mix_stderr else None
 
-        # TODO: unconsumed stdin?
-        return RunResult(checker=self,
-                         args=args,
-                         stdout_bytes=stdout_bytes,
-                         stderr_bytes=stderr_bytes,
-                         exit_code=exit_code,
-                         exc_info=exc_info)
+        run_res = RunResult(checker=self,
+                            args=args,
+                            input=input,
+                            stdout_bytes=stdout_bytes,
+                            stderr_bytes=stderr_bytes,
+                            exit_code=exit_code,
+                            exc_info=exc_info)
+        if exit_codes and exit_code not in exit_codes:
+            exc = RunError(run_res, exit_codes)
+            raise exc
+        return run_res
 
 
 # syncing os.environ (as opposed to modifying a copy and setting it

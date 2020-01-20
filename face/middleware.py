@@ -28,13 +28,13 @@ function must be invoked to continue to program execution::
 
   import time
 
-  from face import face_middleware
+  from face import face_middleware, echo
 
   @face_middleware
   def timing_middleware(next_):
      start_time = time.time()
      ret = next_()
-     print('command executed in:', time.time() - start_time, 'seconds')
+     echo('command executed in:', time.time() - start_time, 'seconds')
      return ret
 
 As always, code speaks volumes. It's worth noting that ``next_()`` is
@@ -45,7 +45,7 @@ middleware. Another corollary is that this makes it easy to use
 
 While already practical, there are two significant ways it can be
 enhanced. The first would be to provide downstream handlers access to
-the ``start_time`` value. The second would be to make the print
+the ``start_time`` value. The second would be to make the echo
 functionality optional.
 
 Providing values from middleware
@@ -60,13 +60,13 @@ by making the start_time available as an injectable::
 
   import time
 
-  from face import face_middleware
+  from face import face_middleware, echo
 
   @face_middleware(provides=['start_time'])
   def timing_middleware(next_):
      start_time = time.time()
      ret = next_(start_time=start_time)
-     print('command executed in:', time.time() - start_time, 'seconds')
+     echo('command executed in:', time.time() - start_time, 'seconds')
      return ret
 
 ``start_time`` is added to the list of provides in the middleware
@@ -90,18 +90,18 @@ optional behavior, via a flag::
 
   import time
 
-  from face import face_middleware, Flag
+  from face import face_middleware, Flag, echo
 
-  @face_middleware(provides=['start_time'],  flags=[Flag('--print-time', parse_as=True)])
-  def timing_middleware(next_, print_time):
+  @face_middleware(provides=['start_time'],  flags=[Flag('--echo-time', parse_as=True)])
+  def timing_middleware(next_, echo_time):
      start_time = time.time()
      ret = next_(start_time=start_time)
-     if print_time:
-         print('command executed in:', time.time() - start_time, 'seconds')
+     if echo_time:
+         echo('command executed in:', time.time() - start_time, 'seconds')
      return ret
 
 Now, every :class:`Command` that adds this middleware will
-automatically get a flag, ``--print-time``. Just like other flags, its
+automatically get a flag, ``--echo-time``. Just like other flags, its
 value will be injected into commands that need it.
 
 .. note:: **Weak Dependencies** - Middlewares that set defaults for

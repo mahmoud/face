@@ -2,9 +2,10 @@
 import os
 import re
 import sys
+import getpass
 import keyword
 
-from boltons.strutils import pluralize
+from boltons.strutils import pluralize, strip_ansi
 from boltons.iterutils import split, unique
 from boltons.typeutils import make_sentinel
 
@@ -14,6 +15,7 @@ try:
     unicode
 except NameError:
     unicode = str
+    raw_input = input
 
 ERROR = make_sentinel('ERROR')  # used for parse_as=ERROR
 
@@ -244,3 +246,102 @@ def get_minimal_executable(executable=None, path=None, environ=os.environ):
             return executable_basename
         # TODO: support "../python" as a return?
     return executable
+
+
+# prompt and echo owe a decent amount of design to click (and
+# pocket_protector)
+def isatty(stream):
+    try:
+        return stream.isatty()
+    except Exception:
+        return False
+
+
+def should_strip_ansi(stream=None):
+    if stream is None:
+        stream = sys.stdin
+    return not isatty(stream)
+
+
+def echo(msg, **kw):
+    msg = msg or ''
+    is_err = kw.pop('err', False)
+    _file = kw.pop('file', sys.stdout if not is_err else sys.stderr)
+    end = kw.pop('end', None)
+    enable_color = kw.pop('color', None)
+
+    if enable_color is None:
+        enable_color = not should_strip_ansi(_file)
+
+    if end is None:
+        if kw.pop('nl', True):
+            end = u'\n' if isinstance(msg, unicode) else b'\n'
+    if end:
+        msg += end
+
+    if msg:
+        if not enable_color:
+            msg = strip_ansi(msg)
+        _file.write(msg)
+
+    _file.flush()
+
+    return
+
+
+def echo_err(*a, **kw):
+    kw['err'] = True
+    return echo(*a, **kw)
+
+
+# variant-style shortcut to help minimize kwarg noise and imports
+echo.err = echo_err
+
+
+def _get_text(inp):
+    if not isinstance(inp, unicode):
+        return inp.decode('utf8')
+    return inp
+
+
+def prompt(label, confirm=None, confirm_label=None, hide_input=False, err=False):
+    do_confirm = confirm or confirm_label
+    if do_confirm and not confirm_label:
+        confirm_label = 'Retype %r' % (label.lower(),)
+
+    def prompt_func(label):
+        func = getpass.getpass if hide_input else raw_input
+        try:
+            # Write the prompt separately so that we get nice
+            # coloring through colorama on Windows (someday)
+            echo(label, nl=False, err=err)
+            ret = func('')
+        except (KeyboardInterrupt, EOFError):
+            # getpass doesn't print a newline if the user aborts input with ^C.
+            # Allegedly this behavior is inherited from getpass(3).
+            # A doc bug has been filed at https://bugs.python.org/issue24711
+            if hide_input:
+                echo(None, err=err)
+            raise
+
+        return ret
+
+    ret = prompt_func(label)
+    ret = _get_text(ret)
+    if do_confirm:
+        ret2 = prompt_func(label)
+        ret2 = _get_text(ret2)
+        if ret != ret2:
+            raise face.UsageError('Sorry, inputs did not match.')
+
+    return ret
+
+
+def prompt_pass(label='Passphrase', **kw):
+    kw['hide_input'] = True
+    kw.setdefault('err', True)  # getpass usually puts prompts on stderr
+    return prompt(label, **kw)
+
+
+# variant-style shortcut to help minimize kwarg noise and imports
+prompt.passphrase = prompt_pass

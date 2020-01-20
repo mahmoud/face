@@ -4,7 +4,7 @@ from __future__ import print_function
 import sys
 from collections import OrderedDict
 
-from face.utils import unwrap_text, get_rdep_map
+from face.utils import unwrap_text, get_rdep_map, echo
 from face.errors import ArgumentParseError, CommandLineError, UsageError
 from face.parser import Parser, Flag
 from face.helpers import HelpHandler
@@ -49,7 +49,7 @@ def _docstring_to_doc(func):
 
 
 def default_print_error(msg):
-    return sys.stderr.write(msg + '\n')
+    return echo.err(msg)
 
 
 DEFAULT_HELP_HANDLER = HelpHandler()

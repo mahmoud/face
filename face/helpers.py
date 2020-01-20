@@ -6,7 +6,7 @@ import textwrap
 
 from boltons.iterutils import unique
 
-from face.utils import format_flag_label, format_flag_post_doc, format_posargs_label
+from face.utils import format_flag_label, format_flag_post_doc, format_posargs_label, echo
 from face.parser import Flag
 
 DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, char='-h', doc='show this help message and exit')
@@ -402,7 +402,7 @@ class HelpHandler(object):
         this HelpHandler and exits with exit code 0.
 
         """
-        print(self.formatter.get_help_text(command_, subcmds=subcmds_, program_name=cmd_))
+        echo(self.formatter.get_help_text(command_, subcmds=subcmds_, program_name=cmd_))
 
 
 """Usage: cmd_name sub_cmd [..as many subcommands as the max] --flags args ...

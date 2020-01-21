@@ -337,11 +337,11 @@ def prompt(label, confirm=None, confirm_label=None, hide_input=False, err=False)
     return ret
 
 
-def prompt_pass(label='Passphrase', **kw):
+def prompt_secret(label, **kw):
     kw['hide_input'] = True
     kw.setdefault('err', True)  # getpass usually puts prompts on stderr
     return prompt(label, **kw)
 
 
 # variant-style shortcut to help minimize kwarg noise and imports
-prompt.passphrase = prompt_pass
+prompt.secret = prompt_secret

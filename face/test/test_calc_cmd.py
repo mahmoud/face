@@ -59,7 +59,7 @@ def _is_odd(target_int):
 
 
 def _ask_blackjack():
-    bottom = int(prompt.passphrase('Bottom card: ', confirm=True))
+    bottom = int(prompt.secret('Bottom card: ', confirm=True))
     top = int(prompt('Top card: '))
     total = top + bottom
     if total > 21:

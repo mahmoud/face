@@ -12,12 +12,8 @@ from face import (Command,
                   ArgumentParseError,
                   CommandLineError,
                   CommandChecker,
-                  CheckError)
-
-try:
-    raw_input
-except NameError:
-    raw_input = input  # py3
+                  CheckError,
+                  prompt)
 
 
 def get_calc_cmd(as_parser=False):
@@ -51,7 +47,7 @@ def _add_two_ints(ints):
 
 
 def _ask_halve():
-    val = float(raw_input('Enter a number: '))
+    val = float(prompt('Enter a number: '))
     print()
     ret = val / float(os.getenv('CALC_TWO', 2))
     print(ret)
@@ -63,8 +59,8 @@ def _is_odd(target_int):
 
 
 def _ask_blackjack():
-    bottom = int(getpass.getpass('Bottom card: '))
-    top = int(raw_input('Top card: '))
+    bottom = int(prompt.passphrase('Bottom card: ', confirm=True))
+    top = int(prompt('Top card: '))
     total = top + bottom
     if total > 21:
         res = 'bust'
@@ -160,8 +156,21 @@ def test_cc_mixed(tmpdir):
 def test_cc_getpass():
     cmd = get_calc_cmd()
     cc = CommandChecker(cmd, mix_stderr=True)
-    res = cc.run('calc blackjack', input=['20', '1'])
+    res = cc.run('calc blackjack', input=['20', '20', '1'])
     assert res.stdout.endswith('blackjack!\n')
+
+    # check newline-autoadding behavior when getpass is aborted
+    cc = CommandChecker(cmd)
+    def _raise_eof(*a, **kw):
+        raise EOFError()
+
+    real_getpass = getpass.getpass
+    try:
+        getpass.getpass = _raise_eof
+        res = cc.fail('calc blackjack')
+    finally:
+        getpass.getpass = real_getpass
+    assert res.stderr.endswith('\n')
 
 
 def test_cc_edge_cases():
@@ -177,7 +186,7 @@ def test_cc_edge_cases():
         cc.run('calc blackjack', exit_code=object())
 
     # disable automatic checking
-    res = cc.run('calc blackjack', input=['20', '1'], exit_code=None)
+    res = cc.run('calc blackjack', input=['20', '20', '1'], exit_code=None)
     assert res.exit_code == 0
 
     # CheckError is also an AssertionError

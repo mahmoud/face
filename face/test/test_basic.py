@@ -4,7 +4,9 @@ from random import shuffle
 
 import pytest
 
-from face import Command, Flag, ERROR, FlagDisplay, PosArgSpec, PosArgDisplay, ChoicesParam, CommandLineError, ArgumentParseError
+from face import (Command, Flag, ERROR, FlagDisplay, PosArgSpec,
+                  PosArgDisplay, ChoicesParam, CommandLineError,
+                  ArgumentParseError, echo, prompt)
 from face.utils import format_flag_label, identifier_to_flag, get_minimal_executable
 
 def test_cmd_name():
@@ -192,3 +194,17 @@ def test_choices_init():
     choices_param = ChoicesParam(choices=choices)
     assert choices == choices_param.choices
     assert choices is not choices_param.choices
+
+
+def test_echo(capsys):
+    test_str = u'tést'
+    echo(test_str)
+    echo.err(test_str.upper())
+    captured = capsys.readouterr()
+    assert captured.out == test_str + '\n'
+    assert captured.err == test_str.upper() + '\n'
+
+    echo(test_str, end='\n\n')
+    assert capsys.readouterr().out == test_str + '\n\n'
+    echo(test_str, nl=False)
+    assert capsys.readouterr().out == test_str

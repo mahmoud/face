@@ -10,6 +10,7 @@ from face.utils import format_flag_label, format_flag_post_doc, format_posargs_l
 from face.parser import Flag
 
 DEFAULT_HELP_FLAG = Flag('--help', parse_as=True, char='-h', doc='show this help message and exit')
+DEFAULT_MAX_WIDTH = 120
 
 
 def _get_termios_winsize():
@@ -48,6 +49,16 @@ def get_winsize():
     return rows, cols
 
 
+def get_doc_width(width=None, max_width=DEFAULT_MAX_WIDTH):
+    if width is None:
+        _, width = get_winsize()
+        if width is None:
+            width = 80
+        width = min(width, max_width)
+        width -= 2
+    return width
+
+
 def _wrap_stout_pair(indent, label, sep, doc, doc_start, max_doc_width):
     # TODO: consider making the fill character configurable (ljust
     # uses space by default, the just() methods can only take
@@ -76,13 +87,17 @@ def _wrap_stout_pair(indent, label, sep, doc, doc_start, max_doc_width):
     return ret
 
 
-def get_stout_layout(labels, indent, sep, width=None, max_width=120, min_doc_width=40):
-    if width is None:
-        _, width = get_winsize()
-        if width is None:
-            width = 80
-        width = min(width, max_width)
-        width -= 2
+def _wrap_stout_cmd_doc(indent, doc, max_width):
+    """Function for wrapping command description."""
+    return textwrap.fill(text=doc,
+                         width=(max_width - len(indent)),
+                         initial_indent=indent,
+                         subsequent_indent=indent)
+
+
+def get_stout_layout(labels, indent, sep, width=None, max_width=DEFAULT_MAX_WIDTH,
+                     min_doc_width=40):
+    width = get_doc_width(width=width, max_width=max_width)
 
     len_sep = len(sep)
     len_indent = len(indent)
@@ -234,7 +249,11 @@ class StoutHelpFormatter(object):
             parser = parser.subprs_map[subcmds]
 
         if parser.doc:
-            append(parser.doc)
+            append(_wrap_stout_cmd_doc(indent=ctx['section_indent'],
+                                       doc=parser.doc,
+                                       max_width=get_doc_width(
+                                           width=ctx['width'],
+                                           max_width=ctx['max_width'])))
             append(ctx['section_break'])
 
         if parser.subprs_map:

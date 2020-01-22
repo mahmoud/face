@@ -188,6 +188,7 @@ def test_cc_edge_cases():
     # disable automatic checking
     res = cc.run('calc blackjack', input=['20', '20', '1'], exit_code=None)
     assert res.exit_code == 0
+    assert res.stderr == 'Bottom card: Retype bottom card: '
 
     # CheckError is also an AssertionError
     with pytest.raises(AssertionError) as exc_info:

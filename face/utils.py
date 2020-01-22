@@ -307,7 +307,7 @@ def _get_text(inp):
 def prompt(label, confirm=None, confirm_label=None, hide_input=False, err=False):
     do_confirm = confirm or confirm_label
     if do_confirm and not confirm_label:
-        confirm_label = 'Retype %r' % (label.lower(),)
+        confirm_label = 'Retype %s' % (label.lower(),)
 
     def prompt_func(label):
         func = getpass.getpass if hide_input else raw_input
@@ -329,7 +329,7 @@ def prompt(label, confirm=None, confirm_label=None, hide_input=False, err=False)
     ret = prompt_func(label)
     ret = _get_text(ret)
     if do_confirm:
-        ret2 = prompt_func(label)
+        ret2 = prompt_func(confirm_label)
         ret2 = _get_text(ret2)
         if ret != ret2:
             raise face.UsageError('Sorry, inputs did not match.')

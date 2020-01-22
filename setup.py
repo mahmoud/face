@@ -6,7 +6,7 @@ from setuptools import setup
 
 
 __author__ = 'Mahmoud Hashemi'
-__version__ = '20.0.1dev'
+__version__ = '20.1.0'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/face'
 __license__ = 'BSD'
@@ -42,7 +42,7 @@ A brief checklist for release:
 * tox
 * git commit (if applicable)
 * Bump setup.py version off of -dev
-* git commit -a -m "bump version for x.y.z release"
+* git commit -a -m "bump version for vx.y.z release"
 * python setup.py sdist bdist_wheel upload
 * bump docs/conf.py version
 * git commit

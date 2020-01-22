@@ -1,6 +1,25 @@
 face Project Log
 ================
 
+20.1.0
+------
+* Add testing facilities (CommandChecker())
+* Add echo() and prompt()
+
+20.0.0
+------
+* Many bugfixes
+* New shortcuts for posarg count and injection
+
+19.1.0
+------
+* posargspec aliases:
+  * count (exact min and max count)
+  * name (display name and provides name)
+
+Ideas
+-----
+
 * Add an .add_version() method to Command
   * Automatically adds version subcommand if other subcommands are present
   * Automatically adds "-v" flag if one is not present
@@ -33,9 +52,3 @@ face Project Log
   explicitly accept that injectable as well as provide it.
 * Better document that if middleware arguments have a default value,
   they will not pull in flags.
-
-19.1.0
-------
-* posargspec aliases:
-  * count (exact min and max count)
-  * name (display name and provides name)

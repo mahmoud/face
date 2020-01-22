@@ -4,7 +4,7 @@ import sys
 import array
 import textwrap
 
-from boltons.iterutils import unique
+from boltons.iterutils import unique, split
 
 from face.utils import format_flag_label, format_flag_post_doc, format_posargs_label, echo
 from face.parser import Flag
@@ -49,13 +49,12 @@ def get_winsize():
     return rows, cols
 
 
-def get_doc_width(width=None, max_width=DEFAULT_MAX_WIDTH):
+def get_wrap_width(max_width=DEFAULT_MAX_WIDTH):
+    _, width = get_winsize()
     if width is None:
-        _, width = get_winsize()
-        if width is None:
-            width = 80
-        width = min(width, max_width)
-        width -= 2
+        width = 80
+    width = min(width, max_width)
+    width -= 2
     return width
 
 
@@ -89,15 +88,22 @@ def _wrap_stout_pair(indent, label, sep, doc, doc_start, max_doc_width):
 
 def _wrap_stout_cmd_doc(indent, doc, max_width):
     """Function for wrapping command description."""
-    return textwrap.fill(text=doc,
-                         width=(max_width - len(indent)),
-                         initial_indent=indent,
-                         subsequent_indent=indent)
+    parts = []
+    paras = ['\n'.join(para) for para in
+             split(doc.splitlines(), lambda l: not l.lstrip())
+             if para]
+    for para in paras:
+        part = textwrap.fill(text=para,
+                             width=(max_width - len(indent)),
+                             initial_indent=indent,
+                             subsequent_indent=indent)
+        parts.append(part)
+    return '\n\n'.join(parts)
 
 
 def get_stout_layout(labels, indent, sep, width=None, max_width=DEFAULT_MAX_WIDTH,
                      min_doc_width=40):
-    width = get_doc_width(width=width, max_width=max_width)
+    width = width or get_wrap_width(max_width=max_width)
 
     len_sep = len(sep)
     len_indent = len(indent)
@@ -251,8 +257,7 @@ class StoutHelpFormatter(object):
         if parser.doc:
             append(_wrap_stout_cmd_doc(indent=ctx['section_indent'],
                                        doc=parser.doc,
-                                       max_width=get_doc_width(
-                                           width=ctx['width'],
+                                       max_width=ctx['width'] or get_wrap_width(
                                            max_width=ctx['max_width'])))
             append(ctx['section_break'])
 

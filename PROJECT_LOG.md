@@ -1,8 +1,16 @@
 face Project Log
 ================
 
+20.1.1
+------
+(2020-01-20)
+
+* Fix confirmation prompt formatting
+
 20.1.0
 ------
+(2020-01-20)
+
 * Add testing facilities (CommandChecker())
 * Add echo() and prompt()
 

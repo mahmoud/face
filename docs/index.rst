@@ -8,16 +8,14 @@ face
 
 |release| |calver| |changelog|
 
-**face** is a Pythonic microframework for building web applications featuring:
+**face** is a Pythonic microframework for building command-line applications:
 
-* Fast, coherent routing system
+* First-class subcommand support
 * Powerful middleware architecture
-* Built-in observability features via the ``meta`` Application
-* Extensible support for multiple templating systems
-* Werkzeug_-based WSGI/HTTP primitives, same as Flask_
-
-.. _Werkzeug: https://github.com/pallets/werkzeug
-.. _Flask: https://github.com/pallets/flask
+* Separate Parser layer
+* Built-in flagfile support
+* Handy testing utilities
+* Themeable help display
 
 Installation
 ------------
@@ -53,6 +51,7 @@ Check out our :doc:`tutorial` for more.
    tutorial
    command
    middleware
+   testing
    utilities
    faq
 

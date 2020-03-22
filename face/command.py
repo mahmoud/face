@@ -57,40 +57,40 @@ DEFAULT_HELP_HANDLER = HelpHandler()
 
 # TODO: should name really go here?
 class Command(Parser):
+    """The central type in the face framework. Instantiate a Command,
+    populate it with flags and subcommands, and then call
+    command.run() to execute your CLI.
+
+    Note that only the first three constructor arguments are
+    positional, the rest are keyword-only.
+
+    Args:
+       func (callable): The function called when this command is
+          run with an argv that contains no subcommands.
+       name (str): The name of this command, used when this
+          command is included as a subcommand. (Defaults to name
+          of function)
+       doc (str): A description or message that appears in various
+           help outputs.
+       flags (list): A list of Flag instances to initialize the
+          Command with. Flags can always be added later with the
+          .add() method.
+       posargs (bool): Pass True if the command takes positional
+          arguments. Defaults to False. Can also pass a PosArgSpec
+          instance.
+       post_posargs (bool): Pass True if the command takes
+          additional positional arguments after a conventional '--'
+          specifier.
+       help (bool): Pass False to disable the automatically added
+          --help flag. Defaults to True. Also accepts a HelpHandler
+          instance, see those docs for more details.
+       middlewares (list): A list of @face_middleware decorated
+          callables which participate in dispatch. Also addable
+          via the .add() method. See Middleware docs for more
+          details.
+
+    """
     def __init__(self, func, name=None, doc=None, **kwargs):
-        """The central type in the face framework. Instantiate a Command,
-        populate it with flags and subcommands, and then call
-        command.run() to execute your CLI.
-
-        Note that only the first three constructor arguments are
-        positional, the rest are keyword-only.
-
-        Args:
-           func (callable): The function called when this command is
-              run with an argv that contains no subcommands.
-           name (str): The name of this command, used when this
-              command is included as a subcommand. (Defaults to name
-              of function)
-           doc (str): A description or message that appears in various
-               help outputs.
-           flags (list): A list of Flag instances to initialize the
-              Command with. Flags can always be added later with the
-              .add() method.
-           posargs (bool): Pass True if the command takes positional
-              arguments. Defaults to False. Can also pass a PosArgSpec
-              instance.
-           post_posargs (bool): Pass True if the command takes
-              additional positional arguments after a conventional '--'
-              specifier.
-           help (bool): Pass False to disable the automatically added
-              --help flag. Defaults to True. Also accepts a HelpHandler
-              instance, see those docs for more details.
-           middlewares (list): A list of @face_middleware decorated
-              callables which participate in dispatch. Also addable
-              via the .add() method. See Middleware docs for more
-              details.
-
-        """
         name = name if name is not None else _get_default_name(func)
 
         if doc is None:
@@ -218,6 +218,8 @@ class Command(Parser):
             self._path_mw_map[path] = [mw] + mws  # TODO: check for conflicts
 
         return
+
+    # TODO: add_flag()
 
     def get_flag_map(self, path=(), with_hidden=True):
         """Command's get_flag_map differs from Parser's in that it filters

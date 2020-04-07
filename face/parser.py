@@ -670,10 +670,10 @@ class Parser(object):
             except TypeError as te:
                 raise ValueError('expected Parser, Flag, or Flag parameters,'
                                  ' not: %r, %r (got %r)' % (a, kw, te))
+        return self._add_flag(flag)
 
+    def _add_flag(self, flag):
         # first check there are no conflicts...
-        flag.name = flag.name
-
         for subcmds, flag_map in self._path_flag_map.items():
             conflict_flag = flag_map.get(flag.name) or (flag.char and flag_map.get(flag.char))
             if conflict_flag is None:

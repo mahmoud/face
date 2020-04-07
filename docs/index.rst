@@ -52,7 +52,7 @@ Check out our :doc:`tutorial` for more.
    command
    middleware
    testing
-   utilities
+   io
    faq
 
 .. |release| image:: https://img.shields.io/pypi/v/face.svg

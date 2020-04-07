@@ -348,7 +348,30 @@ def _get_text(inp):
 
 
 def prompt(label, confirm=None, confirm_label=None, hide_input=False, err=False):
-    """
+    """A better-behaved :func:`input()` function for command-line applications.
+
+    Ask a user for input, confirming if necessary, returns a text
+    string. Handles Ctrl-C and EOF more gracefully than Python's built-ins.
+
+    Args:
+
+       label (str): The prompt to display to the user.
+       confirm (bool): Pass ``True`` to ask the user to retype the input to confirm it.
+         Defaults to False, unless *confirm_label* is passed.
+       confirm_label (str): Override the confirmation prompt. Defaults
+         to "Retype *label*" if *confirm* is ``True``.
+       hide_input (bool): If ``True``, disables echoing the user's
+         input as they type. Useful for passwords and other secret
+         entry. See :func:`prompt_secret` for a more convenient
+         interface. Defaults to ``False``.
+       err (bool): If ``True``, prompts are printed on
+         ``sys.stderr``. Defaults to ``False``.
+
+    :func:`prompt` is primarily intended for simple plaintext
+    entry. See :func:`prompt_secret` for handling passwords and other
+    secret user input.
+
+    Raises :exc:`UsageError` if *confirm* is enabled and inputs do not match.
 
     """
     do_confirm = confirm or confirm_label
@@ -384,6 +407,14 @@ def prompt(label, confirm=None, confirm_label=None, hide_input=False, err=False)
 
 
 def prompt_secret(label, **kw):
+    """A convenience function around :func:`prompt`, which is
+    preconfigured for secret user input, like passwords.
+
+    All arguments are the same, except *hide_input* is always
+    ``True``, and *err* defaults to ``True``, for consistency with
+    :func:`getpass.getpass`.
+
+    """
     kw['hide_input'] = True
     kw.setdefault('err', True)  # getpass usually puts prompts on stderr
     return prompt(label, **kw)

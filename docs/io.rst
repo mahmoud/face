@@ -1,5 +1,5 @@
-Utilities
-=========
+Input/Output
+============
 
 Face includes a variety of utilities designed to make it easy to write
 conventional command-line applications.
@@ -16,5 +16,6 @@ conventional command-line applications.
 TODO
 ----
 
+* TODO: InputCancelled exception, to be handled by .run()
 * TODO: stuff for prompting choices
 * TODO: pre-made --color flag(s) (looks at isatty)

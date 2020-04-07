@@ -342,8 +342,11 @@ class Command(Parser):
            print_error (callable): The function that formats/prints
                error messages before program exit on CLI errors.
 
-        .. note:: To ensure that the Command is configured properly, call
-                  .prepare() before calling .run().
+        .. note::
+
+           For efficiency, :meth:`run()` only checks the subcommand
+           invoked by *argv*. To ensure that all subcommands are
+           configured properly, call :meth:`prepare()`.
 
         """
         if print_error is None or print_error is True:

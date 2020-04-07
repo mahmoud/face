@@ -76,7 +76,17 @@ def _fake_getpass(prompt='Password: ', stream=None):
 
 
 class RunResult(object):
-    "Holds the captured result of CommandChecker running a command."
+    """Returned from :meth:`CommandChecker.run()`, complete with the
+    relevant inputs and outputs of the run.
+
+    Instances of this object are especially valuable for verifying
+    expected output via the :attr:`~RunResult.stdout` and
+    :attr:`~RunResult.stderr` attributes.
+
+    API modeled after :class:`subprocess.CompletedProcess` for
+    familiarity and porting of tests.
+
+    """
 
     def __init__(self, args, input, exit_code, stdout_bytes, stderr_bytes, exc_info=None, checker=None):
         self.args = args
@@ -94,22 +104,31 @@ class RunResult(object):
 
     @property
     def exception(self):
+        """Exception instance, if an uncaught error was raised.
+        Equivalent to ``run_res.exc_info[1]``, but more readable."""
         return self.exc_info[1] if self.exc_info else None
 
     @property
     def returncode(self):  # for parity with subprocess.CompletedProcess
+        "Alias of :attr:`exit_code`, for parity with :class:`subprocess.CompletedProcess`"
         return self.exit_code
 
     @property
     def stdout(self):
-        "The standard output as unicode string."
+        """The text output ("stdout") of the command, as a decoded
+        string. See :attr:`stdout_bytes` for the bytestring.
+        """
         return (self.stdout_bytes
                 .decode(self.checker.encoding, 'replace')
                 .replace('\r\n', '\n'))
 
     @property
     def stderr(self):
-        "The standard error as unicode string."
+        """The error output ("stderr") of the command, as a decoded
+        string. See :attr:`stderr_bytes` for the bytestring. May be
+        ``None`` if *mix_stderr* was set to ``True`` in the
+        :class:`~face.CommandChecker`.
+        """
         if self.stderr_bytes is None:
             raise ValueError("stderr not separately captured")
         return (self.stderr_bytes
@@ -128,10 +147,6 @@ class RunResult(object):
             args.append('exception=%r' % (self.exception,))
         return "%s(%s)" % (self.__class__.__name__, ', '.join(args))
 
-    # TODO:
-    # def check(self):
-    #    if self.exit_code != 0:
-    #        raise CheckError(repr(self))
 
 
 def _get_exp_code_text(exp_codes):
@@ -150,6 +165,13 @@ def _get_exp_code_text(exp_codes):
 
 
 class CheckError(AssertionError):
+    """Rarely raised directly, :exc:`CheckError` is automatically
+    raised when a :meth:`CommandChecker.run()` call does not terminate
+    with an expected error code.
+
+    This error attempts to format the stdout, stderr, and stdin of the
+    run for easier debugging.
+    """
     def __init__(self, result, exit_codes):
         self.result = result
         exp_code = _get_exp_code_text(exit_codes)
@@ -171,6 +193,28 @@ class CheckError(AssertionError):
 
 
 class CommandChecker(object):
+    """Face's main testing interface.
+
+    Wrap your :class:`Command` instance in a :class:`CommandChecker`,
+    :meth:`~CommandChecker.run()` commands with arguments, and get
+    :class:`RunResult` objects to validate your Command's behavior.
+
+    Args:
+
+       cmd: The :class:`Command` instance to test.
+       env (dict): An optional base environment to use for subsequent
+         calls issued through this checker. Defaults to ``{}``.
+       chdir (str): A default path to execute this checker's commands
+         in. Great for temporary directories to ensure test isolation.
+       mix_stderr (bool): Set to ``True`` to capture stderr into
+         stdout. This makes it easier to verify order of standard
+         output and errors. If ``True``, this checker's results'
+         error_bytes will be set to ``None``. Defaults to ``False``.
+       reraise (bool): Reraise uncaught exceptions from within *cmd*'s
+         endpoint functions, instead of returning a :class:`RunResult`
+         instance. Defaults to ``False``.
+
+    """
     def __init__(self, cmd, env=None, chdir=None, mix_stderr=False, reraise=False):
         self.cmd = cmd
         self.base_env = env or {}
@@ -235,6 +279,11 @@ class CommandChecker(object):
         return
 
     def fail(self, *a, **kw):
+        """Convenience method around :meth:`~CommandChecker.run()`, with the
+        same signature, except that this will raise a
+        :exc:`CheckError` if the command completes with exit code
+        ``0``.
+        """
         kw.setdefault('exit_code', complement(set([0])))
         return self.run(*a, **kw)
 
@@ -250,6 +299,39 @@ class CommandChecker(object):
         return partial(self.fail, exit_code=code)
 
     def run(self, args, input=None, env=None, chdir=None, exit_code=0):
+        """The :meth:`run` method acts as the primary entrypoint to the
+        :class:`CommandChecker` instance. Pass arguments as a list or
+        string, and receive a :class:`RunResult` with which to verify
+        your command's output.
+
+        If the arguments do not result in an expected *exit_code*, a
+        :exc:`CheckError` will be raised.
+
+        Args:
+
+           args: A list or string representing arguments, as one might
+              find in :attr:`sys.argv` or at the command line.
+           input (str): A string (or list of lines) to be passed to
+              the command's stdin. Used for testing
+              :func:`~face.prompt` interactions, among others.
+           env (dict): A mapping of environment variables to apply on
+              top of the :class:`CommandChecker`'s base env vars.
+           chdir (str): A string (or stringifiable path) path to
+              switch to before running the command. Defaults to
+              ``None`` (runs in current directory).
+           exit_code (int): An integer or list of integer exit codes
+             expected from running the command with *args*. If the
+             actual exit code does not match *exit_code*,
+             :exc:`CheckError` is raised. Set to ``None`` to disable
+             this behavior and always return
+             :class:`RunResult`. Defaults to ``0``.
+
+        .. note::
+
+           At this time, :meth:`run` interacts with global process
+           state, and is not designed for parallel usage.
+
+        """
         if isinstance(input, (list, tuple)):
             input = '\n'.join(input)
         if exit_code is None:

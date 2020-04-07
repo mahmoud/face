@@ -38,6 +38,19 @@ Then get to building your first application!
 
   cmd.run()
 
+  """
+  # Here's what the default help looks like at the command-line:
+
+  $ cmd --help
+  Usage: cmd [FLAGS]
+
+    A simple greeting command.
+
+
+  Flags:
+
+    --help / -h   show this help message and exit
+  """
 
 Getting Started
 ---------------

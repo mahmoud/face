@@ -1,8 +1,9 @@
-Input/Output
-============
+Input / Output
+================
 
 Face includes a variety of utilities designed to make it easy to write
-conventional command-line applications.
+applications that adhere to command-line conventions and user
+expectations.
 
 .. autofunction:: face.echo
 

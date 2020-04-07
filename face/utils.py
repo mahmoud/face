@@ -190,6 +190,9 @@ def get_type_desc(parse_as):
 
 
 def unwrap_text(text):
+    """Turn wrapped text into flowing paragraphs, ready for rewrapping by
+    the console, browser, or textwrap.
+    """
     all_grafs = []
     cur_graf = []
     for line in text.splitlines():
@@ -234,8 +237,22 @@ def get_rdep_map(dep_map):
     return ret
 
 
-def get_minimal_executable(executable=None, path=None, environ=os.environ):
+def get_minimal_executable(executable=None, path=None, environ=None):
+    """Get the shortest form of a path to an executable,
+    based on the state of the process environment.
+
+    Args:
+      executable (str): Name or path of an executable
+      path (list): List of directories on the "PATH", or ':'-separated
+        path list, similar to the $PATH env var. Defaults to ``environ['PATH']``.
+      environ (dict): Mapping of environment variables, will be used
+        to retrieve *path* if it is None. Ignored if *path* is
+        set. Defaults to ``os.environ``.
+
+    Used by face's default help renderer for a more readable usage string.
+    """
     executable = sys.executable if executable is None else executable
+    environ = os.environ if environ is None else environ
     path = environ.get('PATH', '') if path is None else path
     if isinstance(path, (str, unicode)):
         path = path.split(':')
@@ -251,19 +268,41 @@ def get_minimal_executable(executable=None, path=None, environ=os.environ):
 # prompt and echo owe a decent amount of design to click (and
 # pocket_protector)
 def isatty(stream):
+    "Returns True if *stream* is a tty"
     try:
         return stream.isatty()
     except Exception:
         return False
 
 
-def should_strip_ansi(stream=None):
-    if stream is None:
-        stream = sys.stdin
+def should_strip_ansi(stream):
+    "Returns True when ANSI color codes should be stripped from output to *stream*."
     return not isatty(stream)
 
 
 def echo(msg, **kw):
+    """A better-behaved :func:`print()` function for command-line applications.
+
+    Writes text or bytes to a file or stream and flushes. Seamlessly
+    handles stripping ANSI color codes when the output file is not a
+    TTY.
+
+      >>> echo('test')
+      test
+
+    Args:
+
+      msg (str): A text or byte string to echo.
+      err (bool): Set the default output file to ``sys.stderr``
+      file (file): Stream or other file-like object to output
+        to. Defaults to ``sys.stdout``, or ``sys.stderr`` if *err* is
+        True.
+      nl (bool): If ``True``, sets *end* to ``'\\n'``, the newline character.
+      end (str): Explicitly set the line-ending character. Setting this overrides *nl*.
+      color (bool): Set to ``True``/``False`` to always/never echo ANSI color
+        codes. Defaults to inspecting whether *file* is a TTY.
+
+    """
     msg = msg or ''
     is_err = kw.pop('err', False)
     _file = kw.pop('file', sys.stdout if not is_err else sys.stderr)
@@ -290,6 +329,10 @@ def echo(msg, **kw):
 
 
 def echo_err(*a, **kw):
+    """
+    A convenience function which works exactly like :func:`echo`, but
+    always defaults the output *file* to ``sys.stderr``.
+    """
     kw['err'] = True
     return echo(*a, **kw)
 
@@ -305,6 +348,9 @@ def _get_text(inp):
 
 
 def prompt(label, confirm=None, confirm_label=None, hide_input=False, err=False):
+    """
+
+    """
     do_confirm = confirm or confirm_label
     if do_confirm and not confirm_label:
         confirm_label = 'Retype %s' % (label.lower(),)

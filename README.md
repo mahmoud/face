@@ -11,3 +11,4 @@ Docs [here](https://python-face.readthedocs.io/).
 
 * Montage [administration tools](https://github.com/hatnote/montage/blob/master/tools/admin.py)
 * [Pocket Protector](https://github.com/SimpleLegal/pocket_protector/blob/master/pocket_protector/cli.py)
+* [glom CLI](https://github.com/mahmoud/glom/blob/master/glom/cli.py)

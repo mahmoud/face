@@ -6,7 +6,7 @@ import pytest
 
 from face import (Command, Flag, ERROR, FlagDisplay, PosArgSpec,
                   PosArgDisplay, ChoicesParam, CommandLineError,
-                  ArgumentParseError, echo, prompt)
+                  ArgumentParseError, echo, prompt, CommandChecker)
 from face.utils import format_flag_label, identifier_to_flag, get_minimal_executable
 
 def test_cmd_name():
@@ -164,6 +164,29 @@ def test_posargspec_init():
 
     with pytest.raises(TypeError, match='.*instance of PosArgSpec.*'):
         Command(lambda targs: None, name='cmd', posargs=object())
+
+    return
+
+
+def test_bad_posargspec():
+    # issue #11
+    assert PosArgSpec(name=None).display.name is not None
+    assert PosArgDisplay(name=None).name is not None
+
+    posargs_args = [
+        {'name': None},
+        {'provides': 'x'},
+        {'display': {'doc': 'wee'}},
+        {'display': {'name': 'better_name'}}
+    ]
+
+    for arg in posargs_args:
+        cmd = Command(lambda targs: None, name='cmd', posargs=arg)
+        cmd_chk = CommandChecker(cmd, mix_stderr=True)
+        res = cmd_chk.run(['cmd', '-h'])
+        assert res.stdout.startswith('Usage')
+
+    return
 
 
 def test_bad_subprs():

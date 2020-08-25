@@ -348,7 +348,7 @@ class PosArgDisplay(object):
 
     """
     def __init__(self, **kw):
-        self.name = kw.pop('name', 'arg')
+        self.name = kw.pop('name', None) or 'arg'
         self.doc = kw.pop('doc', '')
         self.post_doc = kw.pop('post_doc', None)
         self._hide = kw.pop('hidden', False)  # bool

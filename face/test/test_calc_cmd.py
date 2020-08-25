@@ -88,6 +88,8 @@ def test_calc_basic():
     res = cmd.run(['calc', 'add-two-ints', '1', '2'])
     assert res == 3
 
+    res = cmd.run(['calc', 'add-two-ints', '-h'])
+
     with pytest.raises(TypeError):
         prs.parse(['calc', 'is-odd', 3])  # fails bc 3 isn't a str
 

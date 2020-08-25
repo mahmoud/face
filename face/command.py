@@ -369,7 +369,7 @@ class Command(Parser):
                 kwargs.update(prs_res.to_cmd_scope())
                 return inject(cmd.help_handler.func, kwargs)
 
-            msg = 'error: ' + self.name
+            msg = 'error: ' + (prs_res.name or self.name)
             if prs_res.subcmds:
                 msg += ' ' + ' '.join(prs_res.subcmds or ())
 

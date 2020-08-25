@@ -1,9 +1,12 @@
 
+from __future__ import print_function
+
 import pytest
 
 from face import (Flag,
                   ERROR,
                   Command,
+                  CommandChecker,
                   Parser,
                   PosArgSpec,
                   HelpHandler,
@@ -80,6 +83,18 @@ def test_help_subcmd():
 
     with pytest.raises(ValueError, match='requires a handler function or help handler'):
         Command(None, help=None)
+
+
+def test_err_subcmd_prog_name():
+    cmd = Command(lambda: print("foo"), "foo")
+    subcmd = Command(lambda: print("bar"), "bar")
+    subcmd.add(Command(lambda: print("baz"), "baz"))
+    cmd.add(subcmd)
+
+    cc = CommandChecker(cmd)
+    res = cc.fail('fred.py bar ba')
+    assert 'fred.py' in res.stderr
+    assert 'foo' not in res.stderr
 
 
 def test_stout_help():

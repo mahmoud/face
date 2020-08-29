@@ -1,9 +1,11 @@
-Fake Face Tutorial
-==================
+Tutorial
+========
 
 
 Part I: Say
 -----------
+
+(Details TBD!)
 
 The field of overdone versions of ``echo`` has been too long dominated
 by Big GNU.
@@ -81,6 +83,8 @@ will prepend "woof", "meow", or "moo" respectively.
 Part II: Calc
 -------------
 
+(Details TBD!)
+
 With ``echo`` having met its match,
 we are on to bigger and better:
 this time,
@@ -142,3 +146,74 @@ Precision support
     0.3
 
 Oh, now let's add it to all subcommands.
+
+Part III: Middleware
+--------------------
+
+(Details TBD!)
+
+Doing math locally is all well and good,
+but sometimes we need to use the web.
+
+We will add an "expression" sub-command
+to num that uses ``https://api.mathjs.org/v4/``.
+But since we want to unit test it,
+we will create the ``httpx.Client`` in a middleware.
+
+.. code::
+
+    $ num expression "1 + (2 * 3)"
+    7
+
+But we can also write a unit test that does
+not touch the web:
+
+.. code::
+
+    $ pytest test_num.py
+
+
+Part IV: Examples
+-----------------
+
+There are more realistic examples of
+`face` 
+usage out there,
+that can serve as a reference.
+
+Cut MP4
+~~~~~~~
+
+The script
+`cut_mp4`_
+is a quick but useful tool to cut recordings using
+``ffmpeg``.
+I use it to slice and dice the Python meetup recordings.
+It does not have subcommands or middleware,
+just a few flags.
+
+Glom
+~~~~
+
+`Glom`_
+is a command-line interface front end for the ``glom`` library.
+It does not have any subcommands,
+but does have some middleware usage. 
+
+Pocket Protector
+~~~~~~~~~~~~~~~~
+
+`Pocket Protector`_ is a secrets management tool.
+It is a medium-sized application with quite a few subcommands
+for manipulating a YAML file.
+
+Montage Admin Tools
+~~~~~~~~~~~~~~~~~~~
+
+`Montage Admin Tools`_
+is a larger application.
+It has nested subcommands
+and a database connection.
+It is used to administer a web application.
+
+.. _Montage Admin Tools: https://github.com/hatnote/montage/blob/master/tools/admin.py

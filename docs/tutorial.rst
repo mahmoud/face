@@ -192,6 +192,9 @@ I use it to slice and dice the Python meetup recordings.
 It does not have subcommands or middleware,
 just a few flags.
 
+
+.. _cut_mp4: https://github.com/mahmoud/face/blob/master/examples/cut_mp4.py
+
 Glom
 ~~~~
 
@@ -200,12 +203,17 @@ is a command-line interface front end for the ``glom`` library.
 It does not have any subcommands,
 but does have some middleware usage. 
 
+
+.. _Glom: https://github.com/mahmoud/glom/blob/master/glom/cli.py
+
 Pocket Protector
 ~~~~~~~~~~~~~~~~
 
 `Pocket Protector`_ is a secrets management tool.
 It is a medium-sized application with quite a few subcommands
 for manipulating a YAML file.
+
+.. _Pocket Protector: https://github.com/SimpleLegal/pocket_protector/blob/master/pocket_protector/cli.py
 
 Montage Admin Tools
 ~~~~~~~~~~~~~~~~~~~

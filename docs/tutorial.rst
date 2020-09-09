@@ -5,23 +5,35 @@ Tutorial
 Part I: Say
 -----------
 
-(Details TBD!)
-
 The field of overdone versions of ``echo`` has been too long dominated
 by Big GNU.
 Today, we start taking back the power.
-We will implement ``say``.
+We will implement the ``say`` command.
 
 Positional arguments
 ~~~~~~~~~~~~~~~~~~~~
 
-When there are no special flags,
+To demonstrate, we'll start with the basics.
 ``say hello world``
 should just print ``hello world``:
 
 .. code::
 
-    fake code
+    from face import Command, echo
+
+
+    def main():
+        cmd = Command(say, posargs=True)  # posargs=True tells face we want positional arguments
+        cmd.run()
+
+
+    def say(posargs_):  # we access positional arguments through the posargs_ parameter face passes
+        echo(' '.join(posargs_))  # our business logic
+
+
+    if __name__ == '__main__':  # standard fare Python: https://stackoverflow.com/questions/419163
+        main()
+
 
 Flags
 ~~~~~
@@ -177,7 +189,7 @@ Part IV: Examples
 -----------------
 
 There are more realistic examples of
-`face` 
+`face`
 usage out there,
 that can serve as a reference.
 
@@ -201,7 +213,7 @@ Glom
 `Glom`_
 is a command-line interface front end for the ``glom`` library.
 It does not have any subcommands,
-but does have some middleware usage. 
+but does have some middleware usage.
 
 
 .. _Glom: https://github.com/mahmoud/glom/blob/master/glom/cli.py

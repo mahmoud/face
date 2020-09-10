@@ -1,6 +1,10 @@
 Tutorial
 ========
 
+.. contents:: Contents
+   :local:
+   :depth: 2
+
 
 Part I: Say
 -----------

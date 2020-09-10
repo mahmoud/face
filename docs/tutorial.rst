@@ -13,9 +13,11 @@ We will implement the ``say`` command.
 Positional arguments
 ~~~~~~~~~~~~~~~~~~~~
 
-To demonstrate, we'll start with the basics.
-``say hello world``
-should just print ``hello world``:
+While face offers a Parser interface underneath, the canonical way to
+create even the simplest CLI is with the Command object.
+
+To demonstrate, we'll start with the basics, positional arguments.
+``say hello world`` should print ``hello world``:
 
 .. code::
 
@@ -23,60 +25,106 @@ should just print ``hello world``:
 
 
     def main():
-        cmd = Command(say, posargs=True)  # posargs=True tells face we want positional arguments
+        cmd = Command(say, posargs=True)  # posargs=True means we accept positional arguments
         cmd.run()
 
 
-    def say(posargs_):  # we access positional arguments through the posargs_ parameter face passes
+    def say(posargs_):  # positional arguments are passed through the posargs_ parameter
         echo(' '.join(posargs_))  # our business logic
 
 
     if __name__ == '__main__':  # standard fare Python: https://stackoverflow.com/questions/419163
         main()
 
+A basic Command takes a single function entrypoint, in our case, the
+``say`` function.
+
+.. note::
+
+   Face's :func:`echo` function is a version of :func:`print` with
+   improved options and handling of console states, ideal for CLIs.
 
 Flags
 ~~~~~
 
-``say --upper-case hello world``
+Let's give ``say`` some options:
+
+``say --upper hello world``
 or
 ``say -U hello world``
 should print
 ``HELLO WORLD``.
 
-While we're at it,
-let's implement lower-case too!
+.. code::
 
-Counting Flags
-~~~~~~~~~~~~~~
+   ...
 
-``say --space hello world``
-should print
-``hello  world``
-(two spaces).
-This can be repeated:
-``say --space --space --space hello world``,
-or
-``say -S -S -S hello world``
-or just
-``say -SSS hello world``
-will print
-``hello    world``.
+    def main():
+        cmd = Command(say, posargs=True)
+        cmd.add('--upper', char='-U', parse_as=True, doc='uppercase all output')
+        cmd.run()
 
-Different Types of Flags
-~~~~~~~~~~~~~~~~~~~~~~~~
 
-``say --separator=. hello world``
-will print
-``hello.world``.
+    def say(posargs_, upper):  # our --upper flag is bound to the upper parameter
+        args = posargs_
+        if upper:
+            args = [a.upper() for a in args]
+        echo(' '.join(args))
 
+    ...
+
+The ``parse_as`` keyword argument being set to ``True`` means that the
+presence of the flag results in the ``True`` value itself. As we'll
+see below, flags can take arguments, too.
+
+Flags with values
+~~~~~~~~~~~~~~~~~
+
+Let's add more flags, this time ones that take values.
+
+``say --separator . hello world`` will print ``hello.world``.
 Likewise,
-``say --repeat=2 hello world``
+``say --count 2 hello world``
 will repeat it twice:
 ``hello world hello world``
 
-More Interesting Flags
-~~~~~~~~~~~~~~~~~~~~~~
+.. code::
+
+   ...
+
+   def main():
+       cmd = Command(say, posargs=True)
+       cmd.add('--upper', char='-U', parse_as=True, doc='uppercase all output')
+       cmd.add('--separator', missing=' ', doc='text to put between arguments')
+       cmd.add('--count', parse_as=int, missing=1, doc='how many times to repeat')
+       cmd.run()
+
+
+    def say(posargs_, upper, separator, count):
+        args = posargs_ * count
+        if upper:
+            args = [a.upper() for a in args]
+        echo(separator.join(args))
+
+    ...
+
+Now we can see that ``parse_as``:
+
+  - Can take a value (e.g., ``True``), which make the flag no-argument
+  - Can take a callable (e.g., ``int``), which is used to convert the single argument
+  - Defaults to ``str`` (as used by ``separator``)
+
+We can also see the ``missing`` keyword argument, which specifies the
+value to be passed to the Command's handler function if the flag is
+absent. Without this, ``None`` is passed.
+
+.. note::
+
+   Face also supports required flags, though they are not an ideal CLI
+   UX best practice. Simply set ``missing`` to :data:`face.ERROR`.
+
+More Interesting Flag Types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 ``say --multi-separator=@,# hello wonderful world``

@@ -261,6 +261,7 @@ def check_middleware(func, provides=None):
     if not callable(func):
         raise TypeError('expected middleware %r to be a function' % func)
     fb = get_fb(func)
+    # TODO: this currently gives __main__abc instead of __main__.abc
     func_label = ''.join(get_callable_labels(func))
     arg_names = fb.args
     if not arg_names:

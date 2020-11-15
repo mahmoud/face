@@ -100,8 +100,13 @@ class MissingRequiredFlags(ArgumentParseError):
     """
     @classmethod
     def from_parse(cls, cmd_flag_map, parsed_flag_map, missing_flag_names):
+        flag_names = set(missing_flag_names)
+        labels = []
+        for flag_name in flag_names:
+            flag = cmd_flag_map[flag_name]
+            labels.append(face.utils.format_flag_label(flag))
         msg = ('missing required arguments for flags: %s'
-               % ', '.join(missing_flag_names))
+               % ', '.join(sorted(labels)))
         return cls(msg)
 
 

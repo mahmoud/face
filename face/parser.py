@@ -630,7 +630,7 @@ class Parser(object):
 
         # with checks complete, add parser and all subparsers
         self.subprs_map[(subprs_name,)] = subprs
-        for path, cur_subprs in subprs.subprs_map.items():
+        for path, cur_subprs in list(subprs.subprs_map.items()):
             new_path = (subprs_name,) + path
             self.subprs_map[new_path] = cur_subprs
 
@@ -901,12 +901,12 @@ class Parser(object):
         # check requireds and set defaults and then...
         missing_flags = []
         for flag_name, flag in cfm.items():
-            if flag_name in pfm:
+            if flag.name in pfm:
                 continue
             if flag.missing is ERROR:
                 missing_flags.append(flag.name)
             else:
-                pfm[flag_name] = flag.missing
+                pfm[flag.name] = flag.missing
         if missing_flags:
             raise MissingRequiredFlags.from_parse(cfm, pfm, missing_flags)
 

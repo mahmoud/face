@@ -107,6 +107,21 @@ def test_flag_init():
         cmd.add('--badflag', multi='nope')
 
 
+def test_char_missing_error():
+    # testing required flags
+    cmd = Command(lambda req_flag: None, name='cmd')
+    cmd.add('--req-flag', char='-R', missing=ERROR)
+    res = cmd.parse(['cmd', '--req-flag', 'val'])
+    assert res.flags['req_flag'] == 'val'
+
+    res = cmd.parse(['cmd', '-R', 'val'])
+    assert res.flags['req_flag'] == 'val'
+
+    with pytest.raises(ArgumentParseError, match='--req-flag'):
+        cmd.parse(['cmd'])
+
+    return
+
 def test_minimal_exe():
     venv_exe_path = '/home/mahmoud/virtualenvs/face/bin/python'
     res = get_minimal_executable(venv_exe_path,

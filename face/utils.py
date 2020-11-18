@@ -304,6 +304,8 @@ def echo(msg, **kw):
 
     """
     msg = msg or ''
+    if not isinstance(msg, (unicode, bytes)):
+        msg = unicode(msg)
     is_err = kw.pop('err', False)
     _file = kw.pop('file', sys.stdout if not is_err else sys.stderr)
     end = kw.pop('end', None)

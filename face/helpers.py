@@ -269,6 +269,7 @@ class StoutHelpFormatter(object):
             append(ctx['group_break'])
             for sub_name in unique([sp[0] for sp in parser.subprs_map if sp]):
                 subprs = parser.subprs_map[(sub_name,)]
+                # TODO: sub_name.replace('_', '-') = _cmd -> -cmd (need to skip replacing leading underscores)
                 subcmd_lines = _wrap_stout_pair(indent=ctx['section_indent'],
                                                 label=sub_name.replace('_', '-'),
                                                 sep=ctx['doc_separator'],

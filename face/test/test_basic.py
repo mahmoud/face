@@ -257,3 +257,17 @@ def test_multi_extend():
 
     res = cmd.parse(['cmd'])
     assert res.flags['override'] == []
+
+
+def test_post_posargs():
+    cmd = Command(lambda posargs, post_posargs: None, name='cmd')
+
+    res = cmd.parse(['cmd'])
+    assert res.posargs == ()
+    assert res.post_posargs == None  
+    # TODO: if this ^ isn't a useful signal, it would be more convenient to have the 
+    # behavior be the same as below
+
+    res = cmd.parse(['cmd', '--'])
+    assert res.posargs == ()
+    assert res.post_posargs == ()

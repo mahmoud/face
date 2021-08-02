@@ -246,3 +246,14 @@ def test_echo(capsys):
     assert capsys.readouterr().out == test_str + '\n\n'
     echo(test_str, nl=False)
     assert capsys.readouterr().out == test_str
+
+
+def test_multi_extend():
+    cmd = Command(lambda override: None, name='cmd')
+    cmd.add('--override', char='o', multi=True)
+    res = cmd.parse(['cmd', '-o', 'x=y', '-o', 'a=b'])
+
+    assert res.flags['override'] == ['x=y', 'a=b']
+
+    res = cmd.parse(['cmd'])
+    assert res.flags['override'] == []

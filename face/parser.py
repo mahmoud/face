@@ -44,7 +44,8 @@ def _multi_error(flag, arg_val_list):
 
 def _multi_extend(flag, arg_val_list):
     "Return a list of all arguments specified for a flag"
-    return arg_val_list
+    ret = [v for v in arg_val_list if v is not flag.missing]
+    return ret
 
 
 def _multi_override(flag, arg_val_list):

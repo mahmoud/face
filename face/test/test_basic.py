@@ -258,6 +258,9 @@ def test_multi_extend():
     res = cmd.parse(['cmd'])
     assert res.flags['override'] == []
 
+    res = cmd.parse(['cmd', '-o=x'])
+    assert res.flags['override'] == ['x']
+    
 
 def test_post_posargs():
     cmd = Command(lambda posargs, post_posargs: None, name='cmd')

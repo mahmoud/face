@@ -803,17 +803,27 @@ class Parser(object):
         return ret, args[len(ret):]
 
     def _parse_single_flag(self, cmd_flag_map, args):
+        advance = 1
         arg = args[0]
+        arg_text = None
+        try:
+            arg, arg_text = arg.split('=', maxsplit=1)
+        except ValueError:
+            pass
         flag = cmd_flag_map.get(normalize_flag_name(arg))
         if flag is None:
             raise UnknownFlag.from_parse(cmd_flag_map, arg)
         parse_as = flag.parse_as
         if not callable(parse_as):
+            if arg_text:
+                raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg_text)
             # e.g., True is effectively store_true, False is effectively store_false
             return flag, parse_as, args[1:]
 
         try:
-            arg_text = args[1]
+            if arg_text is None:
+                arg_text = args[1]
+                advance = 2
         except IndexError:
             raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg=None)
         try:
@@ -821,7 +831,7 @@ class Parser(object):
         except Exception as e:
             raise InvalidFlagArgument.from_parse(cmd_flag_map, flag, arg_text, exc=e)
 
-        return flag, arg_val, args[2:]
+        return flag, arg_val, args[advance:]
 
     def _parse_flags(self, cmd_flag_map, args):
         """Expects arguments after the initial command and subcommands (i.e.,

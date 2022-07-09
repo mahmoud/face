@@ -1,7 +1,0 @@
-# pocket protector
-
-pprotect --confirm-diff set-secret
-pprotect list-domain-secrets --help
-pprotect decrypt-domain domain_name
-
-# zfs

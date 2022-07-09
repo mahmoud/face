@@ -1,7 +1,6 @@
 docs/_build
 tmp.py
 htmlcov/
-.tox/
 
 *.py[cod]
 .pytest_cache

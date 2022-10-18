@@ -1,8 +1,3 @@
-.. face documentation master file, created by
-   sphinx-quickstart on Tue Mar 21 23:21:21 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 face
 ====
 
@@ -20,7 +15,7 @@ face
 Installation
 ------------
 
-face is pure Python, and tested on Python 2.7-3.7+, as well as PyPy. Installation is easy::
+face is pure Python, and tested on Python 3.7+, as well as PyPy. Installation is easy::
 
   pip install face
 

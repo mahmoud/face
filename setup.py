@@ -6,7 +6,7 @@ from setuptools import setup
 
 
 __author__ = 'Mahmoud Hashemi'
-__version__ = '22.0.0dev'
+__version__ = '22.0.0'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/face'
 __license__ = 'BSD'
@@ -29,7 +29,6 @@ setup(name='face',
           'Topic :: Utilities',
           'Intended Audience :: Developers',
           'Topic :: Software Development :: Libraries',
-          'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: Implementation :: CPython',

@@ -1,6 +1,15 @@
 face Project Log
 ================
 
+22.0.0
+------
+(2022-10-17)
+
+* Dropped Python 2 support
+* Added support for `--flag=val`
+* Improved `multi=extend` behavior
+* Many [docs](https://python-face.readthedocs.io/en/latest/) and tests
+
 20.1.1
 ------
 (2020-01-20)

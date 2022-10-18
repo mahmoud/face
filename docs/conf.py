@@ -27,11 +27,11 @@ pprint(os.environ)
 # -- Project information -----------------------------------------------------
 
 project = 'Face'
-copyright = '2020, Mahmoud Hashemi'
+copyright = '2022, Mahmoud Hashemi'
 author = 'Mahmoud Hashemi'
 
 # The full version, including alpha/beta/rc tags
-release = '20.0'
+release = '22.0'
 
 
 # -- General configuration ---------------------------------------------------

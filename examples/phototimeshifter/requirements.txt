@@ -1,0 +1,5 @@
+boltons>=21.0.0
+exif>=1.3.5
+face>=22.0.0
+# py3exiv2==0.11.0  # see note in shifter.py
+tqdm>=4.0

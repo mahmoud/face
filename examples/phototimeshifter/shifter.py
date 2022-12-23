@@ -53,7 +53,7 @@ def run(posargs_, shift, verbose, dryrun):
             image.datetime_original = new_dt_fmtd
             image.datetime_digitized = new_dt_fmtd
 
-            with atomic_save(fn) as new_img:
+            with atomic_save(fn, rm_part_on_exc=False) as new_img:
                 new_img.write(image.get_file())
             if verbose:
                 print(f'updated: {verbose_msg}')

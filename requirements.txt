@@ -53,14 +53,13 @@ toml==0.10.2
     # via tox
 tomli==2.0.1
     # via
-    #   build
     #   pep517
     #   pytest
 tox==3.25.1
     # via -r requirements.in
 virtualenv==20.15.1
     # via tox
-wheel==0.37.1
+wheel==0.38.1
     # via pip-tools
 
 # The following packages are considered to be unsafe in a requirements file:

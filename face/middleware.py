@@ -153,7 +153,7 @@ INNER_NAME = 'next_'
 
 _BUILTIN_PROVIDES = [INNER_NAME, 'args_', 'cmd_', 'subcmds_',
                      'flags_', 'posargs_', 'post_posargs_',
-                     'command_']
+                     'command_', 'subcommand_']
 
 
 def is_middleware(target):
@@ -181,6 +181,8 @@ def face_middleware(func=None, **kwargs):
           values be provided by this middleware at execution time.
        flags (list): An optional list of Flag instances, which will be
           automatically added to any Command which adds this middleware.
+       optional (bool): Whether this middleware should be skipped if its 
+          provides are not required by the command.
 
     The first argument of the decorated function must be named
     "next_". This argument is a function, representing the next

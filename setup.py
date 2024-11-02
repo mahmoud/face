@@ -6,7 +6,7 @@ from setuptools import setup
 
 
 __author__ = 'Mahmoud Hashemi'
-__version__ = '24.0.0'
+__version__ = '24.0.1dev'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/face'
 __license__ = 'BSD'
@@ -53,7 +53,7 @@ A brief checklist for release:
 * bump docs/conf.py version
 * git commit
 * git tag -a vx.y.z -m "brief summary"
-* write CHANGELOG
+* write CHANGELOG (TODO)
 * git commit
 * bump setup.py version onto n+1 dev
 * git commit

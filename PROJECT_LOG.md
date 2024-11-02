@@ -1,6 +1,11 @@
 face Project Log
 ================
 
+TODO
+----
+
+- file rotating CLI example
+
 22.0.0
 ------
 (2022-10-17)

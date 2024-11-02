@@ -4,6 +4,7 @@ import re
 import sys
 import getpass
 import keyword
+import textwrap
 
 from boltons.strutils import pluralize, strip_ansi
 from boltons.iterutils import split, unique
@@ -310,6 +311,10 @@ def echo(msg, **kw):
     _file = kw.pop('file', sys.stdout if not is_err else sys.stderr)
     end = kw.pop('end', None)
     enable_color = kw.pop('color', None)
+    indent = kw.pop('indent', '')
+    space: str = ' '
+    if isinstance(indent, int):
+        indent = space * indent
 
     if enable_color is None:
         enable_color = not should_strip_ansi(_file)
@@ -319,6 +324,8 @@ def echo(msg, **kw):
             end = u'\n' if isinstance(msg, unicode) else b'\n'
     if end:
         msg += end
+    if indent:
+        msg = textwrap.indent(msg, prefix=indent)
 
     if msg:
         if not enable_color:

@@ -5,6 +5,7 @@ import datetime
 # from StringIO import StringIO
 
 from pytest import raises
+import pytest
 
 from face import (Command,
                   Parser,
@@ -92,8 +93,6 @@ def test_search_prs_basic():
     assert res.name == 'search'
     assert res.flags['verbose'] is True
 
-    assert prs.parse(['/search_pkg/__main__.py']).to_cmd_scope()['cmd_'] == 'python -m search_pkg'
-
     res = prs.parse(['search', 'rg', '--glob', '*.py', '-g', '*.md', '--max-count', '5'])
     assert res.subcmds == ('rg',)
     assert res.flags['glob'] == ['*.py', '*.md']
@@ -103,6 +102,12 @@ def test_search_prs_basic():
 
     res = prs.parse(['search', 'rg', '--strategy', 'fast', '--strategy', 'slow'])
     assert res.flags['strategy'] == 'slow'
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Module shortcut test not supported on Windows (mostly on github ci)")
+def test_module_shortcut():
+    prs = get_search_command(as_parser=True)
+    assert prs.parse(['/search_pkg/__main__.py']).to_cmd_scope()['cmd_'] == 'python -m search_pkg'
 
 
 def test_prs_sys_argv():

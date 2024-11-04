@@ -1,4 +1,3 @@
-
 import os
 import re
 import sys
@@ -40,7 +39,7 @@ def process_command_name(name):
     """
 
     if not name or not isinstance(name, (str, unicode)):
-        raise ValueError('expected non-zero length string for subcommand name, not: %r' % name)
+        raise ValueError(f'expected non-zero length string for subcommand name, not: {name!r}')
 
     if name.endswith('-') or name.endswith('_'):
         raise ValueError('expected subcommand name without trailing dashes'
@@ -78,7 +77,7 @@ def flag_to_identifier(flag):
     """
     orig_flag = flag
     if not flag or not isinstance(flag, (str, unicode)):
-        raise ValueError('expected non-zero length string for flag, not: %r' % flag)
+        raise ValueError(f'expected non-zero length string for flag, not: {flag!r}')
 
     if flag.endswith('-') or flag.endswith('_'):
         raise ValueError('expected flag without trailing dashes'
@@ -96,8 +95,7 @@ def flag_to_identifier(flag):
     flag_name = normalize_flag_name(flag)
 
     if keyword.iskeyword(flag_name):
-        raise ValueError('valid flag names must not be Python keywords: %r'
-                         % orig_flag)
+        raise ValueError(f'valid flag names must not be Python keywords: {orig_flag!r}')
 
     return flag_name
 
@@ -107,7 +105,7 @@ def identifier_to_flag(identifier):
     Turn an identifier back into its flag format (e.g., "Flag" -> --flag).
     """
     if identifier.startswith('-'):
-        raise ValueError('expected identifier, not flag name: %r' % identifier)
+        raise ValueError(f'expected identifier, not flag name: {identifier!r}')
     ret = identifier.lower().replace('_', '-')
     return '--' + ret
 
@@ -165,13 +163,13 @@ def format_flag_post_doc(flag):
     if flag.missing is None or repr(flag.missing) == object.__repr__(flag.missing):
         # avoid displaying unhelpful defaults
         return ''
-    return '(defaults to %r)' % (flag.missing,)
+    return f'(defaults to {flag.missing!r})'
 
 
 def get_type_desc(parse_as):
     "Kind of a hacky way to improve message readability around argument types"
     if not callable(parse_as):
-        raise TypeError('expected parse_as to be callable, not %r' % parse_as)
+        raise TypeError(f'expected parse_as to be callable, not {parse_as!r}')
     try:
         return 'as', FRIENDLY_TYPE_NAMES[parse_as]
     except KeyError:
@@ -321,7 +319,7 @@ def echo(msg, **kw):
 
     if end is None:
         if kw.pop('nl', True):
-            end = u'\n' if isinstance(msg, unicode) else b'\n'
+            end = '\n' if isinstance(msg, unicode) else b'\n'
     if end:
         msg += end
     if indent:
@@ -385,7 +383,7 @@ def prompt(label, confirm=None, confirm_label=None, hide_input=False, err=False)
     """
     do_confirm = confirm or confirm_label
     if do_confirm and not confirm_label:
-        confirm_label = 'Retype %s' % (label.lower(),)
+        confirm_label = f'Retype {label.lower()}'
 
     def prompt_func(label):
         func = getpass.getpass if hide_input else raw_input

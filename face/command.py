@@ -1,6 +1,3 @@
-
-from __future__ import print_function
-
 import sys
 from collections import OrderedDict
 
@@ -97,7 +94,7 @@ class Command(Parser):
             doc = _docstring_to_doc(func)
 
         # TODO: default posargs if none by inspecting func
-        super(Command, self).__init__(name, doc,
+        super().__init__(name, doc,
                                       flags=kwargs.pop('flags', None),
                                       posargs=kwargs.pop('posargs', None),
                                       post_posargs=kwargs.pop('post_posargs', None),
@@ -119,7 +116,7 @@ class Command(Parser):
             self.add_middleware(mw)
 
         if kwargs:
-            raise TypeError('unexpected keyword arguments: %r' % sorted(kwargs.keys()))
+            raise TypeError(f'unexpected keyword arguments: {sorted(kwargs.keys())!r}')
 
         if _help:
             if _help.flag:
@@ -178,7 +175,7 @@ class Command(Parser):
         flag = a[0]
         if not isinstance(flag, Flag):
             flag = Flag(*a, **kw)  # attempt to construct a Flag from arguments
-        super(Command, self).add(flag)
+        super().add(flag)
 
         return flag
 
@@ -191,9 +188,9 @@ class Command(Parser):
         conflicting middlewares or subcommand names.
         """
         if not isinstance(subcmd, Command):
-            raise TypeError('expected Command instance, not: %r' % subcmd)
+            raise TypeError(f'expected Command instance, not: {subcmd!r}')
         self_mw = self._path_mw_map[()]
-        super(Command, self).add(subcmd)
+        super().add(subcmd)
         # map in new functions
         for path in self.subprs_map:
             if path not in self._path_func_map:
@@ -226,7 +223,7 @@ class Command(Parser):
         the flag map to just the flags used by the endpoint at the
         associated subcommand *path*.
         """
-        flag_map = super(Command, self).get_flag_map(path=path, with_hidden=with_hidden)
+        flag_map = super().get_flag_map(path=path, with_hidden=with_hidden)
         dep_names = self.get_dep_names(path)
         if 'args_' in dep_names or 'flags_' in dep_names:
             # the argument parse result and flag dict both capture
@@ -315,7 +312,7 @@ class Command(Parser):
             try:
                 wrapped = get_middleware_chain(mws, func, provides)
             except NameError as ne:
-                ne.args = (ne.args[0] + ' (in path: %r)' % (path,),)
+                ne.args = (ne.args[0] + f' (in path: {path!r})',)
                 raise
 
             self._path_wrapped_map[path] = wrapped
@@ -352,8 +349,7 @@ class Command(Parser):
         if print_error is None or print_error is True:
             print_error = default_print_error
         elif print_error and not callable(print_error):
-            raise TypeError('expected callable for print_error, not %r'
-                            % print_error)
+            raise TypeError(f'expected callable for print_error, not {print_error!r}')
 
         kwargs = dict(extras) if extras else {}
         kwargs['print_error_'] = print_error  # TODO: print_error_ in builtin provides?

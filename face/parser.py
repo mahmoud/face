@@ -1,4 +1,3 @@
-
 import sys
 import shlex
 import codecs
@@ -102,7 +101,7 @@ def _posargs_to_provides(posargspec, posargs):
                        % (posargspec, posargs))  # pragma: no cover (shouldn't get here)
 
 
-class CommandParseResult(object):
+class CommandParseResult:
     """The result of :meth:`Parser.parse`, instances of this type
     semantically store all that a command line can contain. Each
     argument corresponds 1:1 with an attribute.
@@ -146,7 +145,7 @@ class CommandParseResult(object):
             if basename == '__main__.py':
                 pkg_name = os.path.basename(path)
                 executable_path = get_minimal_executable()
-                cmd_ = '%s -m %s' % (executable_path, pkg_name)
+                cmd_ = f'{executable_path} -m {pkg_name}'
 
         ret = {'args_': self,
                'cmd_': cmd_,
@@ -175,7 +174,7 @@ class CommandParseResult(object):
 
 # TODO: allow name="--flag / -F" and do the split for automatic
 # char form?
-class Flag(object):
+class Flag:
     """The Flag object represents all there is to know about a resource
     that can be parsed from argv and consumed by a Command
     function. It also references a FlagDisplay, used by HelpHandlers
@@ -258,7 +257,7 @@ class Flag(object):
                                   opt_key=lambda v: v not in (None, _multi_error))
 
 
-class FlagDisplay(object):
+class FlagDisplay:
     """Provides individual overrides for most of a given flag's display
     settings, as used by HelpFormatter instances attached to Parser
     and Command objects. Pass an instance of this to
@@ -320,7 +319,7 @@ class FlagDisplay(object):
         # in the order they are created
 
         if kw:
-            raise TypeError('unexpected keyword arguments: %r' % kw.keys())
+            raise TypeError(f'unexpected keyword arguments: {kw.keys()!r}')
         return
 
     @property
@@ -331,7 +330,7 @@ class FlagDisplay(object):
         return format_nonexp_repr(self, ['label', 'doc'], ['group', 'hidden'], opt_key=bool)
 
 
-class PosArgDisplay(object):
+class PosArgDisplay:
     """Provides individual overrides for PosArgSpec display in automated
     help formatting. Pass to a PosArgSpec constructor, which is in
     turn passed to a Command/Parser.
@@ -356,7 +355,7 @@ class PosArgDisplay(object):
         self.label = kw.pop('label', None)
 
         if kw:
-            raise TypeError('unexpected keyword arguments: %r' % kw.keys())
+            raise TypeError(f'unexpected keyword arguments: {kw.keys()!r}')
         return
 
     @property
@@ -367,7 +366,7 @@ class PosArgDisplay(object):
         return format_nonexp_repr(self, ['name', 'label'])
 
 
-class PosArgSpec(object):
+class PosArgSpec:
     """Passed to Command/Parser as posargs and post_posargs parameters to
     configure the number and type of positional arguments.
 
@@ -394,11 +393,11 @@ class PosArgSpec(object):
     """
     def __init__(self, parse_as=str, min_count=None, max_count=None, display=None, provides=None, **kwargs):
         if not callable(parse_as) and parse_as is not ERROR:
-            raise TypeError('expected callable or ERROR for parse_as, not %r' % parse_as)
+            raise TypeError(f'expected callable or ERROR for parse_as, not {parse_as!r}')
         name = kwargs.pop('name', None)
         count = kwargs.pop('count', None)
         if kwargs:
-            raise TypeError('unexpected keyword arguments: %r' % list(kwargs.keys()))
+            raise TypeError(f'unexpected keyword arguments: {list(kwargs.keys())!r}')
         self.parse_as = parse_as
 
         # count convenience alias
@@ -409,9 +408,9 @@ class PosArgSpec(object):
         self.max_count = int(max_count) if max_count is not None else None
 
         if self.min_count < 0:
-            raise ValueError('expected min_count >= 0, not: %r' % self.min_count)
+            raise ValueError(f'expected min_count >= 0, not: {self.min_count!r}')
         if self.max_count is not None and self.max_count <= 0:
-            raise ValueError('expected max_count > 0, not: %r' % self.max_count)
+            raise ValueError(f'expected max_count > 0, not: {self.max_count!r}')
         if self.max_count and self.min_count > self.max_count:
             raise ValueError('expected min_count > max_count, not: %r > %r'
                              % (self.min_count, self.max_count))
@@ -465,22 +464,22 @@ class PosArgSpec(object):
         len_posargs = len(posargs)
         if posargs and not self.accepts_args:
             # TODO: check for likely subcommands
-            raise ArgumentArityError('unexpected positional arguments: %r' % posargs)
+            raise ArgumentArityError(f'unexpected positional arguments: {posargs!r}')
         min_count, max_count = self.min_count, self.max_count
         if min_count == max_count:
             # min_count must be >0 because max_count cannot be 0
-            arg_range_text = '%s argument' % min_count
+            arg_range_text = f'{min_count} argument'
             if min_count > 1:
                 arg_range_text += 's'
         else:
             if min_count == 0:
-                arg_range_text = 'up to %s argument' % max_count
+                arg_range_text = f'up to {max_count} argument'
                 arg_range_text += 's' if (max_count and max_count > 1) else ''
             elif max_count is None:
-                arg_range_text = 'at least %s argument' % min_count
+                arg_range_text = f'at least {min_count} argument'
                 arg_range_text += 's' if min_count > 1 else ''
             else:
-                arg_range_text = '%s - %s arguments' % (min_count, max_count)
+                arg_range_text = f'{min_count} - {max_count} arguments'
 
         if len_posargs < min_count:
             raise ArgumentArityError('too few arguments, expected %s, got %s'
@@ -529,7 +528,7 @@ def _ensure_posargspec(posargs, posargs_name):
     return posargs
 
 
-class Parser(object):
+class Parser:
     """The Parser lies at the center of face, primarily providing a
     configurable validation logic on top of the conventional grammar
     for CLI argument parsing.
@@ -620,14 +619,14 @@ class Parser(object):
         # then, check for conflicts with existing subcommands and flags
         for prs_path in self.subprs_map:
             if prs_path[0] == subprs_name:
-                raise ValueError('conflicting subcommand name: %r' % subprs_name)
+                raise ValueError(f'conflicting subcommand name: {subprs_name!r}')
         parent_flag_map = self._path_flag_map[()]
 
         check_no_conflicts = lambda parent_flag_map, subcmd_path, subcmd_flags: True
         for path, flags in subprs._path_flag_map.items():
             if not check_no_conflicts(parent_flag_map, path, flags):
                 # TODO
-                raise ValueError('subcommand flags conflict with parent command: %r' % flags)
+                raise ValueError(f'subcommand flags conflict with parent command: {flags!r}')
 
         # with checks complete, add parser and all subparsers
         self.subprs_map[(subprs_name,)] = subprs
@@ -719,12 +718,12 @@ class Parser(object):
             argv = sys.argv
         cpr = CommandParseResult(parser=self, argv=argv)
         if not argv:
-            ape = ArgumentParseError('expected non-empty sequence of arguments, not: %r' % (argv,))
+            ape = ArgumentParseError(f'expected non-empty sequence of arguments, not: {argv!r}')
             ape.prs_res = cpr
             raise ape
         for arg in argv:
             if not isinstance(arg, (str, unicode)):
-                raise TypeError('parse expected all args as strings, not: %r (%s)' % (arg, type(arg).__name__))
+                raise TypeError(f'parse expected all args as strings, not: {arg!r} ({type(arg).__name__})')
         '''
         for subprs_path, subprs in self.subprs_map.items():
             if len(subprs_path) == 1:
@@ -876,8 +875,8 @@ class Parser(object):
             try:
                 with codecs.open(path_or_file, 'r', 'utf-8') as f:
                     ff_text = f.read()
-            except (UnicodeError, EnvironmentError) as ee:
-                raise ArgumentParseError('failed to load flagfile "%s", got: %r' % (path, ee))
+            except (UnicodeError, OSError) as ee:
+                raise ArgumentParseError(f'failed to load flagfile "{path}", got: {ee!r}')
         if path in res_map:
             # we've already seen this file
             return res_map
@@ -899,7 +898,7 @@ class Parser(object):
                     self._parse_flagfile(cmd_flag_map, value, res_map=ret)
 
             except FaceException as fe:
-                fe.args = (fe.args[0] + ' (on line %s of flagfile "%s")' % (lineno, path),)
+                fe.args = (fe.args[0] + f' (on line {lineno} of flagfile "{path}")',)
                 raise
 
         return ret
@@ -963,7 +962,7 @@ def parse_sv_line(line, sep=','):
     return parsed[0]
 
 
-class ListParam(object):
+class ListParam:
     """The ListParam takes an argument as a character-separated list, and
     produces a Python list of parsed values. Basically, the argument
     equivalent of CSV (Comma-Separated Values)::
@@ -1012,14 +1011,14 @@ class ListParam(object):
         return format_exp_repr(self, ['parse_one_as'], ['sep', 'strip'])
 
 
-class ChoicesParam(object):
+class ChoicesParam:
     """Parses a single value, limited to a set of *choices*. The actual
     converter used to parse is inferred from *choices* by default, but
     an explicit one can be set *parse_as*.
     """
     def __init__(self, choices, parse_as=None):
         if not choices:
-            raise ValueError('expected at least one choice, not: %r' % choices)
+            raise ValueError(f'expected at least one choice, not: {choices!r}')
         try:
             self.choices = sorted(choices)
         except Exception:
@@ -1033,7 +1032,7 @@ class ChoicesParam(object):
     def parse(self, text):
         choice = self.parse_as(text)
         if choice not in self.choices:
-            raise ArgumentParseError('expected one of %r, not: %r' % (self.choices, text))
+            raise ArgumentParseError(f'expected one of {self.choices!r}, not: {text!r}')
         return choice
 
     __call__ = parse
@@ -1042,7 +1041,7 @@ class ChoicesParam(object):
         return format_exp_repr(self, ['choices'], ['parse_as'])
 
 
-class FilePathParam(object):
+class FilePathParam:
     """TODO
 
     ideas: exists, minimum permissions, can create, abspath, type=d/f
@@ -1051,7 +1050,7 @@ class FilePathParam(object):
     could do missing=TEMP, but that might be getting too fancy tbh.
     """
 
-class FileValueParam(object):
+class FileValueParam:
     """
     TODO: file with a single value in it, like a pidfile
     or a password file mounted in. Read in and treated like it

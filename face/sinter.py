@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import print_function
-
 import sys
 import types
 import inspect
@@ -55,7 +51,7 @@ def inject(f, injectables):
     if fb.varkw:
         return f(**all_kwargs)
 
-    kwargs = dict([(k, v) for k, v in all_kwargs.items() if k in fb.get_arg_names()])
+    kwargs = {k: v for k, v in all_kwargs.items() if k in fb.get_arg_names()}
     return f(**kwargs)
 
 
@@ -82,7 +78,7 @@ def get_callable_labels(obj):
 # need
 
 def chain_argspec(func_list, provides, inner_name):
-    provided_sofar = set([inner_name])  # the inner function name is an extremely special case
+    provided_sofar = {inner_name}  # the inner function name is an extremely special case
     optional_sofar = set()
     required_sofar = set()
     for f, p in zip(func_list, provides):
@@ -110,23 +106,23 @@ def build_chain_str(funcs, params, inner_name, params_sofar=None, level=0,
     if not funcs:
         return ''  # stopping case
     if params_sofar is None:
-        params_sofar = set([inner_name])
+        params_sofar = {inner_name}
 
     params_sofar.update(params[0])
     inner_args = get_fb(funcs[0]).args
-    inner_arg_dict = dict([(a, a) for a in inner_args])
+    inner_arg_dict = {a: a for a in inner_args}
     inner_arg_items = sorted(inner_arg_dict.items())
     inner_args = ', '.join(['%s=%s' % kv for kv in inner_arg_items
                            if kv[0] in params_sofar])
     outer_indent = _INDENT * level
     inner_indent = outer_indent + _INDENT
     outer_arg_str = ', '.join(params[0])
-    def_str = '%sdef %s(%s):\n' % (outer_indent, inner_name, outer_arg_str)
+    def_str = f'{outer_indent}def {inner_name}({outer_arg_str}):\n'
     body_str = build_chain_str(funcs[1:], params[1:], inner_name, params_sofar, level + 1)
     #func_name = get_func_name(funcs[0])
     #func_alias = get_inner_func_alias(funcs[0])
-    htb_str = '%s__traceback_hide__ = True\n' % (inner_indent,)
-    return_str = '%sreturn funcs[%s](%s)\n' % (inner_indent, level, inner_args)
+    htb_str = f'{inner_indent}__traceback_hide__ = True\n'
+    return_str = f'{inner_indent}return funcs[{level}]({inner_args})\n'
     return ''.join([def_str, body_str, htb_str + return_str])
 
 
@@ -136,8 +132,9 @@ def compile_chain(funcs, params, inner_name, verbose=_VERBOSE):
 
 
 def compile_code(code_str, name, env=None, verbose=_VERBOSE):
+    env = {} if env is None else env
     code_hash = hashlib.sha1(code_str.encode('utf8')).hexdigest()[:16]
-    unique_filename = "<sinter generated %s %s>" % (name, code_hash)
+    unique_filename = f"<sinter generated {name} {code_hash}>"
     code = compile(code_str, unique_filename, 'single')
     if verbose:
         print(code_str)  # pragma: no cover

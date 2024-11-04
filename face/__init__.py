@@ -1,4 +1,3 @@
-
 from face.parser import (Flag,
                          FlagDisplay,
                          ERROR,

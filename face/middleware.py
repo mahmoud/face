@@ -196,10 +196,10 @@ def face_middleware(func=None, **kwargs):
     if flags:
         for flag in flags:
             if not isinstance(flag, Flag):
-                raise TypeError('expected Flag object, not: %r' % flag)
+                raise TypeError(f'expected Flag object, not: {flag!r}')
     optional = kwargs.pop('optional', False)
     if kwargs:
-        raise TypeError('unexpected keyword arguments: %r' % kwargs.keys())
+        raise TypeError(f'unexpected keyword arguments: {kwargs.keys()!r}')
 
     def decorate_face_middleware(func):
         check_middleware(func, provides=provides)
@@ -239,13 +239,13 @@ def get_middleware_chain(middlewares, innermost, preprovided):
     if INNER_NAME in get_arg_names(innermost):
         raise NameError(_inner_exc_msg % (INNER_NAME, innermost))
 
-    mw_builtins = set(preprovided) - set([INNER_NAME])
+    mw_builtins = set(preprovided) - {INNER_NAME}
     mw_provides = [list(mw._face_provides) for mw in middlewares]
 
     mw_chain, mw_chain_args, mw_unres = make_chain(middlewares, mw_provides, innermost, mw_builtins, INNER_NAME)
 
     if mw_unres:
-        msg = "unresolved middleware or handler arguments: %r" % sorted(mw_unres)
+        msg = f"unresolved middleware or handler arguments: {sorted(mw_unres)!r}"
         avail_unres = mw_unres & (mw_builtins | set(sum(mw_provides, [])))
         if avail_unres:
             msg += (' (%r provided but not resolvable, check middleware order.)'
@@ -261,7 +261,7 @@ def check_middleware(func, provides=None):
     raises :exc:`TypeError` if any issues are found.
     """
     if not callable(func):
-        raise TypeError('expected middleware %r to be a function' % func)
+        raise TypeError(f'expected middleware {func!r} to be a function')
     fb = get_fb(func)
     # TODO: this currently gives __main__abc instead of __main__.abc
     func_label = ''.join(get_callable_labels(func))

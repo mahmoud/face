@@ -1,4 +1,3 @@
-
 import os
 import sys
 import datetime
@@ -70,7 +69,7 @@ def get_search_command(as_parser=False):
                         post_posargs={'provides': 'diff_paths'})
     cmd.add(ls_subcmd)
 
-    class TwoFour(object):
+    class TwoFour:
         def __call__(self, posargs_):
             return ', '.join(posargs_)
 

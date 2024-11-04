@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from random import shuffle
 
 import pytest
@@ -70,7 +68,7 @@ def test_flag_char():
     with pytest.raises(ValueError, match='char flags must be exactly one character'):
         Flag('flag', char='FLAG')
     with pytest.raises(ValueError, match='expected valid flag character.*ASCII letters, numbers.*'):
-        Flag('flag', char=u'é')
+        Flag('flag', char='é')
 
     assert Flag('flag', char='-f').char == 'f'
 
@@ -223,7 +221,7 @@ def test_choices_init():
     with pytest.raises(ValueError, match='expected at least one'):
         ChoicesParam(choices=[])
 
-    class Unsortable(object):
+    class Unsortable:
         def __gt__(self, other):
             raise TypeError()
         __cmp__ = __lt__ = __gt__
@@ -235,7 +233,7 @@ def test_choices_init():
 
 
 def test_echo(capsys):
-    test_str = u'tést'
+    test_str = 'tést'
     echo(test_str)
     echo.err(test_str.upper())
     captured = capsys.readouterr()

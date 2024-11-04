@@ -30,10 +30,8 @@ import contextlib
 from subprocess import list2cmdline
 from functools import partial
 
-try:
-    from collections.abc import Container
-except ImportError:
-    from collections import Container
+
+from collections.abc import Container
 
 PY2 = sys.version_info[0] == 2
 
@@ -53,7 +51,7 @@ def _make_input_stream(input, encoding):
     elif isinstance(input, unicode):
         input = input.encode(encoding)
     elif not isinstance(input, bytes):
-        raise TypeError('expected bytes, text, or None, not: %r' % input)
+        raise TypeError(f'expected bytes, text, or None, not: {input!r}')
     if PY2:
         return StringIO(input)
     return io.BytesIO(input)
@@ -75,7 +73,7 @@ def _fake_getpass(prompt='Password: ', stream=None):
     return line
 
 
-class RunResult(object):
+class RunResult:
     """Returned from :meth:`CommandChecker.run()`, complete with the
     relevant inputs and outputs of the run.
 
@@ -137,15 +135,15 @@ class RunResult(object):
 
     def __repr__(self):
         # very similar to subprocess.CompleteProcess repr
-        args = ['args={!r}'.format(self.args),
-                'returncode={!r}'.format(self.returncode)]
+        args = [f'args={self.args!r}',
+                f'returncode={self.returncode!r}']
         if self.stdout_bytes:
-            args.append('stdout=%r' % (self.stdout,))
+            args.append(f'stdout={self.stdout!r}')
         if self.stderr_bytes is not None:
-            args.append('stderr=%r' % (self.stderr,))
+            args.append(f'stderr={self.stderr!r}')
         if self.exception:
-            args.append('exception=%r' % (self.exception,))
-        return "%s(%s)" % (self.__class__.__name__, ', '.join(args))
+            args.append(f'exception={self.exception!r}')
+        return f"{self.__class__.__name__}({', '.join(args)})"
 
 
 
@@ -156,12 +154,12 @@ def _get_exp_code_text(exp_codes):
         comp_codes = complement(exp_codes)
         try:
             comp_codes = tuple(comp_codes)
-            return 'any code but %r' % (comp_codes[0] if len(comp_codes) == 1 else comp_codes)
+            return f'any code but {comp_codes[0] if len(comp_codes) == 1 else comp_codes!r}'
         except Exception:
             return repr(exp_codes)
     if codes_len == 1:
         return repr(exp_codes[0])
-    return 'one of %r' % (tuple(exp_codes),)
+    return f'one of {tuple(exp_codes)!r}'
 
 
 class CheckError(AssertionError):
@@ -192,7 +190,7 @@ class CheckError(AssertionError):
         AssertionError.__init__(self, msg)
 
 
-class CommandChecker(object):
+class CommandChecker:
     """Face's main testing interface.
 
     Wrap your :class:`Command` instance in a :class:`CommandChecker`,
@@ -284,12 +282,12 @@ class CommandChecker(object):
         :exc:`CheckError` if the command completes with exit code
         ``0``.
         """
-        kw.setdefault('exit_code', complement(set([0])))
+        kw.setdefault('exit_code', complement({0}))
         return self.run(*a, **kw)
 
     def __getattr__(self, name):
         if not name.startswith('fail_'):
-            return super(CommandChecker, self).__getattr__(name)
+            return super().__getattr__(name)
         _, _, code_str = name.partition('fail_')
         try:
             code = [int(cs) for cs in code_str.split('_')]

@@ -11,11 +11,7 @@ from boltons.typeutils import make_sentinel
 
 import face
 
-try:
-    unicode
-except NameError:
-    unicode = str
-    raw_input = input
+raw_input = input
 
 ERROR = make_sentinel('ERROR')  # used for parse_as=ERROR
 
@@ -38,7 +34,7 @@ def process_command_name(name):
 
     """
 
-    if not name or not isinstance(name, (str, unicode)):
+    if not name or not isinstance(name, (str, str)):
         raise ValueError(f'expected non-zero length string for subcommand name, not: {name!r}')
 
     if name.endswith('-') or name.endswith('_'):
@@ -76,7 +72,7 @@ def flag_to_identifier(flag):
     Input case doesn't matter, output case will always be lower.
     """
     orig_flag = flag
-    if not flag or not isinstance(flag, (str, unicode)):
+    if not flag or not isinstance(flag, (str, str)):
         raise ValueError(f'expected non-zero length string for flag, not: {flag!r}')
 
     if flag.endswith('-') or flag.endswith('_'):
@@ -253,7 +249,7 @@ def get_minimal_executable(executable=None, path=None, environ=None):
     executable = sys.executable if executable is None else executable
     environ = os.environ if environ is None else environ
     path = environ.get('PATH', '') if path is None else path
-    if isinstance(path, (str, unicode)):
+    if isinstance(path, (str, str)):
         path = path.split(':')
 
     executable_basename = os.path.basename(executable)
@@ -303,8 +299,8 @@ def echo(msg, **kw):
 
     """
     msg = msg or ''
-    if not isinstance(msg, (unicode, bytes)):
-        msg = unicode(msg)
+    if not isinstance(msg, (str, bytes)):
+        msg = str(msg)
     is_err = kw.pop('err', False)
     _file = kw.pop('file', sys.stdout if not is_err else sys.stderr)
     end = kw.pop('end', None)
@@ -319,7 +315,7 @@ def echo(msg, **kw):
 
     if end is None:
         if kw.pop('nl', True):
-            end = '\n' if isinstance(msg, unicode) else b'\n'
+            end = '\n' if isinstance(msg, str) else b'\n'
     if end:
         msg += end
     if indent:
@@ -349,7 +345,7 @@ echo.err = echo_err
 
 
 def _get_text(inp):
-    if not isinstance(inp, unicode):
+    if not isinstance(inp, str):
         return inp.decode('utf8')
     return inp
 

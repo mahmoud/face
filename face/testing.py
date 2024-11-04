@@ -35,13 +35,10 @@ from collections.abc import Container
 from boltons.setutils import complement
 
 
-unicode = str
-
-
 def _make_input_stream(input, encoding):
     if input is None:
         input = b''
-    elif isinstance(input, unicode):
+    elif isinstance(input, str):
         input = input.encode(encoding)
     elif not isinstance(input, bytes):
         raise TypeError(f'expected bytes, text, or None, not: {input!r}')
@@ -330,7 +327,7 @@ class CommandChecker:
             exc_info = None
             exit_code = 0
 
-            if isinstance(args, (str, unicode)):
+            if isinstance(args, (str, str)):
                 args = shlex.split(args)
 
             try:

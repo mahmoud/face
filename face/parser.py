@@ -24,11 +24,6 @@ from face.errors import (FaceException,
                          InvalidPositionalArgument,
                          MissingRequiredFlags)
 
-try:
-    unicode
-except NameError:
-    unicode = str
-
 
 def _arg_to_subcmd(arg):
     return arg.lower().replace('-', '_')
@@ -722,7 +717,7 @@ class Parser:
             ape.prs_res = cpr
             raise ape
         for arg in argv:
-            if not isinstance(arg, (str, unicode)):
+            if not isinstance(arg, (str, str)):
                 raise TypeError(f'parse expected all args as strings, not: {arg!r} ({type(arg).__name__})')
         '''
         for subprs_path, subprs in self.subprs_map.items():

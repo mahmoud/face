@@ -1,4 +1,3 @@
-
 import pytest
 
 from face import (Command,

@@ -148,6 +148,7 @@ broad usefulness, consider contributing it back to the core!
 from face.parser import Flag
 from face.sinter import make_chain, get_arg_names, get_fb, get_callable_labels
 from face.sinter import inject  # transitive import for external use
+from typing import Callable, List, Optional, Union
 
 INNER_NAME = 'next_'
 
@@ -171,35 +172,38 @@ def is_middleware(target):
     return False
 
 
-def face_middleware(func=None, **kwargs):
+def face_middleware(func: Optional[Callable] = None, 
+                   *,
+                   provides: Union[List[str], str] = [],
+                   flags: List[Flag] = [],
+                   optional: bool = False) -> Callable:
     """A decorator to mark a function as face middleware, which wraps
     execution of a subcommand handler function. This decorator can be
     called with or without arguments:
 
     Args:
-       provides (list): An optional list of names, declaring which
-          values be provided by this middleware at execution time.
-       flags (list): An optional list of Flag instances, which will be
-          automatically added to any Command which adds this middleware.
-       optional (bool): Whether this middleware should be skipped if its 
-          provides are not required by the command.
+        provides: An optional list of names, declaring which
+           values be provided by this middleware at execution time.
+        flags: An optional list of Flag instances, which will be
+           automatically added to any Command which adds this middleware.
+        optional: Whether this middleware should be skipped if its 
+           provides are not required by the command.
 
     The first argument of the decorated function must be named
     "next_". This argument is a function, representing the next
     function in the execution chain, the last of which is the
     command's handler function.
+
+    Returns:
+        A decorator function that marks the decorated function as middleware.
     """
-    provides = kwargs.pop('provides', [])
     if isinstance(provides, str):
         provides = [provides]
-    flags = list(kwargs.pop('flags', []))
+    flags = list(flags)
     if flags:
         for flag in flags:
             if not isinstance(flag, Flag):
-                raise TypeError('expected Flag object, not: %r' % flag)
-    optional = kwargs.pop('optional', False)
-    if kwargs:
-        raise TypeError('unexpected keyword arguments: %r' % kwargs.keys())
+                raise TypeError(f'expected Flag object, not: {flag!r}')
 
     def decorate_face_middleware(func):
         check_middleware(func, provides=provides)
@@ -239,13 +243,13 @@ def get_middleware_chain(middlewares, innermost, preprovided):
     if INNER_NAME in get_arg_names(innermost):
         raise NameError(_inner_exc_msg % (INNER_NAME, innermost))
 
-    mw_builtins = set(preprovided) - set([INNER_NAME])
+    mw_builtins = set(preprovided) - {INNER_NAME}
     mw_provides = [list(mw._face_provides) for mw in middlewares]
 
     mw_chain, mw_chain_args, mw_unres = make_chain(middlewares, mw_provides, innermost, mw_builtins, INNER_NAME)
 
     if mw_unres:
-        msg = "unresolved middleware or handler arguments: %r" % sorted(mw_unres)
+        msg = f"unresolved middleware or handler arguments: {sorted(mw_unres)!r}"
         avail_unres = mw_unres & (mw_builtins | set(sum(mw_provides, [])))
         if avail_unres:
             msg += (' (%r provided but not resolvable, check middleware order.)'
@@ -261,7 +265,7 @@ def check_middleware(func, provides=None):
     raises :exc:`TypeError` if any issues are found.
     """
     if not callable(func):
-        raise TypeError('expected middleware %r to be a function' % func)
+        raise TypeError(f'expected middleware {func!r} to be a function')
     fb = get_fb(func)
     # TODO: this currently gives __main__abc instead of __main__.abc
     func_label = ''.join(get_callable_labels(func))

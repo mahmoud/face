@@ -1,6 +1,3 @@
-
-from __future__ import print_function
-
 import pytest
 
 from face import (Flag,

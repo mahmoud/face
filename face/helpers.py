@@ -1,4 +1,3 @@
-
 import os
 import sys
 import array
@@ -147,7 +146,7 @@ DEFAULT_CONTEXT = {
 }
 
 
-class StoutHelpFormatter(object):
+class StoutHelpFormatter:
     """This formatter takes :class:`Parser` and :class:`Command` instances
     and generates help text. The output style is inspired by, but not
     the same as, argparse's automatic help formatting.
@@ -215,7 +214,7 @@ class StoutHelpFormatter(object):
         for key, val in self.default_context.items():
             self.ctx[key] = kwargs.pop(key, val)
         if kwargs:
-            raise TypeError('unexpected formatter arguments: %r' % list(kwargs.keys()))
+            raise TypeError(f'unexpected formatter arguments: {list(kwargs.keys())!r}')
 
     def _get_layout(self, labels):
         ctx = self.ctx
@@ -362,7 +361,7 @@ class AiryHelpFormatter(object):
 '''
 
 
-class HelpHandler(object):
+class HelpHandler:
     """The HelpHandler is a one-stop object for that all-important CLI
     feature: automatic help generation. It ties together the actual
     help handler with the optional flag and subcommand such that it
@@ -402,11 +401,11 @@ class HelpHandler(object):
         self.subcmd = subcmd
         self.func = func if func is not None else self.default_help_func
         if not callable(self.func):
-            raise TypeError('expected help handler func to be callable, not %r' % func)
+            raise TypeError(f'expected help handler func to be callable, not {func!r}')
 
         self.formatter = formatter
         if not formatter:
-            raise TypeError('expected Formatter type or instance, not: %r' % formatter)
+            raise TypeError(f'expected Formatter type or instance, not: {formatter!r}')
         if isinstance(formatter, type):
             self.formatter = formatter(**formatter_kwargs)
         elif formatter_kwargs:

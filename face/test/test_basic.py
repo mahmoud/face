@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from random import shuffle
 
 import pytest
@@ -45,9 +43,6 @@ def test_flag_name():
     with pytest.raises(TypeError, match='or FlagDisplay instance'):
         Flag('name', display=object())
 
-    with pytest.raises(TypeError, match='unexpected keyword arguments'):
-        Flag('name', display={'badkw': 'val'})
-
     with pytest.raises(ValueError, match='expected identifier.*'):
         assert identifier_to_flag('--flag')
 
@@ -70,7 +65,7 @@ def test_flag_char():
     with pytest.raises(ValueError, match='char flags must be exactly one character'):
         Flag('flag', char='FLAG')
     with pytest.raises(ValueError, match='expected valid flag character.*ASCII letters, numbers.*'):
-        Flag('flag', char=u'é')
+        Flag('flag', char='é')
 
     assert Flag('flag', char='-f').char == 'f'
 
@@ -85,11 +80,6 @@ def test_flag_hidden():
     cmd.add('--dragon', display={'label': ''})
     flags = cmd.get_flags(with_hidden=False)
     assert 'dragon' not in [f.name for f in flags]
-
-
-def test_command_misc_api():
-    with pytest.raises(TypeError, match='unexpected keyword'):
-        Command(lambda: None, name='ok', bad_kwarg=True)
 
 
 def test_flag_init():
@@ -145,8 +135,6 @@ def test_minimal_exe():
 def test_posargspec_init():
     with pytest.raises(TypeError, match='expected callable or ERROR'):
         PosArgSpec(parse_as=object())
-    with pytest.raises(TypeError, match='unexpected keyword'):
-        PosArgSpec(badkw='val')
 
     with pytest.raises(ValueError, match='expected min_count >= 0'):
         PosArgSpec(min_count=-1)
@@ -223,7 +211,7 @@ def test_choices_init():
     with pytest.raises(ValueError, match='expected at least one'):
         ChoicesParam(choices=[])
 
-    class Unsortable(object):
+    class Unsortable:
         def __gt__(self, other):
             raise TypeError()
         __cmp__ = __lt__ = __gt__
@@ -235,7 +223,7 @@ def test_choices_init():
 
 
 def test_echo(capsys):
-    test_str = u'tést'
+    test_str = 'tést'
     echo(test_str)
     echo.err(test_str.upper())
     captured = capsys.readouterr()

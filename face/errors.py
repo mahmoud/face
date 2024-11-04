@@ -1,4 +1,3 @@
-
 from boltons.iterutils import unique
 
 import face.utils
@@ -50,8 +49,7 @@ class UnknownFlag(ArgumentParseError):
         # TODO: add edit distance calculation
         valid_flags = unique([face.utils.format_flag_label(flag) for flag in
                               cmd_flag_map.values() if not flag.display.hidden])
-        msg = ('unknown flag "%s", choose from: %s'
-               % (flag_name, ', '.join(valid_flags)))
+        msg = f"unknown flag \"{flag_name}\", choose from: {', '.join(valid_flags)}"
         return cls(msg)
 
 
@@ -63,7 +61,7 @@ class InvalidFlagArgument(ArgumentParseError):
     @classmethod
     def from_parse(cls, cmd_flag_map, flag, arg, exc=None):
         if arg is None:
-            return cls('expected argument for flag %s' % flag.name)
+            return cls(f'expected argument for flag {flag.name}')
 
         val_parser = flag.parse_as
         vp_label = getattr(val_parser, 'display_name', face.utils.FRIENDLY_TYPE_NAMES.get(val_parser))
@@ -76,7 +74,7 @@ class InvalidFlagArgument(ArgumentParseError):
 
         if exc:
             # TODO: put this behind a verbose flag?
-            msg += ' (got error: %r)' % exc
+            msg += f' (got error: {exc!r})'
         if arg.startswith('-'):
             msg += '. (Did you forget to pass an argument?)'
 
@@ -105,8 +103,7 @@ class MissingRequiredFlags(ArgumentParseError):
         for flag_name in flag_names:
             flag = cmd_flag_map[flag_name]
             labels.append(face.utils.format_flag_label(flag))
-        msg = ('missing required arguments for flags: %s'
-               % ', '.join(sorted(labels)))
+        msg = f"missing required arguments for flags: {', '.join(sorted(labels))}"
         return cls(msg)
 
 
@@ -118,10 +115,9 @@ class DuplicateFlag(ArgumentParseError):
     def from_parse(cls, flag, arg_val_list):
         avl_text = ', '.join([repr(v) for v in arg_val_list])
         if callable(flag.parse_as):
-            msg = ('more than one value was passed for flag "%s": %s'
-                   % (flag.name, avl_text))
+            msg = f'more than one value was passed for flag "{flag.name}": {avl_text}'
         else:
-            msg = ('flag "%s" was used multiple times, but can be used only once' % flag.name)
+            msg = f'flag "{flag.name}" was used multiple times, but can be used only once'
         return cls(msg)
 
 

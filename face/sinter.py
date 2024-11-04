@@ -8,7 +8,7 @@ from boltons import iterutils
 from boltons.strutils import camel2under
 from boltons.funcutils import FunctionBuilder
 
-PY3 = (sys.version_info[0] == 3)
+
 _VERBOSE = False
 _INDENT = '    '
 
@@ -138,10 +138,8 @@ def compile_code(code_str, name, env=None, verbose=_VERBOSE):
     code = compile(code_str, unique_filename, 'single')
     if verbose:
         print(code_str)  # pragma: no cover
-    if PY3:
-        exec(code, env)
-    else:
-        exec("exec code in env")
+
+    exec(code, env)
 
     linecache.cache[unique_filename] = (
         len(code_str),

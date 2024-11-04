@@ -22,8 +22,7 @@ def _get_default_name(func):
     if isinstance(func, partial):
         func = func.func  # just one level of partial for now
 
-    # func_name on py2, __name__ on py3
-    ret = getattr(func, 'func_name', getattr(func, '__name__', None))  # most functions hit this
+    ret = getattr(func, '__name__', None)  # most functions hit this
 
     if ret is None:
         ret = camel2under(func.__class__.__name__).lower()  # callable instances, etc.

@@ -22,6 +22,7 @@
 
 """
 
+import io
 import os
 import sys
 import shlex
@@ -29,20 +30,12 @@ import getpass
 import contextlib
 from subprocess import list2cmdline
 from functools import partial
-
-
 from collections.abc import Container
 
-PY2 = sys.version_info[0] == 2
-
-if PY2:
-    from cStringIO import StringIO
-else:
-    import io
-    unicode = str
-
-
 from boltons.setutils import complement
+
+
+unicode = str
 
 
 def _make_input_stream(input, encoding):
@@ -52,8 +45,6 @@ def _make_input_stream(input, encoding):
         input = input.encode(encoding)
     elif not isinstance(input, bytes):
         raise TypeError(f'expected bytes, text, or None, not: {input!r}')
-    if PY2:
-        return StringIO(input)
     return io.BytesIO(input)
 
 
@@ -235,23 +226,16 @@ class CommandChecker:
         if env:
             full_env.update(env)
 
-        if PY2:
-            tmp_stdout = bytes_output = StringIO()
-            if self.mix_stderr:
-                tmp_stderr = tmp_stdout
-            else:
-                bytes_error = tmp_stderr = StringIO()
+        bytes_output = io.BytesIO()
+        tmp_stdin = io.TextIOWrapper(tmp_stdin, encoding=self.encoding)
+        tmp_stdout = io.TextIOWrapper(
+            bytes_output, encoding=self.encoding)
+        if self.mix_stderr:
+            tmp_stderr = tmp_stdout
         else:
-            bytes_output = io.BytesIO()
-            tmp_stdin = io.TextIOWrapper(tmp_stdin, encoding=self.encoding)
-            tmp_stdout = io.TextIOWrapper(
-                bytes_output, encoding=self.encoding)
-            if self.mix_stderr:
-                tmp_stderr = tmp_stdout
-            else:
-                bytes_error = io.BytesIO()
-                tmp_stderr = io.TextIOWrapper(
-                    bytes_error, encoding=self.encoding)
+            bytes_error = io.BytesIO()
+            tmp_stderr = io.TextIOWrapper(
+                bytes_error, encoding=self.encoding)
 
         old_env = {}
         try:
@@ -381,11 +365,6 @@ class CommandChecker:
 # syncing os.environ (as opposed to modifying a copy and setting it
 # back) takes care of cases when someone has a reference to environ
 def _sync_env(env, new, backup=None):
-    if PY2:
-        # py2 expects bytes in os.environ
-        encode = lambda x: x.encode('utf8') if isinstance(x, unicode) else x
-        new = {encode(k): encode(v) for k, v in new.items()}
-
     for key, value in new.items():
         if backup is not None:
             backup[key] = env.get(key)

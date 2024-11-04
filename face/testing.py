@@ -327,7 +327,7 @@ class CommandChecker:
             exc_info = None
             exit_code = 0
 
-            if isinstance(args, (str, str)):
+            if isinstance(args, str):
                 args = shlex.split(args)
 
             try:

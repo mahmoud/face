@@ -3,6 +3,7 @@ import shlex
 import codecs
 import os.path
 from collections import OrderedDict
+from typing import Optional
 
 from boltons.iterutils import split, unique
 from boltons.dictutils import OrderedMultiDict as OMD
@@ -287,7 +288,14 @@ class FlagDisplay:
 
     """
     # value_name -> arg_name?
-    def __init__(self, flag, **kw):
+    def __init__(self, flag, *,
+                 label: Optional[str] = None,
+                 post_doc: Optional[str] = None,
+                 full_doc: Optional[str] = None,
+                 value_name: Optional[str] = None,
+                 group: int = 0,
+                 hidden: bool = False,
+                 sort_key: int = 0):
         self.flag = flag
 
         self.doc = flag.doc
@@ -297,24 +305,21 @@ class FlagDisplay:
             if _prep == 'as':
                 self.doc = desc
 
-        self.post_doc = kw.pop('post_doc', None)
-        self.full_doc = kw.pop('full_doc', None)
+        self.post_doc = post_doc
+        self.full_doc = full_doc
 
         self.value_name = ''
         if callable(flag.parse_as):
             # TODO: use default when it's set and it's a basic renderable type
-            self.value_name = kw.pop('value_name', None) or self.flag.name.upper()
+            self.value_name = value_name or self.flag.name.upper()
 
-        self.group = kw.pop('group', 0)   # int or str
-        self._hide = kw.pop('hidden', False)  # bool
-        self.label = kw.pop('label', None)  # see hidden property below for more info
-        self.sort_key = kw.pop('sort_key', 0)  # int or str
+        self.group = group  
+        self._hide = hidden 
+        self.label = label  # see hidden property below for more info
+        self.sort_key = sort_key  
         # TODO: sort_key is gonna need to be partitioned on type for py3
         # TODO: maybe sort_key should be a counter so that flags sort
         # in the order they are created
-
-        if kw:
-            raise TypeError(f'unexpected keyword arguments: {kw.keys()!r}')
         return
 
     @property
@@ -342,16 +347,17 @@ class PosArgDisplay:
          often describes default behavior.
 
     """
-    def __init__(self, **kw):
-        self.name = kw.pop('name', None) or 'arg'
-        self.doc = kw.pop('doc', '')
-        self.post_doc = kw.pop('post_doc', None)
-        self._hide = kw.pop('hidden', False)  # bool
-        self.label = kw.pop('label', None)
-
-        if kw:
-            raise TypeError(f'unexpected keyword arguments: {kw.keys()!r}')
-        return
+    def __init__(self, *, 
+                 name: Optional[str] = None,
+                 doc: str = '',
+                 post_doc: Optional[str] = None,
+                 hidden: bool = False,
+                 label: Optional[str] = None) -> None:
+        self.name = name or 'arg'
+        self.doc = doc
+        self.post_doc = post_doc
+        self._hide = hidden
+        self.label = label
 
     @property
     def hidden(self):
@@ -386,13 +392,11 @@ class PosArgSpec:
     times around the application.
 
     """
-    def __init__(self, parse_as=str, min_count=None, max_count=None, display=None, provides=None, **kwargs):
+    def __init__(self, parse_as=str, min_count=None, max_count=None, display=None, provides=None, 
+                 *, name: Optional[str] = None, count: Optional[int] = None):
         if not callable(parse_as) and parse_as is not ERROR:
             raise TypeError(f'expected callable or ERROR for parse_as, not {parse_as!r}')
-        name = kwargs.pop('name', None)
-        count = kwargs.pop('count', None)
-        if kwargs:
-            raise TypeError(f'unexpected keyword arguments: {list(kwargs.keys())!r}')
+
         self.parse_as = parse_as
 
         # count convenience alias
@@ -717,7 +721,7 @@ class Parser:
             ape.prs_res = cpr
             raise ape
         for arg in argv:
-            if not isinstance(arg, (str, str)):
+            if not isinstance(arg, str):
                 raise TypeError(f'parse expected all args as strings, not: {arg!r} ({type(arg).__name__})')
         '''
         for subprs_path, subprs in self.subprs_map.items():

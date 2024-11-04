@@ -43,9 +43,6 @@ def test_flag_name():
     with pytest.raises(TypeError, match='or FlagDisplay instance'):
         Flag('name', display=object())
 
-    with pytest.raises(TypeError, match='unexpected keyword arguments'):
-        Flag('name', display={'badkw': 'val'})
-
     with pytest.raises(ValueError, match='expected identifier.*'):
         assert identifier_to_flag('--flag')
 
@@ -83,11 +80,6 @@ def test_flag_hidden():
     cmd.add('--dragon', display={'label': ''})
     flags = cmd.get_flags(with_hidden=False)
     assert 'dragon' not in [f.name for f in flags]
-
-
-def test_command_misc_api():
-    with pytest.raises(TypeError, match='unexpected keyword'):
-        Command(lambda: None, name='ok', bad_kwarg=True)
 
 
 def test_flag_init():
@@ -143,8 +135,6 @@ def test_minimal_exe():
 def test_posargspec_init():
     with pytest.raises(TypeError, match='expected callable or ERROR'):
         PosArgSpec(parse_as=object())
-    with pytest.raises(TypeError, match='unexpected keyword'):
-        PosArgSpec(badkw='val')
 
     with pytest.raises(ValueError, match='expected min_count >= 0'):
         PosArgSpec(min_count=-1)

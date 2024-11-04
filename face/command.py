@@ -1,9 +1,10 @@
 import sys
 from collections import OrderedDict
+from typing import Callable, List, Optional, Union
 
 from face.utils import unwrap_text, get_rdep_map, echo
 from face.errors import ArgumentParseError, CommandLineError, UsageError
-from face.parser import Parser, Flag
+from face.parser import Parser, Flag, PosArgSpec
 from face.helpers import HelpHandler
 from face.middleware import (inject,
                              get_arg_names,
@@ -57,56 +58,58 @@ class Command(Parser):
     populate it with flags and subcommands, and then call
     command.run() to execute your CLI.
 
-    Note that only the first three constructor arguments are
-    positional, the rest are keyword-only.
-
     Args:
-       func (callable): The function called when this command is
-          run with an argv that contains no subcommands.
-       name (str): The name of this command, used when this
-          command is included as a subcommand. (Defaults to name
-          of function)
-       doc (str): A description or message that appears in various
-           help outputs.
-       flags (list): A list of Flag instances to initialize the
-          Command with. Flags can always be added later with the
-          .add() method.
-       posargs (bool): Pass True if the command takes positional
-          arguments. Defaults to False. Can also pass a PosArgSpec
-          instance.
-       post_posargs (bool): Pass True if the command takes
-          additional positional arguments after a conventional '--'
-          specifier.
-       help (bool): Pass False to disable the automatically added
-          --help flag. Defaults to True. Also accepts a HelpHandler
-          instance, see those docs for more details.
-       middlewares (list): A list of @face_middleware decorated
-          callables which participate in dispatch. Also addable
-          via the .add() method. See Middleware docs for more
-          details.
-
+        func: The function called when this command is
+           run with an argv that contains no subcommands.
+        name: The name of this command, used when this
+           command is included as a subcommand. (Defaults to name
+           of function)
+        doc: A description or message that appears in various
+            help outputs.
+        flags: A list of Flag instances to initialize the
+           Command with. Flags can always be added later with the
+           .add() method.
+        posargs: Pass True if the command takes positional
+           arguments. Defaults to False. Can also pass a PosArgSpec
+           instance.
+        post_posargs: Pass True if the command takes
+           additional positional arguments after a conventional '--'
+           specifier.
+        help: Pass False to disable the automatically added
+           --help flag. Defaults to True. Also accepts a HelpHandler
+           instance.
+        middlewares: A list of @face_middleware decorated
+           callables which participate in dispatch.
     """
-    def __init__(self, func, name=None, doc=None, **kwargs):
+    def __init__(self, 
+                 func: Optional[Callable],
+                 name: Optional[str] = None,
+                 doc: Optional[str] = None,
+                 *,
+                 flags: Optional[List[Flag]] = None,
+                 posargs: Optional[Union[bool, PosArgSpec]] = None,
+                 post_posargs: Optional[bool] = None,
+                 flagfile: bool = True,
+                 help: Union[bool, HelpHandler] = DEFAULT_HELP_HANDLER,
+                 middlewares: Optional[List[Callable]] = None) -> None:
         name = name if name is not None else _get_default_name(func)
-
         if doc is None:
             doc = _docstring_to_doc(func)
 
         # TODO: default posargs if none by inspecting func
         super().__init__(name, doc,
-                                      flags=kwargs.pop('flags', None),
-                                      posargs=kwargs.pop('posargs', None),
-                                      post_posargs=kwargs.pop('post_posargs', None),
-                                      flagfile=kwargs.pop('flagfile', True))
+                        flags=flags,
+                        posargs=posargs,
+                        post_posargs=post_posargs,
+                        flagfile=flagfile)
 
-        _help = kwargs.pop('help', DEFAULT_HELP_HANDLER)
-        self.help_handler = _help
+        self.help_handler = help
 
         # TODO: if func is callable, check that "next_" isn't taken
         self._path_func_map = OrderedDict()
         self._path_func_map[()] = func
 
-        middlewares = list(kwargs.pop('middlewares', None) or [])
+        middlewares = list(middlewares or [])
         self._path_mw_map = OrderedDict()
         self._path_mw_map[()] = []
         self._path_wrapped_map = OrderedDict()
@@ -114,16 +117,15 @@ class Command(Parser):
         for mw in middlewares:
             self.add_middleware(mw)
 
-        if kwargs:
-            raise TypeError(f'unexpected keyword arguments: {sorted(kwargs.keys())!r}')
+        if help:
+            if help is True:
+                help = DEFAULT_HELP_HANDLER
+            if help.flag:
+                self.add(help.flag)
+            if help.subcmd:
+                self.add(help.func, help.subcmd)  # for 'help' as a subcmd
 
-        if _help:
-            if _help.flag:
-                self.add(_help.flag)
-            if _help.subcmd:
-                self.add(_help.func, _help.subcmd)  # for 'help' as a subcmd
-
-        if not func and not _help:
+        if not func and not help:
             raise ValueError('Command requires a handler function or help handler'
                              ' to be set, not: %r' % func)
 

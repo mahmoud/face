@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import os
 import re
 import sys
 import getpass
 import keyword
 import textwrap
+import typing
 
 from boltons.strutils import pluralize, strip_ansi
 from boltons.iterutils import split, unique
@@ -34,7 +37,7 @@ def process_command_name(name):
 
     """
 
-    if not name or not isinstance(name, (str, str)):
+    if not name or not isinstance(name, str):
         raise ValueError(f'expected non-zero length string for subcommand name, not: {name!r}')
 
     if name.endswith('-') or name.endswith('_'):
@@ -72,7 +75,7 @@ def flag_to_identifier(flag):
     Input case doesn't matter, output case will always be lower.
     """
     orig_flag = flag
-    if not flag or not isinstance(flag, (str, str)):
+    if not flag or not isinstance(flag, str):
         raise ValueError(f'expected non-zero length string for flag, not: {flag!r}')
 
     if flag.endswith('-') or flag.endswith('_'):
@@ -249,7 +252,7 @@ def get_minimal_executable(executable=None, path=None, environ=None):
     executable = sys.executable if executable is None else executable
     environ = os.environ if environ is None else environ
     path = environ.get('PATH', '') if path is None else path
-    if isinstance(path, (str, str)):
+    if isinstance(path, str):
         path = path.split(':')
 
     executable_basename = os.path.basename(executable)
@@ -275,7 +278,13 @@ def should_strip_ansi(stream):
     return not isatty(stream)
 
 
-def echo(msg, **kw):
+def echo(msg: str | bytes | object, *, 
+         err: bool = False,
+         file: typing.TextIO | None = None,
+         nl: bool = True,
+         end: str | None = None,
+         color: bool | None = None,
+         indent: str | int = '') -> None:
     """A better-behaved :func:`print()` function for command-line applications.
 
     Writes text or bytes to a file or stream and flushes. Seamlessly
@@ -286,26 +295,23 @@ def echo(msg, **kw):
       test
 
     Args:
-
-      msg (str): A text or byte string to echo.
-      err (bool): Set the default output file to ``sys.stderr``
-      file (file): Stream or other file-like object to output
-        to. Defaults to ``sys.stdout``, or ``sys.stderr`` if *err* is
-        True.
-      nl (bool): If ``True``, sets *end* to ``'\\n'``, the newline character.
-      end (str): Explicitly set the line-ending character. Setting this overrides *nl*.
-      color (bool): Set to ``True``/``False`` to always/never echo ANSI color
-        codes. Defaults to inspecting whether *file* is a TTY.
-
+        msg: A text or byte string to echo.
+        err: Set the default output file to ``sys.stderr``
+        file: Stream or other file-like object to output
+          to. Defaults to ``sys.stdout``, or ``sys.stderr`` if *err* is
+          True.
+        nl: If ``True``, sets *end* to ``'\\n'``, the newline character.
+        end: Explicitly set the line-ending character. Setting this overrides *nl*.
+        color: Set to ``True``/``False`` to always/never echo ANSI color
+          codes. Defaults to inspecting whether *file* is a TTY.
+        indent: String prefix or number of spaces to indent the output.
     """
     msg = msg or ''
     if not isinstance(msg, (str, bytes)):
         msg = str(msg)
-    is_err = kw.pop('err', False)
-    _file = kw.pop('file', sys.stdout if not is_err else sys.stderr)
-    end = kw.pop('end', None)
-    enable_color = kw.pop('color', None)
-    indent = kw.pop('indent', '')
+    
+    _file = file or (sys.stderr if err else sys.stdout)
+    enable_color = color
     space: str = ' '
     if isinstance(indent, int):
         indent = space * indent
@@ -314,7 +320,7 @@ def echo(msg, **kw):
         enable_color = not should_strip_ansi(_file)
 
     if end is None:
-        if kw.pop('nl', True):
+        if nl:
             end = '\n' if isinstance(msg, str) else b'\n'
     if end:
         msg += end

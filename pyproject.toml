@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "face"
+version = "24.0.1dev"
+description = "A command-line application framework (and CLI parser). Friendly for users, full-featured for developers."
+readme = "README.md"
+license = {text = "BSD-3-Clause"}
+requires-python = ">=3.8"
+authors = [
+    {name = "Mahmoud Hashemi", email = "mahmoud@hatnote.com"},
+]
+classifiers = [
+    "Topic :: Utilities",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+    "boltons>=20.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/mahmoud/face"
+Documentation = "https://python-face.readthedocs.io/"
+Repository = "https://github.com/mahmoud/face"
+
+[tool.setuptools.package-data]
+"face.test" = ["*.flags"]
+
+[tool.setuptools.packages.find]
+include = ["face*"]
+
+[tool.pytest.ini_options]
+testpaths = ["face/test"]
+
+[tool.coverage.run]
+branch = true
+source = ["face", "../face"]
+omit = ["*/flycheck_*"]
+
+[tool.coverage.paths]
+source = [
+    "../face",
+    "*/lib/python*/site-packages/face",
+    "*/Lib/site-packages/face",
+    "*/pypy/site-packages/face",
+]
+
+[tool.tox]
+env_list = ["py38", "py39", "py310", "py311", "py312", "py313", "pypy3", "coverage-report"]
+
+[tool.tox.env_run_base]
+change_dir = ".tox"
+deps = ["-r{tox_root}/requirements.txt"]
+commands = [
+    ["coverage", "run", "--rcfile={tox_root}/pyproject.toml", "--parallel", "-m", "pytest", "--doctest-modules", "{env_site_packages_dir}/face", "{posargs}"],
+]
+
+[tool.tox.env.coverage-report]
+depends = ["py38", "py39", "py310", "py311", "py312", "py313", "pypy3"]
+change_dir = ".tox"
+deps = ["coverage[toml]"]
+commands = [
+    ["coverage", "combine", "--rcfile={tox_root}/pyproject.toml"],
+    ["coverage", "report", "--rcfile={tox_root}/pyproject.toml"],
+    ["coverage", "html", "--rcfile={tox_root}/pyproject.toml", "-d", "{tox_root}/htmlcov"],
+]
+
+# Release checklist:
+#
+# * tox
+# * git commit (if applicable)
+# * Bump version in pyproject.toml off of -dev
+# * git commit -a -m "bump version for vx.y.z release"
+# * rm -rf dist/*
+# * python -m build
+# * twine upload dist/*
+# * Bump version in docs/conf.py
+# * git commit
+# * git tag -a vx.y.z -m "brief summary"
+# * Write CHANGELOG
+# * git commit
+# * Bump version in pyproject.toml onto n+1 dev
+# * git commit
+# * git push

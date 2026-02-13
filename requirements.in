@@ -1,7 +1,6 @@
-boltons>=19.3.0
+boltons>=20.0.0
 
 # dev deps
-pip-tools
-coverage
+coverage[toml]
 pytest
 tox

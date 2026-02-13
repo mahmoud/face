@@ -76,3 +76,21 @@ commands = [
     ["coverage", "report", "--rcfile={tox_root}/pyproject.toml"],
     ["coverage", "html", "--rcfile={tox_root}/pyproject.toml", "-d", "{tox_root}/htmlcov"],
 ]
+
+# Release checklist:
+#
+# * tox
+# * git commit (if applicable)
+# * Bump version in pyproject.toml off of -dev
+# * git commit -a -m "bump version for vx.y.z release"
+# * rm -rf dist/*
+# * python -m build
+# * twine upload dist/*
+# * Bump version in docs/conf.py
+# * git commit
+# * git tag -a vx.y.z -m "brief summary"
+# * Write CHANGELOG
+# * git commit
+# * Bump version in pyproject.toml onto n+1 dev
+# * git commit
+# * git push

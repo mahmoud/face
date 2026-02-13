@@ -13,7 +13,6 @@
 import os
 import sys
 import sphinx
-from pprint import pprint
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJECT_PATH = os.path.abspath(CUR_PATH + '/../')
@@ -21,7 +20,6 @@ PROJECT_PATH = os.path.abspath(CUR_PATH + '/../')
 sys.path.insert(0, PROJECT_PATH)
 # sys.path.insert(0, PACKAGE_PATH)
 
-pprint(os.environ)
 
 
 # -- Project information -----------------------------------------------------
@@ -72,10 +70,8 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 if on_rtd:
     html_theme = 'default'
-else: # only import and set the theme if we're building docs locally
-    import sphinx_rtd_theme
+else:
     html_theme = 'sphinx_rtd_theme'
-    html_theme_path = ['_themes', sphinx_rtd_theme.get_html_theme_path()]
 
 html_theme_options = {
     'navigation_depth': 4,
@@ -85,4 +81,4 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []

@@ -1,9 +1,28 @@
 Input / Output
 ================
 
-Face includes a variety of utilities designed to make it easy to write
-applications that adhere to command-line conventions and user
-expectations.
+Face provides I/O utilities for CLI applications. These functions handle
+TTY detection, ANSI escape code stripping, and cross-platform concerns so
+your output behaves correctly whether piped to a file or displayed in a
+terminal.
+
+Use these instead of bare ``print()`` and ``input()`` calls. They respect
+output redirection, handle encoding edge cases, and integrate with face's
+error handling.
+
+.. code-block:: python
+
+   from face import echo, echo_err, prompt
+
+   def my_handler(verbose):
+       if verbose:
+           echo_err('starting work...')
+       result = do_work()
+       echo(result)
+
+   def interactive_handler():
+       name = prompt('Enter your name: ')
+       echo(f'Hello, {name}!')
 
 .. autofunction:: face.echo
 
@@ -13,10 +32,7 @@ expectations.
 
 .. autofunction:: face.prompt_secret
 
+.. note::
 
-TODO
-----
-
-* TODO: InputCancelled exception, to be handled by .run()
-* TODO: stuff for prompting choices
-* TODO: pre-made --color flag(s) (looks at isatty)
+   Additional I/O utilities (choice prompting, color flag integration) may
+   be added in future releases.

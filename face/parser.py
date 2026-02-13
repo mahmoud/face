@@ -115,7 +115,7 @@ class CommandParseResult:
        argv (tuple): The sequence of strings parsed by the Parser to
           yield this result. Defaults to ``()``.
 
-    Instances of this class can be injected by accepting the "args_"
+    Instances of this class can be injected by accepting the ``args_``
     builtin in their Command handler function.
 
     """

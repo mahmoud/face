@@ -190,7 +190,7 @@ def face_middleware(func: Optional[Callable] = None,
            provides are not required by the command.
 
     The first argument of the decorated function must be named
-    "next_". This argument is a function, representing the next
+    ``next_``. This argument is a function, representing the next
     function in the execution chain, the last of which is the
     command's handler function.
 

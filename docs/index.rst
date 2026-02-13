@@ -58,9 +58,11 @@ Check out our :doc:`tutorial` for more.
 
    tutorial
    command
+   parser
    middleware
    testing
    io
+   errors
    faq
 
 .. |release| image:: https://img.shields.io/pypi/v/face.svg

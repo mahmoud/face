@@ -1,8 +1,0 @@
-include README.md LICENSE CHANGELOG.md tox.ini requirements-test.txt .coveragerc Makefile pytest.ini .tox-coveragerc requirements.txt requirements-docs.txt
-global-include *.flags
-exclude TODO.md DESIGN.md PROJECT_LOG.md requirements.in
-
-recursive-include examples *
-graft docs
-prune docs/_build
-prune .tox

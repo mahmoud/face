@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "face"
-version = "24.0.1dev"
+version = "26.0.0"
 description = "A command-line application framework (and CLI parser). Friendly for users, full-featured for developers."
 readme = "README.md"
 license = {text = "BSD-3-Clause"}

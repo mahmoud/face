@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
@@ -58,7 +59,7 @@ source = [
 ]
 
 [tool.tox]
-env_list = ["py38", "py39", "py310", "py311", "py312", "py313", "pypy3", "coverage-report"]
+env_list = ["py38", "py39", "py310", "py311", "py312", "py313", "py314", "pypy3", "coverage-report"]
 
 [tool.tox.env_run_base]
 change_dir = ".tox"
@@ -68,7 +69,7 @@ commands = [
 ]
 
 [tool.tox.env.coverage-report]
-depends = ["py38", "py39", "py310", "py311", "py312", "py313", "pypy3"]
+depends = ["py38", "py39", "py310", "py311", "py312", "py313", "py314", "pypy3"]
 change_dir = ".tox"
 deps = ["coverage[toml]"]
 commands = [

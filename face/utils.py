@@ -241,8 +241,8 @@ def get_minimal_executable(executable=None, path=None, environ=None):
 
     Args:
       executable (str): Name or path of an executable
-      path (list): List of directories on the "PATH", or ':'-separated
-        path list, similar to the $PATH env var. Defaults to ``environ['PATH']``.
+      path (list): List of directories on the "PATH", or a string using
+        the platform path separator (os.pathsep). Defaults to ``environ['PATH']``.
       environ (dict): Mapping of environment variables, will be used
         to retrieve *path* if it is None. Ignored if *path* is
         set. Defaults to ``os.environ``.
@@ -253,12 +253,17 @@ def get_minimal_executable(executable=None, path=None, environ=None):
     environ = os.environ if environ is None else environ
     path = environ.get('PATH', '') if path is None else path
     if isinstance(path, str):
-        path = path.split(':')
+        path = path.split(os.pathsep)
 
     executable_basename = os.path.basename(executable)
     for p in path:
-        if os.path.relpath(executable, p) == executable_basename:
-            return executable_basename
+        try:
+            if os.path.relpath(executable, p) == executable_basename:
+                return executable_basename
+        except ValueError:
+            # On Windows, relpath raises ValueError when paths are on
+            # different drives (e.g., D:\exe vs C:\path). Skip these.
+            continue
         # TODO: support "../python" as a return?
     return executable
 

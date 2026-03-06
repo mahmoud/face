@@ -132,6 +132,43 @@ def test_minimal_exe():
     assert res == venv_exe_path
 
 
+def test_minimal_exe_path_list():
+    """Test get_minimal_executable with path passed as a list (no splitting needed)."""
+    venv_exe_path = '/home/mahmoud/virtualenvs/face/bin/python'
+    res = get_minimal_executable(venv_exe_path,
+                                 path=['/home/mahmoud/virtualenvs/face/bin',
+                                       '/usr/local/bin',
+                                       '/usr/bin'])
+    assert res == 'python'
+
+    res = get_minimal_executable(venv_exe_path,
+                                 path=['/usr/local/bin', '/usr/bin'])
+    assert res == venv_exe_path
+
+
+def test_minimal_exe_cross_drive(monkeypatch):
+    """On Windows, relpath raises ValueError across drives. Verify graceful handling."""
+    import os.path
+    original_relpath = os.path.relpath
+
+    def mock_relpath(path, start):
+        # Simulate Windows cross-drive error
+        if start == 'C:\\other':
+            raise ValueError("path is on mount 'D:', start on mount 'C:'")
+        return original_relpath(path, start)
+
+    monkeypatch.setattr('os.path.relpath', mock_relpath)
+
+    exe = '/home/mahmoud/venvs/face/bin/python'
+    res = get_minimal_executable(exe,
+                                 path=['/home/mahmoud/venvs/face/bin',
+                                       'C:\\other'])
+    assert res == 'python'
+
+    # When only cross-drive entries exist, fall back to full path
+    res = get_minimal_executable(exe, path=['C:\\other'])
+    assert res == exe
+
 def test_posargspec_init():
     with pytest.raises(TypeError, match='expected callable or ERROR'):
         PosArgSpec(parse_as=object())

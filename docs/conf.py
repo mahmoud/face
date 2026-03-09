@@ -29,7 +29,7 @@ copyright = '2026, Mahmoud Hashemi'
 author = 'Mahmoud Hashemi'
 
 # The full version, including alpha/beta/rc tags
-release = '26.0'
+from face import __version__ as release
 
 
 # -- General configuration ---------------------------------------------------

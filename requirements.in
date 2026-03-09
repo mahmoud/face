@@ -1,6 +1,0 @@
-boltons>=20.0.0
-
-# dev deps
-coverage[toml]
-pytest
-tox

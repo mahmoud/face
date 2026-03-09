@@ -35,6 +35,11 @@ jobs:
           python-version: ${{ matrix.python }}
           allow-prereleases: true
       - run: uvx --with tox-uv tox -e ${{ matrix.tox }}
+      - name: Generate coverage XML
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          uv pip install --system coverage[toml]
+          cd .tox && coverage combine --rcfile ../pyproject.toml && coverage xml --rcfile ../pyproject.toml -o coverage-${{ matrix.tox }}.xml
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v3

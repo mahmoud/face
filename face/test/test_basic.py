@@ -1,3 +1,4 @@
+import os
 from random import shuffle
 
 import pytest
@@ -115,16 +116,18 @@ def test_char_missing_error():
 def test_minimal_exe():
     venv_exe_path = '/home/mahmoud/virtualenvs/face/bin/python'
     res = get_minimal_executable(venv_exe_path,
-                                 environ={'PATH': ('/home/mahmoud/virtualenvs/face/bin'
-                                                   ':/home/mahmoud/bin:/usr/local/sbin'
-                                                   ':/usr/local/bin:/usr/sbin'
-                                                   ':/usr/bin:/sbin:/bin:/snap/bin')})
+                                 environ={'PATH': os.pathsep.join([
+                                     '/home/mahmoud/virtualenvs/face/bin',
+                                     '/home/mahmoud/bin', '/usr/local/sbin',
+                                     '/usr/local/bin', '/usr/sbin',
+                                     '/usr/bin', '/sbin', '/bin', '/snap/bin'])})
     assert res == 'python'
 
     res = get_minimal_executable(venv_exe_path,
-                                 environ={'PATH': ('/home/mahmoud/bin:/usr/local/sbin'
-                                                   ':/usr/local/bin:/usr/sbin'
-                                                   ':/usr/bin:/sbin:/bin:/snap/bin')})
+                                 environ={'PATH': os.pathsep.join([
+                                     '/home/mahmoud/bin', '/usr/local/sbin',
+                                     '/usr/local/bin', '/usr/sbin',
+                                     '/usr/bin', '/sbin', '/bin', '/snap/bin'])})
     assert res == venv_exe_path
 
     # TODO: where is PATH not a string?

@@ -142,6 +142,8 @@ class CommandParseResult:
                 pkg_name = os.path.basename(path)
                 executable_path = get_minimal_executable()
                 cmd_ = f'{executable_path} -m {pkg_name}'
+            else:
+                cmd_ = get_minimal_executable(cmd_)
 
         ret = {'args_': self,
                'cmd_': cmd_,

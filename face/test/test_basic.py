@@ -172,6 +172,30 @@ def test_minimal_exe_cross_drive(monkeypatch):
     res = get_minimal_executable(exe, path=['C:\\other'])
     assert res == exe
 
+
+def test_cmd_scope_shortens_script_entry_point(monkeypatch):
+    """When argv[0] is a full venv path like /home/user/.venv/bin/ff,
+    and that directory is on PATH, cmd_ should be just 'ff'."""
+    venv_bin = '/home/user/.cache/pypoetry/virtualenvs/proj-abc123-py3.11/bin'
+    full_path = venv_bin + '/ff'
+    monkeypatch.setenv('PATH', os.pathsep.join([venv_bin, '/usr/bin', '/bin']))
+
+    cmd = Command(lambda: None, name='mycli')
+    parse_result = cmd.parse([full_path, '--help'])
+    scope = parse_result.to_cmd_scope()
+    assert scope['cmd_'] == 'ff'
+
+
+def test_cmd_scope_keeps_full_path_when_not_on_path(monkeypatch):
+    """When argv[0] directory is NOT on PATH, cmd_ should remain the full path."""
+    full_path = '/opt/custom/bin/ff'
+    monkeypatch.setenv('PATH', os.pathsep.join(['/usr/bin', '/bin']))
+
+    cmd = Command(lambda: None, name='mycli')
+    parse_result = cmd.parse([full_path, '--help'])
+    scope = parse_result.to_cmd_scope()
+    assert scope['cmd_'] == full_path
+
 def test_posargspec_init():
     with pytest.raises(TypeError, match='expected callable or ERROR'):
         PosArgSpec(parse_as=object())

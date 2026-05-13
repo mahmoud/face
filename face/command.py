@@ -386,10 +386,26 @@ class Command(Parser):
         func = self._path_func_map[prs_res.subcmds]
 
         cmd = kwargs['subcommand_']
-        if cmd.help_handler and (not func or (prs_res.flags and prs_res.flags.get(cmd.help_handler.flag.name))):
+        help_flag_set = (cmd.help_handler
+                         and cmd.help_handler.flag
+                         and prs_res.flags
+                         and prs_res.flags.get(cmd.help_handler.flag.name))
+
+        if help_flag_set:
+            # Explicit --help: show help, exit 0
             return inject(cmd.help_handler.func, kwargs)
-        elif not func:  # pragma: no cover
-            raise RuntimeError('expected command handler or help handler to be set')
+        elif not func:
+            # No handler (subcommand group invoked without subcommand)
+            if cmd.help_handler:
+                inject(cmd.help_handler.func, kwargs)
+            msg = 'error: ' + (prs_res.name or self.name)
+            if prs_res.subcmds:
+                msg += ' ' + ' '.join(prs_res.subcmds)
+            msg += ': expected a subcommand'
+            cle = CommandLineError(msg)
+            if print_error:
+                print_error(msg)
+            raise cle
 
         self.prepare(paths=[prs_res.subcmds])
         wrapped = self._path_wrapped_map.get(prs_res.subcmds, func)

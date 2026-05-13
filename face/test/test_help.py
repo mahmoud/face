@@ -44,7 +44,10 @@ def subcmd_cmd():
      # invalid subcommands
      # TODO: the following should also include "nonexistent-subcmd" but instead it lists "nonexistent_subcmd"
      (['halp', 'nonexistent-subcmd'], ['error', 'subcmd'], 1),
-     (['halp', 'subcmd', 'nonexistent-subsubcmd'], ['error', 'subsubcmd'], 1)
+     (['halp', 'subcmd', 'nonexistent-subsubcmd'], ['error', 'subsubcmd'], 1),
+     # subcommand group invoked without specifying a subcommand
+     (['halp'], ['error', 'expected a subcommand'], 1),
+     (['halp', 'subcmd'], ['error', 'expected a subcommand'], 1),
      ]
 )
 def test_help(subcmd_cmd, argv, contains, exit_code, capsys):
@@ -126,3 +129,34 @@ def test_flag_post_doc():
     assert format_flag_post_doc(Flag('flag', missing=42)) == '(defaults to 42)'
     assert format_flag_post_doc(Flag('flag', missing=ERROR)) == '(required)'
     assert format_flag_post_doc(Flag('flag', display={'post_doc': '(fun)'})) == '(fun)'
+
+
+
+def test_missing_subcmd_shows_help_and_errors(subcmd_cmd, capsys):
+    """When a subcommand group is invoked without a subcommand,
+    help is shown to stdout AND an error is printed to stderr."""
+    with pytest.raises(SystemExit) as exc_info:
+        subcmd_cmd.run(['halp', 'subcmd'])
+
+    assert exc_info.value.code == 1
+
+    out, err = capsys.readouterr()
+    # Help text goes to stdout
+    assert 'Usage' in out
+    assert 'subsubcmd' in out
+    # Error goes to stderr
+    assert 'expected a subcommand' in err
+
+
+def test_missing_subcmd_checker():
+    cmd = get_subcmd_cmd()
+    cc = CommandChecker(cmd)
+
+    # Subcommand group without subcommand -> exit 1
+    res = cc.fail('halp subcmd')
+    assert 'Usage' in res.stdout
+    assert 'expected a subcommand' in res.stderr
+
+    # Explicit help -> exit 0
+    res = cc.run('halp subcmd -h')
+    assert 'Usage' in res.stdout

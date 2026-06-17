@@ -169,6 +169,49 @@ You can also add a pre-built :class:`~face.Command` instance:
 Subcommands nest arbitrarily. A subcommand is itself a Command, so it
 can have its own subcommands, flags, and middleware.
 
+Subcommand groups
+~~~~~~~~~~~~~~~~~
+
+For commands with many subcommands, organize them under named headings
+in help output using :class:`~face.CommandGroup`:
+
+.. code-block:: python
+
+    from face import Command, CommandGroup
+
+    cmd = Command(None, name='myapp')
+
+    # Ungrouped subcommands appear first in help
+    cmd.add(version)
+
+    # Grouped subcommands appear under headings
+    users = CommandGroup('Users')
+    users.add(create_user)
+    users.add(delete_user)
+    cmd.add(users)
+
+    admin = CommandGroup('Admin')
+    admin.add(list_logs)
+    cmd.add(admin)
+
+This produces help output like::
+
+    Subcommands:
+
+      version        show the version
+
+      Users:
+        create-user    create a new user
+        delete-user    remove a user
+
+      Admin:
+        list-logs      display application logs
+
+A ``group`` keyword argument can also be passed directly to
+:meth:`~face.Command.add` for convenience::
+
+    cmd.add(create_user, group='Users')
+
 Positional arguments
 --------------------
 

@@ -146,6 +146,29 @@ DEFAULT_CONTEXT = {
 }
 
 
+def _get_subcmd_groups(parser):
+    """Return a dict mapping group key -> list of (sub_name, subprs).
+
+    Group key is a string (named group), int (unnamed visual break),
+    or None (ungrouped). Insertion order preserved: first occurrence
+    of a group determines its position. None-group (ungrouped) is
+    always sorted first regardless of insertion order.
+    """
+    groups = {}
+    for sub_name in unique([sp[0] for sp in parser.subprs_map if sp]):
+        subprs = parser.subprs_map[(sub_name,)]
+        group = subprs.group
+        groups.setdefault(group, []).append((sub_name, subprs))
+
+    # Move ungrouped (None) to front
+    if None in groups:
+        ungrouped = groups.pop(None)
+        result = {None: ungrouped}
+        result.update(groups)
+        return result
+    return groups
+
+
 class StoutHelpFormatter:
     """This formatter takes :class:`Parser` and :class:`Command` instances
     and generates help text. The output style is inspired by, but not
@@ -261,21 +284,50 @@ class StoutHelpFormatter:
             append(ctx['section_break'])
 
         if parser.subprs_map:
-            subcmd_names = unique([sp[0] for sp in parser.subprs_map if sp])
-            subcmd_layout = self._get_layout(labels=subcmd_names)
+            subcmd_groups = _get_subcmd_groups(parser)
+            has_named_groups = any(isinstance(g, str) for g in subcmd_groups)
+
+            # Compute layout across ALL subcommands for consistent doc-column alignment.
+            all_subcmd_names = [n.replace('_', '-') for n in
+                                unique([sp[0] for sp in parser.subprs_map if sp])]
+            if has_named_groups:
+                subcmd_layout = get_stout_layout(
+                    labels=all_subcmd_names,
+                    indent=ctx['section_indent'] * 2,
+                    sep=ctx['doc_separator'],
+                    width=ctx['width'],
+                    max_width=ctx['max_width'],
+                    min_doc_width=ctx['min_doc_width'])
+            else:
+                subcmd_layout = self._get_layout(labels=all_subcmd_names)
 
             append(ctx['subcmd_section_heading'])
             append(ctx['group_break'])
-            for sub_name in unique([sp[0] for sp in parser.subprs_map if sp]):
-                subprs = parser.subprs_map[(sub_name,)]
-                # TODO: sub_name.replace('_', '-') = _cmd -> -cmd (need to skip replacing leading underscores)
-                subcmd_lines = _wrap_stout_pair(indent=ctx['section_indent'],
-                                                label=sub_name.replace('_', '-'),
-                                                sep=ctx['doc_separator'],
-                                                doc=subprs.doc,
-                                                doc_start=subcmd_layout['doc_start'],
-                                                max_doc_width=subcmd_layout['doc_width'])
-                ret.extend(subcmd_lines)
+
+            first_group = True
+            for group_key, group_subcmds in subcmd_groups.items():
+                if not first_group:
+                    append('')  # blank line between groups
+                first_group = False
+
+                if isinstance(group_key, str):
+                    append(ctx['section_indent'] + group_key + ':')
+
+                # Ungrouped items use section_indent; grouped items use double indent
+                if has_named_groups and isinstance(group_key, str):
+                    item_indent = ctx['section_indent'] * 2
+                else:
+                    item_indent = ctx['section_indent']
+
+                for sub_name, subprs in group_subcmds:
+                    subcmd_lines = _wrap_stout_pair(
+                        indent=item_indent,
+                        label=sub_name.replace('_', '-'),
+                        sep=ctx['doc_separator'],
+                        doc=subprs.doc,
+                        doc_start=subcmd_layout['doc_start'],
+                        max_doc_width=subcmd_layout['doc_width'])
+                    ret.extend(subcmd_lines)
 
             append(ctx['section_break'])
 

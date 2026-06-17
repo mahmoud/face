@@ -52,6 +52,48 @@ def default_print_error(msg):
 DEFAULT_HELP_HANDLER = HelpHandler()
 
 
+class CommandGroup:
+    """A named group of subcommands that are added flat to a parent Command.
+
+    When added to a Command via ``cmd.add(group)``, all of the group's
+    subcommands become direct subcommands of the parent, tagged with the
+    group name for organized help display. No new subcommand path level
+    is created.
+
+    Args:
+       name: The group heading displayed in help output.
+       doc: An optional description (reserved for future use).
+    """
+    def __init__(self, name, doc=None):
+        if not isinstance(name, str) or not name:
+            raise ValueError(f'expected non-empty string for CommandGroup name, not: {name!r}')
+        self.name = name
+        self.doc = doc
+        self._commands = []
+
+    def add(self, *a, **kw):
+        """Add a subcommand to this group. Accepts the same arguments as
+        Command() for subcommand construction: a callable (or None) as the
+        first argument, plus optional name, doc, flags, posargs, etc.
+
+        Also accepts a pre-built Command instance directly.
+
+        Returns the Command instance.
+        """
+        target = a[0]
+        if isinstance(target, Command):
+            subcmd = target
+        elif callable(target) or target is None:
+            subcmd = Command(*a, **kw)
+        else:
+            raise TypeError(f'expected callable or Command for CommandGroup.add(), not: {target!r}')
+        self._commands.append(subcmd)
+        return subcmd
+
+    def __repr__(self):
+        return f'CommandGroup({self.name!r}, commands={len(self._commands)})'
+
+
 # TODO: should name really go here?
 class Command(Parser):
     """The central type in the face framework. Instantiate a Command,
@@ -80,6 +122,9 @@ class Command(Parser):
            instance.
         middlewares: A list of @face_middleware decorated
            callables which participate in dispatch.
+        group: An optional string group name for display
+           in help output. See CommandGroup for the recommended way
+           to group multiple subcommands.
     """
     def __init__(self, 
                  func: Optional[Callable],
@@ -91,7 +136,8 @@ class Command(Parser):
                  post_posargs: Optional[bool] = None,
                  flagfile: bool = True,
                  help: Union[bool, HelpHandler] = DEFAULT_HELP_HANDLER,
-                 middlewares: Optional[List[Callable]] = None) -> None:
+                 middlewares: Optional[List[Callable]] = None,
+                 group: Optional[str] = None) -> None:
         name = name if name is not None else _get_default_name(func)
         if doc is None:
             doc = _docstring_to_doc(func)
@@ -101,7 +147,8 @@ class Command(Parser):
                         flags=flags,
                         posargs=posargs,
                         post_posargs=post_posargs,
-                        flagfile=flagfile)
+                        flagfile=flagfile,
+                        group=group)
 
         self.help_handler = help
 
@@ -162,6 +209,9 @@ class Command(Parser):
 
         target = a[0]
 
+        if isinstance(target, CommandGroup):
+            return self.add_command_group(target)
+
         if is_middleware(target):
             return self.add_middleware(target)
 
@@ -198,6 +248,20 @@ class Command(Parser):
                 self._path_func_map[path] = subcmd._path_func_map[path[1:]]
                 sub_mw = subcmd._path_mw_map[path[1:]]
                 self._path_mw_map[path] = self_mw + sub_mw  # TODO: check for conflicts
+        return
+
+    def add_command_group(self, group):
+        """Add all commands from a CommandGroup as direct subcommands of this
+        Command, tagged with the group's name for organized help display.
+
+        No new subcommand path level is created — the group's commands
+        become siblings of any existing subcommands.
+        """
+        if not isinstance(group, CommandGroup):
+            raise TypeError(f'expected CommandGroup instance, not: {group!r}')
+        for subcmd in group._commands:
+            subcmd.group = group.name
+            self.add_command(subcmd)
         return
 
     def add_middleware(self, mw):

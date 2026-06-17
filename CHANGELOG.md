@@ -10,3 +10,4 @@ _(Not yet released)_
 - Add Codecov integration
 - Drop Python 3.8 and 3.9 support (now requires >=3.10)
 - Add CHANGELOG.md
+- Add subcommand grouping via `CommandGroup` class and `group` parameter

@@ -248,3 +248,30 @@ def test_command_group_constructor():
     grp = CommandGroup('Valid')
     assert grp.name == 'Valid'
     assert grp._commands == []
+
+
+def test_command_group_add_prebuilt():
+    grp = CommandGroup('Ops')
+    subcmd = Command(lambda: None, name='deploy', doc='deploy it')
+    ret = grp.add(subcmd)
+    assert ret is subcmd
+    assert grp._commands == [subcmd]
+
+
+def test_command_group_add_invalid():
+    grp = CommandGroup('Ops')
+    with pytest.raises(TypeError, match='expected callable or Command'):
+        grp.add(42)
+
+
+def test_command_group_repr():
+    grp = CommandGroup('Ops')
+    assert repr(grp) == "CommandGroup('Ops', commands=0)"
+    grp.add(lambda: None, name='x')
+    assert repr(grp) == "CommandGroup('Ops', commands=1)"
+
+
+def test_add_command_group_invalid():
+    cmd = Command(None, name='app')
+    with pytest.raises(TypeError, match='expected CommandGroup instance'):
+        cmd.add_command_group('not a group')

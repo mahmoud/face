@@ -1,4 +1,4 @@
-__version__ = '26.0.1dev'
+__version__ = '26.0.1'
 
 from face.parser import (Flag,
                          FlagDisplay,

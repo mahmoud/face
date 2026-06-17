@@ -129,6 +129,21 @@ parses `__version__` from the file with `sed` rather than importing the module
 (the build job does not install dependencies). If either check fails,
 publishing is blocked.
 
+The `pypi` deployment environment has a 5-minute wait timer. The publish job
+will show `status: waiting` during this period — it auto-approves after the
+timer expires (self-approval via `gh api` is blocked by GitHub when the push
+actor is also the required reviewer).
+
+### 9. Create GitHub release
+
+```bash
+gh release create vX.Y.Z --title "vX.Y.Z" --notes "<changelog entries>"
+```
+
+Use the changelog bullet points as the release notes body. Include a
+`**Full Changelog**` link comparing the previous tag to the new one:
+`https://github.com/mahmoud/face/compare/vPREV...vNEW`.
+
 ## Post-publish verification
 
 After pushing, wait ~2 minutes for PyPI propagation, then verify in a

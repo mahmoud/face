@@ -1,6 +1,5 @@
 import sys
 import shlex
-import codecs
 import os.path
 from collections import OrderedDict
 from typing import Optional
@@ -875,7 +874,7 @@ class Parser:
         else:
             path = os.path.abspath(path_or_file)
             try:
-                with codecs.open(path_or_file, 'r', 'utf-8') as f:
+                with open(path_or_file, 'r', encoding='utf-8') as f:
                     ff_text = f.read()
             except (UnicodeError, OSError) as ee:
                 raise ArgumentParseError(f'failed to load flagfile "{path}", got: {ee!r}')

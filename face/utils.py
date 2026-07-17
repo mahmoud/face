@@ -361,6 +361,27 @@ def _get_text(inp):
     return inp
 
 
+
+def flush_stdin() -> None:
+    """Drain stale keystrokes buffered in stdin.
+
+    During long processing phases, accidental keypresses accumulate in the
+    terminal input buffer.  Without flushing, the next ``input()`` call
+    silently consumes that garbage, producing a wrong answer.
+
+    Silently no-ops on non-Unix platforms or when stdin is not a tty (e.g.
+    in tests or piped input).
+    """
+    try:
+        import termios
+    except ImportError:
+        return  # non-Unix
+    try:
+        termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
+    except (OSError, termios.error):
+        pass  # non-tty or pipe
+
+
 def prompt(label, confirm=None, confirm_label=None, hide_input=False, err=False):
     """A better-behaved :func:`input()` function for command-line applications.
 
@@ -398,6 +419,8 @@ def prompt(label, confirm=None, confirm_label=None, hide_input=False, err=False)
             # Write the prompt separately so that we get nice
             # coloring through colorama on Windows (someday)
             echo(label, nl=False, err=err)
+            if func is raw_input:
+                flush_stdin()
             ret = func('')
         except (KeyboardInterrupt, EOFError):
             # getpass doesn't print a newline if the user aborts input with ^C.
@@ -436,3 +459,30 @@ def prompt_secret(label, **kw):
 
 # variant-style shortcut to help minimize kwarg noise and imports
 prompt.secret = prompt_secret
+
+
+
+def prompt_yn(message: str, *, default: bool = True) -> bool:
+    """Prompt for a yes/no confirmation, re-prompting on unrecognized input.
+
+    The *default* controls what happens when the user presses Enter with no
+    input, and determines the ``[Y/n]`` vs ``[y/N]`` hint.
+
+    Returns ``True`` for yes, ``False`` for no.
+    Raises :exc:`KeyboardInterrupt` on Ctrl-C and :exc:`EOFError` on Ctrl-D.
+    """
+    hint = '[Y/n]' if default else '[y/N]'
+    prompt_str = f'{message} {hint}: '
+
+    while True:
+        flush_stdin()
+        answer = raw_input(prompt_str).strip().lower()
+
+        if answer in ('y', 'yes'):
+            return True
+        if answer in ('n', 'no'):
+            return False
+        if answer == '':
+            return default
+
+        echo('  Please enter y or n.', err=True)

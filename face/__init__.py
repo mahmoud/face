@@ -22,4 +22,4 @@ from face.command import Command, CommandGroup
 from face.middleware import face_middleware
 from face.helpers import HelpHandler, StoutHelpFormatter
 from face.testing import CommandChecker, CheckError
-from face.utils import echo, echo_err, prompt, prompt_secret
+from face.utils import echo, echo_err, prompt, prompt_secret, flush_stdin, prompt_yn

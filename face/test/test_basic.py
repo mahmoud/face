@@ -1,3 +1,4 @@
+import io
 import os
 from random import shuffle
 
@@ -326,3 +327,83 @@ def test_post_posargs():
     res = cmd.parse(['cmd', '--'])
     assert res.posargs == ()
     assert res.post_posargs == ()
+
+
+
+def test_flush_stdin_noop_in_nonttys():
+    # flush_stdin must not raise in any non-tty context (test, pipe, non-Unix).
+    from face.utils import flush_stdin
+    import sys
+    old_stdin = sys.stdin
+    try:
+        # BytesIO has no fileno() → OSError branch in flush_stdin
+        sys.stdin = io.TextIOWrapper(io.BytesIO(b''))
+        flush_stdin()  # must not raise
+    finally:
+        sys.stdin = old_stdin
+
+
+def test_prompt_yn_yes_no(monkeypatch, capsys):
+    import sys
+    from face.utils import prompt_yn
+
+    cases = [
+        ('y\n',    True,  True),   # explicit yes
+        ('yes\n',  True,  True),
+        ('Y\n',    True,  True),   # case-insensitive
+        ('YES\n',  True,  True),
+        ('n\n',    True,  False),  # explicit no
+        ('no\n',   True,  False),
+        ('NO\n',   True,  False),
+        ('\n',     True,  True),   # blank → default=True
+        ('\n',     False, False),  # blank → default=False
+    ]
+
+    for raw_input, default, expected in cases:
+        monkeypatch.setattr('sys.stdin', io.StringIO(raw_input))
+        result = prompt_yn('Continue?', default=default)
+        assert result is expected, f'input={raw_input!r} default={default} expected={expected}'
+        capsys.readouterr()  # discard prompt output
+
+
+def test_prompt_yn_reprompts_on_bad_input(monkeypatch, capsys):
+    """Unrecognized input triggers a re-prompt; the loop exits on first valid answer."""
+    import sys
+    from face.utils import prompt_yn
+
+    # two bad answers, then 'y'
+    monkeypatch.setattr('sys.stdin', io.StringIO('maybe\nnope\ny\n'))
+    result = prompt_yn('Proceed?')
+    assert result is True
+
+    captured = capsys.readouterr()
+    # the 'please enter y or n' advisory must appear twice
+    assert captured.err.count('Please enter y or n') == 2
+
+
+def test_prompt_yn_keyboard_interrupt(monkeypatch):
+    import sys
+    from face.utils import prompt_yn
+
+    def _raise(*a, **kw):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr('face.utils.raw_input', _raise)
+    with pytest.raises(KeyboardInterrupt):
+        prompt_yn('Proceed?')
+
+
+def test_prompt_yn_eof(monkeypatch):
+    import sys
+    from face.utils import prompt_yn
+
+    monkeypatch.setattr('sys.stdin', io.StringIO(''))  # EOF immediately
+    with pytest.raises(EOFError):
+        prompt_yn('Proceed?')
+
+
+def test_prompt_yn_exported():
+    """flush_stdin and prompt_yn must be importable from the top-level face package."""
+    from face import flush_stdin, prompt_yn
+    assert callable(flush_stdin)
+    assert callable(prompt_yn)

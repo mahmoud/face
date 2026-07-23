@@ -412,7 +412,7 @@ class PosArgSpec:
         if self.max_count is not None and self.max_count <= 0:
             raise ValueError(f'expected max_count > 0, not: {self.max_count!r}')
         if self.max_count and self.min_count > self.max_count:
-            raise ValueError('expected min_count > max_count, not: %r > %r'
+            raise ValueError('expected min_count <= max_count, not: %r > %r'
                              % (self.min_count, self.max_count))
 
         provides = name if provides is None else provides

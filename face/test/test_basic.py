@@ -207,7 +207,7 @@ def test_posargspec_init():
     with pytest.raises(ValueError, match='expected max_count > 0'):
         PosArgSpec(max_count=-1)
 
-    with pytest.raises(ValueError, match='expected min_count > max_count'):
+    with pytest.raises(ValueError, match='expected min_count <= max_count'):
         PosArgSpec(max_count=3, min_count=4)
 
     with pytest.raises(TypeError, match='.*PosArgDisplay instance.*'):

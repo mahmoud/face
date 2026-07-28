@@ -33,11 +33,11 @@ def build_chain_str(
     func_names: object | None = None,
 ) -> str: ...
 def compile_chain(
-    funcs: Sequence[Callable[..., object]],
+    funcs: Sequence[Callable[..., _R]],
     params: Sequence[Collection[str]],
     inner_name: str,
     verbose: bool = False,
-) -> Callable[..., object]: ...
+) -> Callable[..., _R]: ...
 def compile_code(
     code_str: str,
     name: str,
@@ -45,7 +45,7 @@ def compile_code(
     verbose: bool = False,
 ) -> object: ...
 def make_chain(
-    funcs: Iterable[Callable[..., object]],
+    funcs: Iterable[Callable[..., _R]],
     provides: Iterable[Collection[str]],
     final_func: Callable[..., _R],
     preprovided: Collection[str],

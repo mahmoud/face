@@ -8,8 +8,12 @@ from collections.abc import Callable, Container as Container, Mapping, Sequence
 from functools import partial as partial
 from subprocess import list2cmdline as list2cmdline
 from types import TracebackType
+from typing import Protocol
 
 from boltons.setutils import complement as complement
+
+class _RunnableCommand(Protocol):
+    def run(self, argv: Sequence[str]) -> object: ...
 
 class RunResult:
     args: Sequence[str]
@@ -43,7 +47,7 @@ class CheckError(AssertionError):
     def __init__(self, result: RunResult, exit_codes: Container[int]) -> None: ...
 
 class CommandChecker:
-    cmd: object
+    cmd: _RunnableCommand
     base_env: dict[str, str | None]
     reraise: bool
     mix_stderr: bool
@@ -51,7 +55,7 @@ class CommandChecker:
     chdir: str | os.PathLike[str] | None
     def __init__(
         self,
-        cmd: object,
+        cmd: _RunnableCommand,
         env: Mapping[str, str | None] | None = None,
         chdir: str | os.PathLike[str] | None = None,
         mix_stderr: bool = False,

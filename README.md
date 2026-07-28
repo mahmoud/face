@@ -8,6 +8,12 @@
 
 Docs [here](https://python-face.readthedocs.io/).
 
+## Typing
+
+Face ships type information for the independently usable `face.errors`,
+`face.sinter`, and `face.testing` modules. Other modules retain their existing
+inline annotations but are not yet fully typed.
+
 ## Users
 
 * Montage [administration tools](https://github.com/hatnote/montage/blob/master/tools/admin.py)

@@ -275,3 +275,27 @@ def test_add_command_group_invalid():
     cmd = Command(None, name='app')
     with pytest.raises(TypeError, match='expected CommandGroup instance'):
         cmd.add_command_group('not a group')
+
+
+@pytest.mark.parametrize('doc', ['', ' ', '\t', '\n', ' \n\t '])
+def test_help_with_blank_flag_documentation(doc):
+    cmd = Command(lambda blank: None, name='app')
+    cmd.add(Flag('blank', display={'full_doc': doc}))
+
+    result = CommandChecker(cmd).run('app --help')
+
+    assert result.exit_code == 0
+    assert '--blank' in result.stdout
+    assert not result.stderr
+
+
+@pytest.mark.parametrize('doc', ['', ' ', '\t', '\n', ' \n\t '])
+def test_help_with_blank_subcommand_documentation(doc):
+    cmd = Command(None, name='app')
+    cmd.add(lambda: None, name='blank', doc=doc)
+
+    result = CommandChecker(cmd).run('app --help')
+
+    assert result.exit_code == 0
+    assert 'blank' in result.stdout
+    assert not result.stderr

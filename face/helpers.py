@@ -66,12 +66,12 @@ def _wrap_stout_pair(indent, label, sep, doc, doc_start, max_doc_width):
     append = ret.append
     lhs = indent + label
 
-    if not doc:
+    wrapped_doc = textwrap.wrap(doc, max_doc_width) if doc else []
+    if not wrapped_doc:
         append(lhs)
         return ret
 
     len_sep = len(sep)
-    wrapped_doc = textwrap.wrap(doc, max_doc_width)
     if len(lhs) <= doc_start:
         lhs_f = lhs.ljust(doc_start - len(sep)) + sep
         append(lhs_f + wrapped_doc[0])

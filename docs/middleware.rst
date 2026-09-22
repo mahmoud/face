@@ -28,7 +28,7 @@ handler (and any downstream middleware) will not run.
     def timing_middleware(next_):
         start_time = time.time()
         ret = next_()
-        echo('command executed in:', time.time() - start_time, 'seconds')
+        echo(f'command executed in: {time.time() - start_time} seconds')
         return ret
 
 Add middleware to a :class:`face.Command` with :meth:`~face.Command.add`:
@@ -63,7 +63,7 @@ dependency injection. Declare what the middleware provides with the
     def timing_middleware(next_):
         start_time = time.time()
         ret = next_(start_time=start_time)
-        echo('command executed in:', time.time() - start_time, 'seconds')
+        echo(f'command executed in: {time.time() - start_time} seconds')
         return ret
 
 Any handler or downstream middleware that accepts a ``start_time`` parameter
@@ -94,7 +94,7 @@ into the middleware function like any other dependency.
         start_time = time.time()
         ret = next_(start_time=start_time)
         if echo_time:
-            echo('command executed in:', time.time() - start_time, 'seconds')
+            echo(f'command executed in: {time.time() - start_time} seconds')
         return ret
 
 Every :class:`~face.Command` that adds ``timing_middleware`` will gain the
@@ -135,7 +135,7 @@ output.
         start_time = time.time()
         ret = next_(start_time=start_time)
         if echo_time:
-            echo('command executed in:', time.time() - start_time, 'seconds')
+            echo(f'command executed in: {time.time() - start_time} seconds')
         return ret
 
 Here ``echo_time`` defaults to ``False``. If no downstream function accepts

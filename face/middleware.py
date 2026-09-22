@@ -34,7 +34,7 @@ function must be invoked to continue to program execution::
   def timing_middleware(next_):
      start_time = time.time()
      ret = next_()
-     echo('command executed in:', time.time() - start_time, 'seconds')
+     echo(f'command executed in: {time.time() - start_time} seconds')
      return ret
 
 As always, code speaks volumes. It's worth noting that ``next_()`` is
@@ -66,7 +66,7 @@ by making the start_time available as an injectable::
   def timing_middleware(next_):
      start_time = time.time()
      ret = next_(start_time=start_time)
-     echo('command executed in:', time.time() - start_time, 'seconds')
+     echo(f'command executed in: {time.time() - start_time} seconds')
      return ret
 
 ``start_time`` is added to the list of provides in the middleware
@@ -97,7 +97,7 @@ optional behavior, via a flag::
      start_time = time.time()
      ret = next_(start_time=start_time)
      if echo_time:
-         echo('command executed in:', time.time() - start_time, 'seconds')
+         echo(f'command executed in: {time.time() - start_time} seconds')
      return ret
 
 Now, every :class:`Command` that adds this middleware will

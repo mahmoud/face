@@ -1028,6 +1028,7 @@ class ChoicesParam:
     an explicit one can be set *parse_as*.
     """
     def __init__(self, choices, parse_as=None):
+        choices = list(choices)
         if not choices:
             raise ValueError(f'expected at least one choice, not: {choices!r}')
         try:

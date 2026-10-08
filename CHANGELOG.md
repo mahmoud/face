@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Report malformed flagfile quoting as a command-line error with the file
+  and line number, including nested flagfiles.
 - Accept `multi='overwrite'` as an undocumented alias for `multi='override'`,
   matching a longstanding typo in the `Flag` docstring
 - Fix the `Flag` docstring to spell the shortcut `'override'`, and drop the

@@ -895,7 +895,10 @@ class Parser:
         lines = ff_text.splitlines()
         for lineno, line in enumerate(lines, 1):
             try:
-                args = shlex.split(line, comments=True)
+                try:
+                    args = shlex.split(line, comments=True)
+                except ValueError as exc:
+                    raise ArgumentParseError(str(exc)) from exc
                 if not args:
                     continue  # comment or empty line
                 flag, value, leftover_args = self._parse_single_flag(cmd_flag_map, args)

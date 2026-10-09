@@ -19,7 +19,8 @@ def _get_termios_winsize():
 
     winsize = array.array('H', [0, 0, 0, 0])
 
-    assert not fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, winsize)
+    result = fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, winsize)
+    assert not result
 
     ws_row, ws_col, _, _ = winsize
 

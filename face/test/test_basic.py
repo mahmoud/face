@@ -320,6 +320,19 @@ def test_echo(capsys):
     assert capsys.readouterr().out == test_str
 
 
+@pytest.mark.parametrize('value, expected', [
+    (0, '0'),
+    (False, 'False'),
+    ([], '[]'),
+    (None, ''),
+    ('', ''),
+    (b'', ''),
+])
+def test_echo_falsy_values(capsys, value, expected):
+    echo(value)
+    assert capsys.readouterr().out == expected + '\n'
+
+
 def test_multi_extend():
     cmd = Command(lambda override: None, name='cmd')
     cmd.add('--override', char='o', multi=True)

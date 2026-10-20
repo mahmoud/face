@@ -311,7 +311,8 @@ def echo(msg: str | bytes | object, *,
           codes. Defaults to inspecting whether *file* is a TTY.
         indent: String prefix or number of spaces to indent the output.
     """
-    msg = msg or ''
+    if msg is None or (isinstance(msg, bytes) and not msg):
+        msg = ''
     if not isinstance(msg, (str, bytes)):
         msg = str(msg)
     

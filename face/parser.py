@@ -781,6 +781,8 @@ class Parser:
 
                 parsed_post_posargs = prs.post_posargs.parse(post_posargs)
                 cpr.post_posargs = tuple(parsed_post_posargs)
+            else:
+                prs.post_posargs.parse([])
 
             parsed_posargs = prs.posargs.parse(posargs)
             cpr.posargs = tuple(parsed_posargs)

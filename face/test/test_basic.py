@@ -426,3 +426,17 @@ def test_prompt_yn_exported():
     from face import flush_stdin, prompt_yn
     assert callable(flush_stdin)
     assert callable(prompt_yn)
+
+@pytest.mark.parametrize('argv', [['cmd'], ['cmd', '--']])
+def test_required_post_posargs(argv):
+    cmd = Command(lambda: None, name='cmd',
+                  post_posargs=PosArgSpec(min_count=1))
+    with pytest.raises(ArgumentParseError, match='too few arguments'):
+        cmd.parse(argv)
+
+
+def test_required_post_posargs_present():
+    cmd = Command(lambda: None, name='cmd',
+                  post_posargs=PosArgSpec(min_count=1, parse_as=int))
+    result = cmd.parse(['cmd', '--', '42'])
+    assert result.post_posargs == (42,)

@@ -87,3 +87,28 @@ def test_check_mw():
 
     with pytest.raises(TypeError, match='provides conflict with reserved face builtins'):
         face_middleware(provides='flags_')(lambda next_: None)
+
+
+@pytest.mark.parametrize('dep_map', [
+    {'a': {'b'}, 'b': {'a'}},
+    {'handler': {'a'}, 'a': {'b'}, 'b': {'a'}},
+    {'handler': {'a'}, 'a': {'b'}, 'b': {'c'}, 'c': {'b'}},
+])
+def test_dependency_cycles(dep_map):
+    from face.utils import get_rdep_map
+
+    with pytest.raises(ValueError, match='dependency cycle'):
+        get_rdep_map(dep_map)
+
+
+def test_shared_transitive_dependencies():
+    from face.utils import get_rdep_map
+
+    dep_map = {'handler': {'a', 'b'}, 'a': {'shared'},
+               'b': {'shared'}, 'shared': {'leaf'}}
+    assert get_rdep_map(dep_map) == {
+        'handler': {'a', 'b', 'shared', 'leaf'},
+        'a': {'shared', 'leaf'},
+        'b': {'shared', 'leaf'},
+        'shared': {'leaf'},
+    }

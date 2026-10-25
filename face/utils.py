@@ -228,7 +228,7 @@ def get_rdep_map(dep_map):
                 raise ValueError('dependency cycle: %r recursively depends'
                                  ' on itself. full dep chain: %r' % (cur, cur_chain))
 
-            to_proc.extend([c for c in cur_rdeps if c not in to_proc])
+            to_proc.extend([c for c in cur_rdeps if c not in to_proc and c not in rdeps])
             rdeps.update(cur_rdeps)
 
         ret[key] = rdeps

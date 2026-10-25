@@ -172,8 +172,11 @@ class CheckError(AssertionError):
             msg += result.stderr
             msg += '"""\n'
         if result.input:
+            input_text = result.input
+            if isinstance(input_text, bytes):
+                input_text = input_text.decode(result.checker.encoding, 'replace')
             msg += '\nstdin = """\n'
-            msg += result.input
+            msg += input_text
             msg += '"""\n'
         AssertionError.__init__(self, msg)
 

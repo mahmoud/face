@@ -199,3 +199,23 @@ def test_cc_edge_cases():
 
     with pytest.raises(CheckError):
         cc.fail('calc halve', input='4', exit_code=(1, 2))
+
+
+@pytest.mark.parametrize('input, encoding, expected', [
+    ('hello', 'utf8', 'hello'),
+    ('café'.encode('utf8'), 'utf8', 'café'),
+    (b'\xff', 'utf8', '\ufffd'),
+    (b'caf\xe9', 'latin1', 'café'),
+])
+def test_cc_failure_with_byte_input(input, encoding, expected):
+    def exit_command():
+        raise SystemExit(2)
+
+    checker = CommandChecker(Command(exit_command, name='exit'))
+    checker.encoding = encoding
+    with pytest.raises(CheckError) as exc_info:
+        checker.run(['exit'], input=input)
+
+    assert exc_info.value.result.input == input
+    assert exc_info.value.result.exit_code == 2
+    assert 'stdin = """\n' + expected + '"""\n' in str(exc_info.value)

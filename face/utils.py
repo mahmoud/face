@@ -19,7 +19,7 @@ raw_input = input
 ERROR = make_sentinel('ERROR')  # used for parse_as=ERROR
 
 # keep it just to subset of valid ASCII python identifiers for now
-VALID_FLAG_RE = re.compile(r"^[A-z][-_A-z0-9]*\Z")
+VALID_FLAG_RE = re.compile(r"^[A-Za-z][-_A-Za-z0-9]*\Z")
 
 FRIENDLY_TYPE_NAMES = {int: 'integer',
                        float: 'decimal'}

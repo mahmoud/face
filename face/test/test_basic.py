@@ -63,6 +63,28 @@ def test_flag_name():
     return
 
 
+@pytest.mark.parametrize('char', ['[', '\\', ']', '^', '`'])
+@pytest.mark.parametrize('template', ['{}name', 'na{}me'])
+def test_names_reject_ascii_punctuation(char, template):
+    name = template.format(char)
+    with pytest.raises(ValueError, match='must begin with a letter'):
+        Flag(name)
+    with pytest.raises(ValueError, match='must begin with a letter'):
+        Command(lambda: None, name=name)
+
+
+def test_names_require_initial_letter():
+    with pytest.raises(ValueError, match='must begin with a letter'):
+        Flag('_name')
+    with pytest.raises(ValueError, match='must begin with a letter'):
+        Command(lambda: None, name='_name')
+
+
+def test_names_accept_ascii_letters_digits_and_separators():
+    assert Flag('Ab_c-d9').name == 'Ab_c_d9'
+    assert Command(lambda: None, name='Ab_c-d9').name == 'Ab_c_d9'
+
+
 def test_flag_char():
     with pytest.raises(ValueError, match='char flags must be exactly one character'):
         Flag('flag', char='FLAG')

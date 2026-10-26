@@ -426,3 +426,41 @@ def test_prompt_yn_exported():
     from face import flush_stdin, prompt_yn
     assert callable(flush_stdin)
     assert callable(prompt_yn)
+
+
+@pytest.mark.parametrize('stream_kind', ['text', 'wrapped', 'binary'])
+def test_echo_bytes_to_streams(stream_kind):
+    if stream_kind == 'text':
+        stream = io.StringIO()
+    elif stream_kind == 'wrapped':
+        buffer = io.BytesIO()
+        stream = io.TextIOWrapper(buffer, encoding='utf-8')
+        stream.write('prefix:')
+    else:
+        stream = io.BytesIO()
+    try:
+        echo(b'hello', file=stream, color=False)
+        if stream_kind == 'text':
+            assert stream.getvalue() == 'hello\n'
+        elif stream_kind == 'wrapped':
+            assert buffer.getvalue() == b'prefix:hello\n'
+        else:
+            assert stream.getvalue() == b'hello\n'
+    finally:
+        stream.close()
+
+
+def test_echo_bytes_indent_and_text_end():
+    stream = io.BytesIO()
+    echo(b'a\n\nb', file=stream, indent=2, end='!', color=False)
+    assert stream.getvalue() == b'  a\n\n  b!'
+
+
+def test_echo_raw_bytes_preserves_values():
+    buffer = io.BytesIO()
+    stream = io.TextIOWrapper(buffer, encoding='utf-8')
+    try:
+        echo(b'\x1b[31mraw\xff', file=stream, color=False)
+        assert buffer.getvalue() == b'raw\xff\n'
+    finally:
+        stream.close()

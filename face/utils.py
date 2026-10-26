@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import io
 import re
 import sys
 import getpass
@@ -328,14 +329,32 @@ def echo(msg: str | bytes | object, *,
         if nl:
             end = '\n' if isinstance(msg, str) else b'\n'
     if end:
+        if isinstance(msg, bytes) and isinstance(end, str):
+            end = end.encode(getattr(_file, 'encoding', None) or 'utf-8')
         msg += end
     if indent:
-        msg = textwrap.indent(msg, prefix=indent)
+        if isinstance(msg, bytes):
+            prefix = indent.encode(getattr(_file, 'encoding', None) or 'utf-8')
+            msg = b''.join(prefix + line if line.strip() else line
+                           for line in msg.splitlines(keepends=True))
+        else:
+            msg = textwrap.indent(msg, prefix=indent)
 
     if msg:
         if not enable_color:
-            msg = strip_ansi(msg)
-        _file.write(msg)
+            if isinstance(msg, bytes):
+                msg = strip_ansi(msg.decode('latin-1')).encode('latin-1')
+            else:
+                msg = strip_ansi(msg)
+        output = _file
+        if isinstance(msg, bytes):
+            binary_output = getattr(_file, 'buffer', None)
+            if binary_output is not None:
+                _file.flush()
+                output = binary_output
+            elif isinstance(_file, io.TextIOBase):
+                msg = msg.decode(getattr(_file, 'encoding', None) or 'utf-8')
+        output.write(msg)
 
     _file.flush()
 

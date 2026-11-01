@@ -38,8 +38,7 @@ def _multi_error(flag, arg_val_list):
 
 def _multi_extend(flag, arg_val_list):
     "Return a list of all arguments specified for a flag"
-    ret = [v for v in arg_val_list if v is not flag.missing]
-    return ret
+    return list(arg_val_list)
 
 
 def _multi_override(flag, arg_val_list):
@@ -918,6 +917,7 @@ class Parser:
         ret = OrderedDict()
         cfm, pfm = cmd_flag_map, parsed_flag_map
         flagfile_map = flagfile_map or {}
+        parsed_flag_names = set(pfm)
 
         # check requireds and set defaults and then...
         missing_flags = []
@@ -935,6 +935,8 @@ class Parser:
         for flag_name in pfm:
             flag = cfm[flag_name]
             arg_val_list = pfm.getlist(flag_name)
+            if flag.multi is _multi_extend and flag_name not in parsed_flag_names:
+                arg_val_list = []
             try:
                 ret[flag_name] = flag.multi(flag, arg_val_list)
             except FaceException as fe:

@@ -166,7 +166,7 @@ class CommandParseResult:
             posargs_provides = _posargs_to_provides(prs.posargs, self.posargs)
             ret[prs.posargs.provides] = posargs_provides
         if prs.post_posargs.provides:
-            posargs_provides = _posargs_to_provides(prs.posargs, self.post_posargs)
+            posargs_provides = _posargs_to_provides(prs.post_posargs, self.post_posargs)
             ret[prs.post_posargs.provides] = posargs_provides
 
         return ret

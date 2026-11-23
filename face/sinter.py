@@ -109,7 +109,7 @@ def build_chain_str(funcs, params, inner_name, params_sofar=None, level=0,
         params_sofar = {inner_name}
 
     params_sofar.update(params[0])
-    inner_args = get_fb(funcs[0]).args
+    inner_args = get_fb(funcs[0]).get_arg_names()
     inner_arg_dict = {a: a for a in inner_args}
     inner_arg_items = sorted(inner_arg_dict.items())
     inner_args = ', '.join(['%s=%s' % kv for kv in inner_arg_items

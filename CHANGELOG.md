@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Pass keyword-only dependencies to command handlers and middleware instead of
+  dropping them during generated dispatch
+
 - Accept `multi='overwrite'` as an undocumented alias for `multi='override'`,
   matching a longstanding typo in the `Flag` docstring
 - Fix the `Flag` docstring to spell the shortcut `'override'`, and drop the

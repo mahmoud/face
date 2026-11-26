@@ -111,8 +111,8 @@ class RunResult:
     @property
     def stderr(self):
         """The error output ("stderr") of the command, as a decoded
-        string. See :attr:`stderr_bytes` for the bytestring. May be
-        ``None`` if *mix_stderr* was set to ``True`` in the
+        string. See :attr:`stderr_bytes` for the bytestring. Raises
+        :exc:`ValueError` if *mix_stderr* was set to ``True`` in the
         :class:`~face.CommandChecker`.
         """
         if self.stderr_bytes is None:
@@ -195,7 +195,8 @@ class CommandChecker:
        mix_stderr (bool): Set to ``True`` to capture stderr into
          stdout. This makes it easier to verify order of standard
          output and errors. If ``True``, this checker's results'
-         error_bytes will be set to ``None``. Defaults to ``False``.
+         ``stderr_bytes`` will be set to ``None``. Defaults to
+         ``False``.
        reraise (bool): Reraise uncaught exceptions from within *cmd*'s
          endpoint functions, instead of returning a :class:`RunResult`
          instance. Defaults to ``False``.
